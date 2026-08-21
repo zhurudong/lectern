@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Lectern",
+  "version": "0.3.1",
+  "description": "零网络、只读的本地代码阅读器:目录树、语法高亮、大纲、跳转定义、查找引用与全项目搜索,全部在本地完成。",
+  "homepage_url": "https://github.com/zhurudong/lectern",
+  "minimum_chrome_version": "122",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "打开 Lectern",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": []
+}

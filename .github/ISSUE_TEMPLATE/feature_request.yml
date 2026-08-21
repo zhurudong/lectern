@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest something the viewer should do.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two kinds of request are outside this project's scope regardless of
+        merit, because they break the invariants it is built on (see
+        CONTRIBUTING.md):
+
+        - anything that requires network access at runtime;
+        - anything that writes to the user's project directory, including
+          editing files.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The reading task you are stuck on, not the feature you imagine solving it.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind (optional)

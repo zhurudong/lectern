@@ -1,0 +1,39 @@
+name: Bug report
+description: Something behaves differently from what the README or the specs say.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A report that says exactly what you did and exactly what you saw is
+        worth several that describe an impression.
+  - type: input
+    id: chrome
+    attributes:
+      label: Chrome version and OS
+      placeholder: "Chrome 131 on macOS 15 / Windows 11 / Ubuntu 24.04"
+    validations:
+      required: true
+  - type: input
+    id: install
+    attributes:
+      label: How did you install it
+      placeholder: "Load unpacked from dist/ (built from source at commit …) / release zip vX.Y.Z"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you did, and what happened
+      description: >
+        Steps, then expected vs actual. If it involves a specific file or
+        language, say which language and roughly what the code looks like —
+        code intelligence here is heuristic and the shape of the source matters.
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output (optional)
+      description: Right-click the viewer page → Inspect → Console, and paste anything red.
+      render: text

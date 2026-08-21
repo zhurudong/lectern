@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+dist-dev/
+
+# release artifacts (published via GitHub Releases, not committed)
+*.zip
+
+# local tooling / editor
+.DS_Store
+.claude/settings.local.json
+.vscode/
+*.log
+
+# e2e / icon screenshots (generated)
+scripts/*.png
+
+# runtime locks written by local tooling
+.claude/*.lock
+
+# AI agent tooling config — development-time, not part of the product
+.claude/
+.agents/
+
+# 一次性测量装置（发布验收用，不随产品发布）
+scripts/.matrix*.mjs
+scripts/.diag*.mjs

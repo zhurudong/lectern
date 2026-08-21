@@ -1,0 +1,39 @@
+import { defineConfig } from 'vite'
+import preact from '@preact/preset-vite'
+import { fileURLToPath } from 'node:url'
+
+const here = (p: string) => fileURLToPath(new URL(p, import.meta.url))
+
+// 两个入口:查看器整页应用(viewer.html)与 MV3 service worker(background)。
+// background 必须输出为稳定文件名,manifest.json 按名引用。
+export default defineConfig(({ mode }) => ({
+  plugins: [preact()],
+  // E2E 测试钩子(window.__cv)仅在 development mode 构建时编译进产物
+  define: { __CV_TEST_HOOK__: mode === 'development' },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    target: 'es2022',
+    // 关掉 modulePreload 的 polyfill。
+    //
+    // 它会往产物里注入一段 `fetch(link.href)` —— 那是**产物里唯一的 `fetch(`**,
+    // 不是我们写的代码,却会让「零网络」不变量门禁亮红。扩展只加载自己打包的
+    // 本地资源,es2022 目标下的 Chrome 原生支持 modulepreload,polyfill 本就多余。
+    //
+    // **依赖 manifest.json 的 `minimum_chrome_version`(当前 122)。**
+    // 这里关掉的是兼容兜底,不是无关紧要的开关:若将来**下调**最低 Chrome 版本,
+    // 必须重新评估这一项(以及 `target: 'es2022'`)—— 否则老版本 Chrome 上
+    // modulepreload 无人兜底,产物会直接加载失败。
+    modulePreload: { polyfill: false },
+    rollupOptions: {
+      input: {
+        viewer: here('viewer.html'),
+        background: here('src/background.ts'),
+      },
+      output: {
+        entryFileNames: (chunk) =>
+          chunk.name === 'background' ? 'background.js' : 'assets/[name]-[hash].js',
+      },
+    },
+  },
+}))
