@@ -1,0 +1,1830 @@
+/* ===== VS Code Dark+ 风格基础样式 ===== */
+
+:root {
+  /* ===== A 方案「现代 IDE 风」浅色令牌(取自 design.md D1;D1 又取自 mockup 源码)=====
+     两套主题是**各自独立调校的完整值**,不是一套加透明度推导另一套。 */
+  --bg: #fbfcfe;            /* 底 / 代码区 */
+  --bg-sidebar: #f6f8fb;    /* 面板:侧栏 / 大纲 / 预览头 */
+  --bg-topbar: #f4f6fa;
+  --bg-hover: #eaeef5;
+  --bg-selected: #dde8fb;
+  --bg-input: #eef1f7;      /* 搜索框底 */
+  --border-input: #e0e5ee;  /* 搜索框边(与面板边框不同值) */
+  --fg: #2f3440;            /* 主文本 */
+  --fg-dim: #5a6272;        /* 次级文本 */
+  --fg-faint: #9aa4b6;      /* 弱文本:仅用于分组标题等非关键信息,不用于正文 */
+  --brand: #1f2430;
+  --accent: #3b6fd4;        /* 强调 / 选中左色条 */
+  --border: #e3e8f0;
+  --error: #c2410c;
+  --warn: #b5860b;
+  --link: #2b6cb0;
+  /* 选中行 = 整行底 + 细长左色条;当前代码行同构 */
+  --sel-bar: #3b6fd4;
+  --hot-bg: #eef3fc;
+  --hot-bar: #3b6fd4;
+  /* 搜索面板模式切换的激活态(mockup 里的 tab.on) */
+  --tab-active-bg: #e5ebf6;
+  --tab-active-fg: #2b4a8a;
+  /* 能力徽标 */
+  --badge-bg: #e0f2e7;
+  --badge-fg: #2f8f52;
+  --checker-a: #eef1f7;
+  --checker-b: #e3e8f0;
+  --md-code-bg: rgba(59, 111, 212, 0.10);
+  --md-pre-bg: #f4f6fa;
+  --md-border: #e3e8f0;
+  --md-zebra: rgba(47, 52, 64, 0.025);
+  --md-placeholder-border: #d3dae6;
+  /* 语法着色:A 只定 6 个角色(kw/fn/st/cm/ty/pa),下面按**语义**把既有 token 归到这 6 个里,
+     不额外发明第七种颜色。cmTheme.ts 用同一组值(E2E 6.2 交叉断言两者一致)。 */
+  --tok-keyword: #8a3ffc;
+  --tok-ctrl: #8a3ffc;
+  --tok-atom: #8a3ffc;
+  --tok-meta: #8a3ffc;
+  --tok-fn: #2b6cb0;
+  --tok-link: #2b6cb0;
+  --tok-string: #3f8a3f;
+  --tok-string2: #3f8a3f;
+  --tok-number: #3f8a3f;
+  --tok-literal: #3f8a3f;
+  --tok-inserted: #3f8a3f;
+  --tok-comment: #666d7a;  /* 提到 AA:阅读器里注释承载原作者意图,是信息密度最高的文本 */
+  --tok-type: #b5860b;
+  --tok-attr: #b5860b;
+  --tok-label: #b5860b;
+  --tok-tag: #c2410c;
+  --tok-heading: #c2410c;
+  --tok-deleted: #c2410c;
+  --tok-var: #2f3440;
+  --tok-var2: #2b6cb0;
+  --tok-prop: #2f3440;
+  --tok-op: #5a6272;
+  --tok-invalid: #c2410c;
+  /* 文件类型图标色板(浅色主题)。
+     判据升级(2026-08-20,覆盖类型到 30+ 后):**按大类分色系,不按语言分色**。
+     目录树是扫视对象,**扫得快 > 分得清** —— 二十种各不相同的颜色比五个色系更难扫。
+     排布成 5 个可眯眼识别的块:
+       冷色(teal→violet)= 编译/后端;暖色(orange/amber)= 前端/标记;
+       绿 = 数据/配置;中性 = 构建脚本与纯文本;粉 = 图片/二进制。
+     同色系内部允许色相靠近(那是同一大类,本就该成块),细分交给字形。
+     注意与上一轮的区别:上一轮拉开 jvm/markup/js 是解决**细分**撞色,
+     这一轮要的是**粗分**成块 —— 目标相反,不要把"拉开间隔"的惯性带过来。 */
+  --focus-ring: #0b63c5;   /* 键盘活动行的焦点环(与选中态的背景填充是两种手段) */
+  --icon-go: #0f766e;      /* 冷色块 · 编译/后端:teal */
+  --icon-py: #0369a1;      /*                    sky  */
+  --icon-csys: #1d4ed8;    /*                    blue */
+  --icon-jvm: #6d28d9;     /*                    violet */
+  --icon-markup: #c2410c;  /* 暖色块 · 前端/标记:orange */
+  --icon-js: #8a7a00;      /*                    amber */
+  --icon-data: #15803d;    /* 绿   · 数据/配置 */
+  --icon-asset: #be185d;   /* 粉   · 图片/二进制 */
+  --icon-text: #78716c;    /* 中性 · 构建脚本/纯文本 */
+  --icon-dir: #6b7280;     /* 中性 · 目录 */
+  /* 全部系统自带;移除 "JetBrains Mono" —— 它不是任何平台的系统字体,
+     留在栈里只是空占位,制造"设计稿有、真机没有"的错觉。界面(非代码)字体栈不动。 */
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Cascadia Mono', 'Liberation Mono', monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+}
+
+/* ===== 暗色主题(初版 Dark+ 配色转为暗色档,html[data-theme='dark'] 启用) ===== */
+
+html[data-theme='dark'] {
+  /* ===== A 方案「现代 IDE 风」深色令牌(独立调校的完整一套)===== */
+  --bg: #13141b;
+  --bg-sidebar: #15161d;
+  --bg-topbar: #181a22;
+  --bg-hover: #1c1f29;
+  --bg-selected: #232a3d;
+  --bg-input: #1e212b;
+  --border-input: #2a2e3a;
+  --fg: #c8cdd8;
+  --fg-dim: #9aa2b2;
+  --fg-faint: #5a6172;
+  --brand: #e6e9ef;
+  --accent: #5b8cff;
+  --border: #23262f;
+  --error: #f78c6c;
+  --warn: #ffcb6b;
+  --link: #82aaff;
+  --sel-bar: #5b8cff;
+  --hot-bg: #1c2030;
+  --hot-bar: #5b8cff;
+  --tab-active-bg: #262a36;
+  --tab-active-fg: #dfe4ee;
+  --badge-bg: #183a2e;
+  --badge-fg: #4ade80;
+  /* 文件类型图标色板(暗色主题):**另定一组色值**,不是给浅色那组加透明度 ——
+     低饱和色相在深底上会接近隐形,这是这类改动最典型的翻车方式 */
+  --focus-ring: #6cb6ff;
+  --icon-go: #22d3ee;  /* 暗色下单独往蓝挪:#2dd4bf 提亮后偏绿,会桥接到数据绿块 */
+  --icon-py: #38bdf8;
+  --icon-csys: #60a5fa;
+  --icon-jvm: #a78bfa;
+  --icon-markup: #fb923c;
+  --icon-js: #facc15;
+  --icon-data: #4ade80;
+  --icon-asset: #f472b6;
+  --icon-text: #a8a29e;
+  --icon-dir: #9aa4b2;
+  --checker-a: #1c1f29;
+  --checker-b: #181a22;
+  --md-code-bg: rgba(91, 140, 255, 0.14);
+  --md-pre-bg: #181a22;
+  --md-border: #23262f;
+  --md-zebra: rgba(255, 255, 255, 0.02);
+  --md-placeholder-border: #2a2e3a;
+  /* 语法着色:同样归入 A 的 6 个角色 */
+  --tok-keyword: #c792ea;
+  --tok-ctrl: #c792ea;
+  --tok-atom: #c792ea;
+  --tok-meta: #c792ea;
+  --tok-fn: #82aaff;
+  --tok-link: #82aaff;
+  --tok-string: #c3e88d;
+  --tok-string2: #c3e88d;
+  --tok-number: #c3e88d;
+  --tok-literal: #c3e88d;
+  --tok-inserted: #c3e88d;
+  --tok-comment: #7e8695;  /* 同上 */
+  --tok-type: #ffcb6b;
+  --tok-attr: #ffcb6b;
+  --tok-label: #ffcb6b;
+  --tok-tag: #f78c6c;
+  --tok-heading: #f78c6c;
+  --tok-deleted: #f78c6c;
+  --tok-var: #c8cdd8;
+  --tok-var2: #82aaff;
+  --tok-prop: #c8cdd8;
+  --tok-op: #9aa2b2;
+  --tok-invalid: #f78c6c;
+}
+
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ===== 整体布局:顶部栏 + 左树右预览 ===== */
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  flex: none;
+  padding: 0 12px;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+
+.topbar .app-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.topbar .project-name {
+  color: var(--fg-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+.topbar button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--fg-dim);
+  padding: 3px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.topbar button:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 280px;
+  min-width: 160px;
+  max-width: 60%;
+  flex: none;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  flex: none;
+  padding: 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+  user-select: none;
+}
+
+.sidebar-header .spacer {
+  flex: 1;
+}
+
+.sidebar-header button {
+  background: transparent;
+  border: none;
+  color: var(--fg-dim);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+.sidebar-header button:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.preview {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg);
+}
+
+/* ===== 欢迎页 ===== */
+
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: auto;
+}
+
+.welcome h1 {
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--fg);
+  margin-bottom: 2px;
+}
+
+.welcome .subtitle {
+  color: var(--fg-dim);
+  margin-bottom: 18px;
+}
+
+.welcome .actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.welcome .actions button {
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 18px;
+  font-size: 13px;
+}
+
+.welcome .actions button.secondary {
+  background: var(--bg-input);
+  color: var(--fg);
+}
+
+.welcome .actions button.secondary:hover {
+  filter: brightness(0.95);
+}
+
+.welcome .actions button:hover {
+  filter: brightness(1.15);
+}
+
+.welcome .hint {
+  color: var(--fg-faint);
+  font-size: 12px;
+  max-width: 420px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* 最近项目 */
+.recent {
+  width: 380px;
+  max-width: 90%;
+}
+
+.recent h2 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--fg-dim);
+  margin: 14px 0 6px;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.recent-item:hover {
+  background: var(--bg-hover);
+}
+
+.recent-item .name {
+  color: var(--link);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-item .time {
+  flex: none;
+  margin-left: auto;
+  color: var(--fg-faint);
+  font-size: 11px;
+}
+
+.recent-item .remove {
+  flex: none;
+  background: transparent;
+  border: none;
+  color: var(--fg-faint);
+  font-size: 13px;
+  padding: 0 4px;
+  border-radius: 3px;
+  visibility: hidden;
+}
+
+.recent-item:hover .remove {
+  visibility: visible;
+}
+
+.recent-item .remove:hover {
+  color: var(--error);
+  background: var(--bg-input);
+}
+
+.recent-empty {
+  color: var(--fg-faint);
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+/* ===== 目录树 ===== */
+
+.tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  outline: none;
+}
+
+.tree-inner {
+  position: relative;
+  width: 100%;
+}
+
+.tree-row {
+  position: relative;
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: 8px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+/* 过渡只覆盖 background-color / box-shadow / color 三项:
+   它们都不引起重排或位移。判据是"会不会引起重排/位移",不是属性名单。 */
+.tree-row,
+.outline-row,
+.search-result,
+.topbar button,
+.search-mode,
+.nav-btn,
+.ref-row {
+  transition: background-color 0.13s ease-out, box-shadow 0.13s ease-out, color 0.13s ease-out;
+}
+
+/* 虚拟滚动的行是**复用 DOM 节点**的:同一个元素在滚动时被赋予不同内容,
+   过渡会把上一行的背景往这一行补间,快速滚动时出现颜色拖影。
+   滚动期间由 .tree.scrolling 关掉过渡(JS 在滚动开始/停止时切换)。 */
+.tree.scrolling .tree-row {
+  transition: none;
+}
+
+.tree-row:hover {
+  background: var(--bg-hover);
+}
+
+/* 键盘导航:焦点留在容器上,容器本身不画环 —— 环画在活动行上 */
+.tree:focus {
+  outline: none;
+}
+
+/* 活动行(键盘光标)用**内嵌焦点环**;选中文件用**背景填充**。
+   两者是不同的东西,可以同时出现在不同的行上,所以视觉手段必须不同。
+   只在目录树真正持有焦点时显示,避免留下一个看起来像选中的陈旧标记。 */
+.tree:focus .tree-row.active::after {
+  content: '';
+  position: absolute;
+  /* 左侧多缩 6px:避开选中行的 2px 左色条,让两者不叠在一起 */
+  inset: 2px 4px 2px 6px;
+  border: 1px solid var(--focus-ring);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.tree-row.selected {
+  background: var(--bg-selected);
+  /* 细长左色条 —— 与"整行底"是两种形式,叠在同一行上仍分得清 */
+  box-shadow: inset 2px 0 0 var(--sel-bar);
+}
+
+.tree-row .twisty {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  color: var(--fg-dim);
+  font-size: 10px;
+}
+
+.tree-row .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 字形单色,颜色由色类变量给出 —— 两主题的适配是改变量而不是改图标 */
+  color: var(--icon-text);
+}
+
+.tree-row .icon svg {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 少数需要实心的小块(二进制的方格) */
+.tree-row .icon svg .icon-fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+.tree-row .icon[data-tone='dir'] { color: var(--icon-dir); }
+.tree-row .icon[data-tone='go'] { color: var(--icon-go); }
+.tree-row .icon[data-tone='js'] { color: var(--icon-js); }
+.tree-row .icon[data-tone='py'] { color: var(--icon-py); }
+.tree-row .icon[data-tone='jvm'] { color: var(--icon-jvm); }
+.tree-row .icon[data-tone='csys'] { color: var(--icon-csys); }
+.tree-row .icon[data-tone='markup'] { color: var(--icon-markup); }
+.tree-row .icon[data-tone='data'] { color: var(--icon-data); }
+.tree-row .icon[data-tone='asset'] { color: var(--icon-asset); }
+.tree-row .icon[data-tone='text'] { color: var(--icon-text); }
+
+.tree-row .label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-row .label.loading {
+  color: var(--fg-faint);
+  font-style: italic;
+}
+
+.tree-status {
+  padding: 8px 12px;
+  color: var(--fg-faint);
+  font-size: 12px;
+}
+
+/* ===== 预览区 ===== */
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  flex: none;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+
+.preview-header .file-path {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-header .spacer {
+  flex: 1;
+}
+
+.preview-header button {
+  background: var(--bg-input);
+  border: none;
+  border-radius: 3px;
+  color: var(--fg);
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.preview-header button:hover {
+  filter: brightness(0.93);
+}
+
+.preview-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--fg-faint);
+  user-select: none;
+}
+
+.preview-error {
+  margin: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--error);
+  border-radius: 4px;
+  color: var(--error);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.preview-notice {
+  flex: none;
+  padding: 6px 12px;
+  background: rgba(191, 136, 3, 0.08);
+  border-bottom: 1px solid rgba(191, 136, 3, 0.35);
+  color: var(--warn);
+  font-size: 12px;
+}
+
+/* 图片预览 */
+.image-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 16px;
+}
+
+.image-view img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background:
+    conic-gradient(var(--checker-a) 0 25%, var(--checker-b) 0 50%, var(--checker-a) 0 75%, var(--checker-b) 0) 0 0 / 20px 20px;
+}
+
+.image-meta {
+  flex: none;
+  padding: 5px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--fg-faint);
+  font-size: 11px;
+  font-family: var(--mono);
+}
+
+/* 二进制降级 */
+.binary-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--fg-dim);
+  user-select: none;
+}
+
+.binary-view .big-icon {
+  font-size: 40px;
+  margin-bottom: 6px;
+}
+
+.binary-view .meta {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-faint);
+}
+
+/* CodeMirror 容器 */
+.code-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-view .cm-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.code-view .cm-scroller {
+  overflow: auto;
+}
+
+/* ===== Markdown 渲染视图 ===== */
+
+.md-toolbar {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.md-toolbar button {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--fg-dim);
+  padding: 2px 12px;
+  font-size: 12px;
+}
+
+.md-toolbar button.active {
+  background: var(--bg-input);
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.markdown-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px 40px 56px;
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 100%;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin: 1.2em 0 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.markdown-body h1 {
+  font-size: 1.7em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3em;
+}
+
+.markdown-body h2 {
+  font-size: 1.4em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.25em;
+}
+
+.markdown-body h3 { font-size: 1.2em; }
+.markdown-body h4 { font-size: 1.05em; }
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body table,
+.markdown-body blockquote,
+.markdown-body pre {
+  margin: 0.6em 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.8em;
+}
+
+.markdown-body li + li {
+  margin-top: 0.2em;
+}
+
+.markdown-body a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+.markdown-body a.md-link-internal {
+  cursor: pointer;
+}
+
+.markdown-body a.md-link-dead {
+  color: var(--fg-faint);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.markdown-body code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--md-code-bg);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+}
+
+.markdown-body pre {
+  background: var(--md-pre-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.markdown-body blockquote {
+  border-left: 4px solid var(--md-border);
+  padding: 0.2em 1em;
+  color: var(--fg-dim);
+}
+
+.markdown-body table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid var(--md-border);
+  padding: 5px 12px;
+}
+
+.markdown-body th {
+  background: var(--bg-input);
+  font-weight: 600;
+}
+
+.markdown-body tr:nth-child(2n) {
+  background: var(--md-zebra);
+}
+
+.markdown-body img {
+  max-width: 100%;
+}
+
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5em 0;
+}
+
+.md-img-placeholder {
+  display: inline-block;
+  background: var(--bg-input);
+  border: 1px dashed var(--md-placeholder-border);
+  border-radius: 4px;
+  color: var(--fg-dim);
+  font-size: 12px;
+  padding: 6px 12px;
+  cursor: default;
+}
+
+/* ===== Markdown 代码块静态高亮(@lezer/highlight classHighlighter) ===== */
+
+.tok-keyword { color: var(--tok-keyword); }
+.tok-controlKeyword, .tok-moduleKeyword { color: var(--tok-ctrl); }
+.tok-string { color: var(--tok-string); }
+.tok-string2 { color: var(--tok-string2); }
+.tok-comment { color: var(--tok-comment); }
+.tok-number { color: var(--tok-number); }
+.tok-bool, .tok-atom, .tok-null { color: var(--tok-atom); }
+.tok-variableName { color: var(--tok-var); }
+.tok-variableName2 { color: var(--tok-var2); }
+.tok-typeName, .tok-className, .tok-namespace { color: var(--tok-type); }
+.tok-propertyName { color: var(--tok-prop); }
+.tok-attributeName { color: var(--tok-attr); }
+.tok-function, .tok-macroName { color: var(--tok-fn); }
+.tok-operator, .tok-punctuation { color: var(--tok-op); }
+.tok-tagName { color: var(--tok-tag); }
+.tok-meta { color: var(--tok-meta); }
+.tok-heading { color: var(--tok-heading); font-weight: bold; }
+.tok-emphasis { font-style: italic; }
+.tok-strong { font-weight: bold; }
+.tok-link, .tok-url { color: var(--tok-link); }
+.tok-invalid { color: var(--tok-invalid); }
+.tok-literal { color: var(--tok-literal); }
+.tok-inserted { color: var(--tok-inserted); }
+.tok-deleted { color: var(--tok-deleted); }
+.tok-labelName { color: var(--tok-label); }
+
+/* ===== 文件名搜索(file-tree spec:文件名快速搜索) ===== */
+
+.search-wrap {
+  position: relative;
+  width: 320px;
+  max-width: 40vw;
+}
+
+.search-input {
+  width: 100%;
+  height: 26px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 8px;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 0 10px;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-input::placeholder {
+  color: var(--fg-faint);
+}
+
+.search-results {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.search-status {
+  padding: 8px 12px;
+  color: var(--fg-faint);
+  font-size: 12px;
+}
+
+.search-result {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 12px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.search-result.active {
+  background: var(--bg-selected);
+}
+
+.search-result .result-name {
+  flex: none;
+  color: var(--fg);
+  font-size: 13px;
+}
+
+.search-result .result-dir {
+  color: var(--fg-faint);
+  font-size: 11px;
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== 侧栏拖拽分隔条(design.md D7) ===== */
+
+.resizer {
+  flex: none;
+  width: 5px;
+  margin-left: -2px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 10;
+}
+
+.resizer:hover,
+.resizer:active {
+  background: var(--accent);
+  opacity: 0.4;
+}
+
+/* 大纲侧的分隔条:贴在大纲左边缘,负 margin 方向与左侧相反 */
+.resizer-outline {
+  margin-left: 0;
+  margin-right: -2px;
+}
+
+/* ===== 代码理解层:大纲 / 能力标识 / 符号搜索 ===== */
+
+/* 预览区主体:内容 + 右侧大纲窄栏(design.md D7) */
+.preview-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.preview-main > .preview-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.preview-notice-intel {
+  color: var(--fg-dim);
+}
+
+.preview-notice-warn {
+  background: rgba(191, 136, 3, 0.08);
+}
+
+/* —— 大纲面板 —— */
+.outline {
+  flex: none;
+  /* 宽度由 .preview-main 上的 CSS 变量下发(见 Preview.tsx 的 useResizable),
+     折叠态由下面的 .outline-collapsed 覆盖为 auto —— 折叠与宽度互不干扰 */
+  width: var(--outline-width, 220px);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--bg-sidebar);
+  user-select: none;
+}
+
+.outline-collapsed {
+  width: auto;
+}
+
+.outline-header {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  flex: none;
+  padding: 0 6px 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.outline-title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.outline-toggle {
+  background: none;
+  border: none;
+  color: var(--fg-dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+
+.outline-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.outline-collapsed .outline-toggle {
+  writing-mode: vertical-rl;
+  padding: 8px 4px;
+  border-left: 1px solid var(--border);
+  height: 100%;
+}
+
+.outline-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.outline-note {
+  padding: 10px 12px;
+  color: var(--fg-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.outline-note-sub {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--fg-dim);
+  opacity: 0.85;
+}
+
+.outline-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.outline-row:hover {
+  background: var(--bg-hover);
+}
+
+.outline-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--mono);
+}
+
+.outline-line {
+  color: var(--fg-faint);
+  font-size: 11px;
+  font-family: var(--mono);
+}
+
+/* 符号种类徽标:配色沿用语法高亮的语义色,读代码时心智一致 */
+.outline-kind {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: var(--fg-dim);
+}
+
+.kind-1, .kind-4 { color: var(--tok-type); }      /* 类 / 结构体 */
+.kind-2, .kind-10 { color: var(--tok-type); }     /* 接口 / 类型 */
+.kind-3 { color: var(--tok-atom); }               /* 枚举 */
+.kind-5, .kind-6, .kind-13 { color: var(--tok-fn); } /* 函数 / 方法 / 构造 */
+.kind-7 { color: var(--tok-prop); }               /* 字段 */
+.kind-8 { color: var(--tok-number); }             /* 常量 */
+.kind-9 { color: var(--tok-var); }                /* 变量 */
+.kind-11 { color: var(--tok-meta); }              /* 命名空间 */
+.kind-12 { color: var(--tok-meta); }              /* 宏 */
+.kind-14 { color: var(--tok-heading); }           /* Markdown 标题 */
+.kind-15 { color: var(--fg-faint); }              /* C/C++ 函数原型(声明) */
+
+/* —— 预览区能力标识 —— */
+.intel-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.intel-lang {
+  color: var(--fg-dim);
+}
+
+.intel-cap {
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  color: var(--fg-dim);
+}
+
+.intel-cap-full {
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  border-color: transparent;
+}
+
+.intel-cap-outline {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+/* 第三档:高亮为近似(Vue / Svelte 走 html 通道) */
+.intel-cap-approx {
+  color: var(--warn);
+  border-color: var(--warn);
+  border-style: dashed;
+}
+
+.intel-index {
+  color: var(--fg-faint);
+}
+
+.intel-index-partial,
+.intel-index-unavailable {
+  color: var(--warn);
+}
+
+/* —— 搜索面板模式切换(不依赖快捷键的界面入口) —— */
+.search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 420px;
+}
+
+.search-modes {
+  flex: none;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.search-mode {
+  background: var(--bg);
+  border: none;
+  color: var(--fg-dim);
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.search-mode:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.search-mode.active {
+  background: var(--tab-active-bg);
+  color: var(--tab-active-fg);
+}
+
+.search-results {
+  top: 30px;
+}
+
+.search-result .result-container {
+  color: var(--fg-dim);
+  font-size: 11px;
+  font-family: var(--mono);
+}
+
+/* —— 跳转落点的短暂行高亮(file-preview spec「按行定位与高亮」) —— */
+.cm-target-line {
+  background: var(--hot-bg);
+  box-shadow: inset 3px 0 0 var(--hot-bar);
+  transition: background-color 400ms ease-out;
+}
+
+/* 浮层里的键盘选中项(fix-overlay-keyboard-focus):
+   候选 / 引用 / 全文三处共用同一种表达 —— 背景填充 + 左侧色条,
+   与目录树"选中行"同一种视觉语言,用户不必为每个面板学一套。 */
+.candidate-row.selected,
+.ref-row.selected {
+  background: var(--hot-bg);
+  box-shadow: inset 3px 0 0 var(--hot-bar);
+}
+
+/* 容器取得焦点时不画浏览器默认外框:选中项自身已经足够醒目 */
+.candidate-panel:focus,
+.ref-body:focus {
+  outline: none;
+}
+
+/* 键盘操作帮助面板(3b.3) */
+.help-toggle {
+  flex: none;
+}
+
+.help-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #000 38%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.help-panel {
+  width: min(560px, 92vw);
+  max-height: 82vh;
+  overflow: auto;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px color-mix(in srgb, #000 30%, transparent);
+  padding: 4px 0 12px;
+}
+
+.help-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.help-title {
+  flex: 1;
+  font-weight: 600;
+}
+
+.help-close {
+  flex: none;
+}
+
+.help-group-title {
+  padding: 14px 16px 6px;
+  font-size: 11px;
+  color: var(--fg-dim);
+  letter-spacing: 0.04em;
+}
+
+.help-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 16px;
+}
+
+.help-row-label {
+  flex: 1;
+}
+
+.help-row-key {
+  flex: none;
+  font-size: 12px;
+  color: var(--fg-dim);
+  background: var(--bg-alt, transparent);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 7px;
+}
+
+.help-note {
+  padding: 14px 16px 2px;
+  font-size: 11px;
+  color: var(--fg-dim);
+  line-height: 1.6;
+}
+
+/* 右键菜单里的键位旁注(3b.2):次要信息,靠右、弱化,不与操作名争视线 */
+.intel-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.intel-menu-label {
+  flex: 1;
+  text-align: left;
+}
+
+.intel-menu-key {
+  flex: none;
+  font-size: 11px;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 大纲的行焦点(2b):与目录树同一种形式 —— 行内细边框,不是背景填充。
+   两个面板用同一种视觉语言表达"键盘光标在这一行",用户不必学两套。
+   同样只在容器持有焦点时显示:焦点不在大纲时,残留一个行框会误导。 */
+.outline-row {
+  position: relative;
+}
+
+.outline-body:focus .outline-row.active::after {
+  content: '';
+  position: absolute;
+  inset: 1px 4px;
+  border: 1px solid var(--focus-ring);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* 面板级焦点态(add-keyboard-first-navigation 1.2):哪个面板持有焦点要一眼看出。
+   **不引入新颜色**,复用 --focus-ring;与既有两种标识在**形式维度**错开:
+     行焦点 = 行内细边框(.tree-row.active::after)
+     选中态 = 行背景填充(.tree-row.selected)
+     面板焦点 = **面板顶边的一条实线**(下面这条)
+   用 :focus-within 而不是 :focus,因为面板内部的真实焦点元素可能是子元素
+   (代码区的 CM6 内容、以后可能的其他控件),面板本身未必是那个持有焦点的节点。 */
+.sidebar:focus-within,
+.preview-stack:focus-within,
+.outline:focus-within {
+  box-shadow: inset 0 2px 0 var(--focus-ring);
+}
+
+/* 容器自身取得焦点时不画浏览器默认外框(焦点已由上面那条顶边表达) */
+.preview-body:focus,
+.outline-body:focus,
+.tree:focus {
+  outline: none;
+}
+
+/* 「按住 ⌘/Ctrl 可跳转」提示(add-jump-affordance)。
+   **不引入新颜色** —— 复用落点行同一支 --hot-bar。区分靠**形式维度**错开:
+   整行底色(.cm-target-line 的 background)/ 左侧实心条(它的 inset box-shadow)/ 字下划线(这里)。
+   三者会在同一行上同时出现:刚跳过去、落点还亮着,又按住修饰键悬停该行上的标识符。
+   再加一种颜色只会让那一行变成调色板,加不出可分辨性。 */
+.cm-jump-hint {
+  text-decoration: underline;
+  text-decoration-color: var(--hot-bar);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.topbar .intel-index {
+  flex: none;
+  font-size: 11px;
+  color: var(--fg-faint);
+  white-space: nowrap;
+}
+
+.topbar .intel-index-partial,
+.topbar .intel-index-unavailable {
+  color: var(--warn);
+}
+
+/* ===== 跳转 / 导航栈 / 引用面板 ===== */
+
+/* 预览主体 + 引用抽屉的纵向堆叠 */
+.preview-stack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-stack > .preview-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.code-view-intel .cm-content {
+  cursor: text;
+}
+
+/* —— 导航栈按钮(主入口,端点处置灰)—— */
+.nav-buttons {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+
+.nav-btn {
+  background: none;
+  border: none;
+  color: var(--fg-dim);
+  font-size: 13px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.nav-btn:disabled {
+  color: var(--fg-faint);
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* —— 一次性提示 —— */
+.intel-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 300;
+  max-width: 70vw;
+  padding: 9px 16px;
+  border-radius: 6px;
+  background: var(--bg-topbar);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+  color: var(--fg);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* —— 多候选列表 —— */
+.intel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.candidate-panel {
+  position: fixed;
+  left: 50%;
+  top: 84px;
+  transform: translateX(-50%);
+  z-index: 201;
+  width: 620px;
+  max-width: 88vw;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.candidate-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.candidate-header > span:first-child {
+  flex: 1;
+}
+
+.candidate-close,
+.ref-btn {
+  background: var(--bg-input);
+  border: none;
+  border-radius: 3px;
+  color: var(--fg);
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.candidate-close:hover,
+.ref-btn:hover {
+  filter: brightness(0.93);
+}
+
+.candidate-hint,
+.ref-hint {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--fg-dim);
+  border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+}
+
+.candidate-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.candidate-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.candidate-row:hover {
+  background: var(--bg-hover);
+}
+
+.candidate-name {
+  font-family: var(--mono);
+  flex: none;
+}
+
+.candidate-container {
+  color: var(--fg-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.candidate-path {
+  flex: 1;
+  text-align: right;
+  color: var(--fg-faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* —— 预览区右键菜单 —— */
+.intel-menu {
+  position: fixed;
+  z-index: 250;
+  min-width: 168px;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.24);
+}
+
+.intel-menu-title {
+  padding: 4px 10px 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-faint);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.intel-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--fg);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.intel-menu-item:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.intel-menu-item:disabled {
+  color: var(--fg-faint);
+  cursor: default;
+}
+
+.intel-menu-note {
+  color: var(--fg-faint);
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+/* —— 查找引用结果抽屉 —— */
+.ref-panel {
+  flex: none;
+  height: 42%;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  background: var(--bg-sidebar);
+}
+
+.ref-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.ref-header .spacer {
+  flex: 1;
+}
+
+.ref-title {
+  font-weight: 600;
+}
+
+.ref-status {
+  color: var(--fg-faint);
+  font-size: 11px;
+}
+
+.ref-status-warn {
+  color: var(--warn);
+}
+
+.ref-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.ref-empty {
+  padding: 14px 12px;
+  color: var(--fg-faint);
+  font-size: 12px;
+}
+
+.ref-file {
+  position: sticky;
+  top: 0;
+  background: var(--bg-topbar);
+  padding: 4px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.ref-count {
+  color: var(--fg-faint);
+  margin-left: 6px;
+}
+
+.ref-row {
+  display: flex;
+  gap: 10px;
+  padding: 3px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.ref-row:hover {
+  background: var(--bg-hover);
+}
+
+.ref-line {
+  flex: none;
+  min-width: 42px;
+  text-align: right;
+  color: var(--fg-faint);
+}
+
+.ref-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ref-mark {
+  background: rgba(255, 200, 0, 0.35);
+  color: inherit;
+  border-radius: 2px;
+}
+
+.outline-single-note {
+  flex: none;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--fg-dim);
+}
+
+/* 全文搜索面板 */
+.case-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--fg-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+.case-toggle input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.ref-partial {
+  margin-left: 8px;
+  color: var(--warn);
+  font-size: 10px;
+}
+
+/* 富文本视图的跳转落点标识(对应源码视图的行高亮) */
+.markdown-body .md-target {
+  background: var(--hot-bg);
+  box-shadow: inset 3px 0 0 var(--hot-bar);
+  border-radius: 3px;
+  transition: background-color 400ms ease-out;
+}
+
+/* ===== 重目录排除:提示行与范围说明 ===== */
+
+/* "已隐藏 N 项" —— 它不是目录,是被排除项的入口,所以与普通目录行明确区分 */
+.tree-row.tree-hidden .label {
+  font-style: italic;
+  color: var(--fg-dim);
+  border-bottom: 1px dashed var(--border);
+}
+
+.tree-row.tree-hidden .twisty {
+  /* 与普通行同色(--fg-dim),**不要再压暗**:这一行的展开入口只有这个三角,
+     压到 --fg-faint 后在暗色下几乎看不见,与 2.2「显眼的展开入口」直接冲突。
+     它与目录行的区分由斜体 / 无文件夹图标 / 虚线下划线承担,不靠削弱三角。 */
+  color: var(--fg-dim);
+}
+
+.tree-row.tree-hidden:hover .label {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+
+.tree-row.tree-hidden.expanded .label {
+  color: var(--fg-dim);
+  border-bottom-style: solid;
+  border-bottom-color: var(--accent);
+}
+
+/* 被排除目录内打开文件时的范围说明(与"文件过大"提示区分:这是范围不是降级) */
+.preview-notice-scope {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--fg-dim);
+}

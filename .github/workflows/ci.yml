@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      # The invariants (zero network, read-only, no permissions) are checked by
+      # scripts/check-invariants.mjs, which owns the authoritative symbol list.
+      # Nothing here restates that list — a second copy is a copy that drifts.
+      - name: Invariant gates
+        run: node scripts/check-invariants.mjs
+
+      # The coverage tables are promises to users; four hand-maintained copies
+      # drift. This reconciles all of them against the implementation.
+      - name: Language coverage reconciliation
+        run: node scripts/check-language-coverage.mjs
+
+      # Machine-local paths are both a privacy leak (they carry a username and a
+      # home directory layout) and a portability bug (nobody else can run the
+      # script). Checked as a property of the whole repository rather than as a
+      # list of known offenders, so a newly added script is covered by the same
+      # check without anyone remembering to extend it.
+      - name: No machine-local paths
+        run: |
+          if git grep -nE "/(Users|home)/[A-Za-z][A-Za-z0-9_-]*|C:\\\\Users\\\\" -- . ':!package-lock.json' ':!THIRD-PARTY-NOTICES.md'; then
+            echo "::error::A tracked file contains a machine-local path — derive it instead (see scripts/e2e.mjs)."
+            exit 1
+          fi
+          echo "OK: no machine-local paths in tracked files."
+
+      # The keybinding single-source test mutates src/lib/keys.ts and restores
+      # it in a finally block. A hard kill skips that restore, and the mutated
+      # state looks entirely healthy — it builds, it runs, the assertions pass —
+      # while go-to-definition silently sits on a key nobody verified. Nothing
+      # about "all green" would make anyone suspect it, so the string is checked
+      # for directly. (scripts/ is excluded: the test has to contain the string
+      # in order to inject it.)
+      - name: No leftover key mutation
+        run: |
+          if git grep -n "Mod-Alt-Enter" -- src/; then
+            echo "::error::src/lib/keys.ts still holds the test mutation — restore it with git checkout before committing."
+            exit 1
+          fi
+          echo "OK: no leftover key mutation in src/."
+
+      # The project was built by several AI sessions with different roles. That
+      # is documented on purpose in HOW_THIS_WAS_BUILT, but the vocabulary of
+      # those sessions ("方案会话", "PM 裁定") does not belong in specs, docs or
+      # code comments that are read as the project speaking to its users.
+      #
+      # Two exclusions, both deliberate — a gate that flags them would push the
+      # next person into "cleaning up" things we decided twice not to touch:
+      #   openspec/changes/archive/**  historical records; editing one after the
+      #                                fact would make it a fabricated record
+      #   HOW_THIS_WAS_BUILT*          its subject IS the multi-session process,
+      #                                so that vocabulary is its legitimate topic
+      #   this file                    it has to name the words to forbid them;
+      #                                a rule cannot be its own violation
+      - name: No internal role vocabulary
+        run: |
+          if git grep -nE "开源会话|方案会话|开发会话|评审会话|review 会话|方案探索会话|\\bPM\\b" \
+               -- . ':!openspec/changes/archive/**' ':!HOW_THIS_WAS_BUILT*' \
+                  ':!.github/workflows/ci.yml'; then
+            echo "::error::Internal session-role vocabulary in a published file — use the neutral function names (product / spec / implementation / review)."
+            exit 1
+          fi
+          echo "OK: no internal role vocabulary outside the archive."

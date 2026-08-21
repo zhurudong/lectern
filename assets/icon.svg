@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Lectern 图标(细节版,用于 48/128):斜面诵读台 + 台面上的代码行 ——
+       取 "lectern" 本义(摊开供读),台面倾斜、代码随台面转角,读作"把代码摊开来读"。 -->
+  <rect width="128" height="128" rx="28" fill="#1b2540"/>
+
+  <!-- 立柱与底座 -->
+  <rect x="59" y="70" width="10" height="34" fill="#e9edf6"/>
+  <rect x="42" y="100" width="44" height="9" rx="4" fill="#e9edf6"/>
+
+  <!-- 斜面台板 -->
+  <defs>
+    <clipPath id="deck">
+      <path d="M32 60 L94 42 L100 62 L38 80 Z"/>
+    </clipPath>
+  </defs>
+  <path d="M32 60 L94 42 L100 62 L38 80 Z" fill="#e9edf6"/>
+
+  <!-- 台面上的代码行:随台面同角度倾斜,并**裁进台板**。
+       原先最下面那条会从台板下缘穿出去挂在背景上 —— 128 档(商店列表尺寸)一眼可见。
+       算过:子坐标系里台板是 y 51.0→72.1 的近似矩形,而那条线占 70→74.5,确实溢出。
+       现三条按 54.5 / 60.5 / 66.5(高 4)排布,上下各留约 3.5 余量。
+       **clipPath 留作兜底,不作为对齐手段** —— 靠裁切"藏住"溢出会让线条紧贴边缘,
+       看上去像被切断而不是排好的。 -->
+  <g clip-path="url(#deck)" transform="rotate(-16 64 60)">
+    <rect x="44" y="54.5" width="34" height="4" rx="2" fill="#5b8cff"/>
+    <rect x="44" y="60.5" width="24" height="4" rx="2" fill="#4ec9b0"/>
+    <rect x="44" y="66.5" width="30" height="4" rx="2" fill="#5b8cff"/>
+  </g>
+</svg>

@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      # A release that cannot pass the invariant and coverage gates must not be published.
+      - run: npm run check
+
+      - name: Check the tag matches every package version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest=$(node -p "require('./dist/manifest.json').version")
+          package=$(node -p "require('./package.json').version")
+          lock=$(node -p "require('./package-lock.json').packages[''].version")
+          if [ "$tag" != "$manifest" ] || [ "$tag" != "$package" ] || [ "$tag" != "$lock" ]; then
+            echo "::error::Version mismatch: tag=$tag manifest=$manifest package=$package lock=$lock"
+            exit 1
+          fi
+
+      # Manual installation and the Web Store need different archive layouts.
+      # Both archives still come from this one clean dist/ build.
+      - name: Package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          manual="lectern-${version}.zip"
+          store="lectern-${version}-web-store.zip"
+
+          mkdir -p pkg/manual/lectern
+          cp -R dist/. pkg/manual/lectern/
+          cp docs/language-support.md pkg/manual/lectern/
+          (cd pkg/manual && zip -qr "../../${manual}" lectern)
+
+          # Chrome Web Store package: manifest.json must be at archive root.
+          (cd dist && zip -qr "../${store}" .)
+
+          # Fail before publication if either archive silently changes shape.
+          unzip -Z1 "${manual}" | grep -qx 'lectern/manifest.json'
+          unzip -Z1 "${store}" | grep -qx 'manifest.json'
+          if unzip -Z1 "${store}" | grep -q '^lectern/'; then
+            echo "::error::Web Store archive unexpectedly contains a lectern/ wrapper"
+            exit 1
+          fi
+
+          sha256sum "${manual}" > "${manual}.sha256"
+          sha256sum "${store}" > "${store}.sha256"
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          notes="docs/releases/${version}.md"
+          if [ ! -f "${notes}" ]; then
+            echo "::error::Missing version-specific release notes: ${notes}"
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            "lectern-${version}.zip" \
+            "lectern-${version}.zip.sha256" \
+            "lectern-${version}-web-store.zip" \
+            "lectern-${version}-web-store.zip.sha256" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file "${notes}"
