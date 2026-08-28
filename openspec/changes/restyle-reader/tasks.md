@@ -25,7 +25,16 @@
 - [x] 5.1 浅色 `shot-1/2/3/4/5/6/8/9/10/11/12/13`、深色 `shot-7-dark` 全部重出
       (mockup `style-b-reader*.png` 不在仓库里,未做像素比对;方向比对交 PM)
 - [x] 5.2 对比度抽验(实测,见下表)
-- [ ] 5.3 交 PM 审批 / review 裁定 D3
+- [x] 5.3 交 PM 审批 / review 裁定 D3
+      **PM 审批(2026-08-29,代码阅读器pm)**:restyle-reader 通过验收——E2E 335/335 零 flaky、
+      build/check/validate 全绿、正文/注释/徽标字对比度全 ≥AA(实测)。三处落地偏离(①`--hot-bar`
+      保留暖色、②新增 `.search-mode.active:hover`、③三处令牌上调 AA)均已审阅认可,理由见 design
+      D3/D4 补记与 D1/D2 脚注。
+      **D3 裁定**:采纳"选中态减为两形式(暖圆角填充 + 焦点环)",目录树左色条去掉;但 `--hot-bar`
+      **不置 transparent**——它同时是 `.cm-jump-hint` 的下划线色,去掉会静默做没"可跳转"提示,故保留为
+      暖色(= `--accent`)。此裁定 review 复核成立。
+      **Review(coding-viewer-1c)结论**:通过,"观感成立、可以端出去";A/C/E/D 落地经像素复核,
+      深色截图过渡中间帧问题已修(dev 加 `from` 起点守卫,优于原建议)。
 
 ---
 
