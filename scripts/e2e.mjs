@@ -135,6 +135,85 @@ try {
       { timeout: 5000 },
     )
 
+  /**
+   * 等某个元素的某个计算样式**稳定下来**,再往下走(通常是截图前)。
+   *
+   * 为什么不 `sleep(130)`:过渡时长正好是 130ms,睡 130 卡在边界上,偶尔仍会拍到
+   * 最后一帧;而且它的症状是"截图偶尔有点脏",没人会把它认成 bug。
+   *
+   * **"连续两次读到同一个值"自己有个起点假稳的坑**:若在过渡**还没开始**时就来轮询,
+   * 头两次读到的都是初始值,于是判"已稳定"直接放行 —— 等的是"没在动",
+   * 而"还没开始动"同样没在动。所以给了 `from`:先等值**离开过初始值**,再等它稳。
+   * 不传 `from` 时退化成原来的语义(只在确知过渡已开始时才这么用)。
+   */
+  const waitStyleSettled = async (selector, prop = 'backgroundColor', { from = null, timeout = 5000 } = {}) => {
+    const read = () => page.evaluate(
+      (sel, pr) => {
+        const el = document.querySelector(sel)
+        return el ? getComputedStyle(el)[pr] : null
+      },
+      selector, prop,
+    )
+    const t0 = Date.now()
+    if (from !== null) {
+      // 阶段一:必须先看见它动过
+      while (Date.now() - t0 < timeout) {
+        const v = await read()
+        if (v !== null && v !== from) break
+        await new Promise((r) => setTimeout(r, 30))
+      }
+    }
+    // 阶段二:再等它停下来
+    let prev = null
+    let stable = 0
+    while (Date.now() - t0 < timeout) {
+      const v = await read()
+      if (v !== null && v === prev) {
+        stable += 1
+        if (stable >= 2) return v
+      } else {
+        stable = 0
+      }
+      prev = v
+      await new Promise((r) => setTimeout(r, 40))
+    }
+    return prev
+  }
+
+  /**
+   * **深色截图的正向守卫。**
+   *
+   * 上一版这里只断言"过渡已稳定" —— 那是个**负向**条件("没在动"),
+   * 而我们真正要的是**终态**:深色是不是真的画出来了。两者不等价,
+   * 起点静止也满足"没在动",于是一张浅色的图照样能过。
+   *
+   * 这里守三件事,缺一不可:
+   *   ① `data-theme` 确实是 `dark`(应用层已切);
+   *   ② `body` 的实际背景**等于当前 `--bg` 令牌**(样式已应用到画面,不只是变量变了);
+   *   ③ 这个值**不等于切换前的浅色值**(排除"根本没换套"这一种)。
+   * 返回实测底色,交给调用方 `check` —— 让它成为一条会红的断言,而不是一次静默等待。
+   */
+  const waitDarkPainted = async (lightBg, timeout = 6000) => {
+    const probe = () => page.evaluate(() => {
+      const tokenBg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()
+      const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(tokenBg)
+      const want = m ? `rgb(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)})` : tokenBg
+      return {
+        theme: document.documentElement.getAttribute('data-theme'),
+        bodyBg: getComputedStyle(document.body).backgroundColor,
+        tokenBg: want,
+      }
+    })
+    const t0 = Date.now()
+    let last = null
+    while (Date.now() - t0 < timeout) {
+      last = await probe()
+      if (last.theme === 'dark' && last.bodyBg === last.tokenBg && last.bodyBg !== lightBg) return last
+      await new Promise((r) => setTimeout(r, 50))
+    }
+    return last
+  }
+
   await page.goto(`chrome-extension://${extId}/viewer.html`, { waitUntil: 'load' })
   await page.waitForSelector('.welcome', { timeout: 10000 })
   check('查看器页面(欢迎页)在扩展 CSP 下正常渲染', true)
@@ -1006,26 +1085,57 @@ try {
 
   // ---- 焦点环与选中态视觉可区分(1.3),两主题(4.9 的可自动化部分)----
   {
-    await focusTree()
-    // A 方案下三者都是蓝色系,区分靠**形式**不靠色相:
-    //   焦点环 = ::after 内缩描边 / 选中底 = 整行背景 / 选中左条 = inset box-shadow
+    // **先真的选中一个文件。** 这条断言原本只 focusTree() 就去读 `.tree-row.selected`,
+    // 而那一刻树里根本没有选中行 —— `selectedBg` 恒为 null,`activeBg !== selectedBg`
+    // 于是永远成立。断言绿了三百多轮,却从来没有比较过两种视觉形式。
+    // 选 README.md(根层文件,不需要展开任何目录,不扰动后续用例的树状态)。
+    await openFile('README.md', 'README.md')
+    await focusTree() // 焦点回到树:焦点环挂在 `.tree:focus .tree-row.active::after` 上
+    // **再把活动行挪开。** focusTree() 会把活动行落到选中文件那一行,于是 active 与
+    // selected 是**同一个元素** —— 拿同一个元素的 backgroundColor 比两次,
+    // `activeBg !== selectedBg` 必然为假,断言会以"产品坏了"的样子红,其实是用例摆错了。
+    // 这两种形式本来就是设计成**能同时出现在不同的行上**的,断言也必须在那个局面下验。
+    await press('Home')
+    // `.tree-row` 上声明了 background-color 0.13s 过渡,且行是虚拟化重建的;
+    // 紧接着读计算值会读到过渡起点(透明),不是稳定值。等过渡走完再读。
+    await new Promise((r) => setTimeout(r, 300))
+    // B 方案(restyle-reader D3)把选中态从三形式减为两形式:
+    //   焦点环 = ::after 内缩描边 / 选中底 = 整行背景。左色条(--sel-bar)已置 transparent。
+    // 断言只认这**两种**形式,并额外要求"选中行 ≠ 普通行" —— 去掉左条后,
+    // 整行底成了选中态的唯一载体,它必须真的与普通行不同;
+    // 原来的三项断言不查这一点,若底色误配成与普通行同值,断言仍会绿。
     const ring = await page.evaluate(() => {
       const id = document.querySelector('.tree')?.getAttribute('aria-activedescendant')
       const el = id ? document.getElementById(id) : null
       const after = el ? getComputedStyle(el, '::after') : null
       const selEl = document.querySelector('.tree-row.selected')
       const selCs = selEl ? getComputedStyle(selEl) : null
+      const plainEl = [...document.querySelectorAll('.tree-row')].find(
+        (r) => r !== selEl && !r.classList.contains('selected') && !r.classList.contains('active'),
+      )
       return {
         ringWidth: after?.borderTopWidth ?? null,
         ringStyle: after?.borderTopStyle ?? null,
+        activeId: id ?? null,
+        selectedId: selEl?.id ?? null,
         activeBg: el ? getComputedStyle(el).backgroundColor : null,
         selectedBg: selCs?.backgroundColor ?? null,
+        plainBg: plainEl ? getComputedStyle(plainEl).backgroundColor : null,
         selectedBar: selCs?.boxShadow ?? null,
       }
     })
     check(
-      '活动行用内缩描边、选中行用背景填充 + 左色条,三种视觉形式各自存在且不同',
-      ring.ringWidth === '1px' && ring.ringStyle === 'solid' && ring.activeBg !== ring.selectedBg,
+      '选中态断言的前提成立:活动行与选中行确实是两个不同的行(否则下一条恒假/恒真)',
+      ring.selectedBg != null && ring.activeId != null && ring.activeId !== ring.selectedId,
+      JSON.stringify({ activeId: ring.activeId, selectedId: ring.selectedId }),
+    )
+    check(
+      '活动行用内缩描边、选中行用背景填充,两种视觉形式各自存在且互不相同,且选中行有别于普通行',
+      ring.ringWidth === '1px' &&
+        ring.ringStyle === 'solid' &&
+        ring.activeBg !== ring.selectedBg &&
+        !!ring.plainBg &&
+        ring.selectedBg !== ring.plainBg,
       JSON.stringify(ring),
     )
   }
@@ -1416,6 +1526,39 @@ try {
     check('尚未跳转时后退/前进按钮均置灰', state.length === 2 && state[0] === true && state[1] === true, JSON.stringify(state))
   }
   await page.screenshot({ path: join(SHOTS, 'shot-3-code.png') })
+
+  // 深色**项目模式**截图(restyle-reader 收尾 B)。此前全套只有 shot-7 一张深色,
+  // 且是单文件模式 —— 没有目录树、没有滚动条、没有注释,
+  // 而"项目模式 + 目录树 + 带注释源码"才是深色下最常见的那一屏,从没被拍过。
+  {
+    const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+    const lightNav = await page.evaluate(() => {
+      const el = document.querySelector('.nav-btn')
+      return el ? getComputedStyle(el).backgroundColor : null
+    })
+    await page.click('.theme-toggle')
+    // ① 终态守卫:深色**真的画出来了**(不是"过渡不动了")
+    const painted = await waitDarkPainted(lightBg)
+    check(
+      '深色项目截图:深色确实已应用到画面(data-theme=dark 且 body 底色 = --bg 令牌 且 ≠ 浅色底)',
+      painted?.theme === 'dark' && painted.bodyBg === painted.tokenBg && painted.bodyBg !== lightBg,
+      `${lightBg} → ${painted?.bodyBg}(令牌 ${painted?.tokenBg},theme=${painted?.theme})`,
+    )
+    // ② 再等过渡走完。传 `from` 是必须的:不传的话"还没开始动"也算稳。
+    // 只等 `.nav-btn` 就够:树行与它挂在同一条 130ms 过渡上、同一刻起跑,
+    // 而树行背景多数是 transparent,取不到一个有意义的"起始值"来做起点守卫 ——
+    // 用一个守不住的等待凑数,不如不等。
+    const settled = await waitStyleSettled('.nav-btn', 'backgroundColor', { from: lightNav })
+    check(
+      '深色项目截图前过渡已走完(.nav-btn 已离开浅色值并稳定)',
+      settled != null && settled !== lightNav,
+      `.nav-btn ${lightNav} → 稳态 ${settled}`,
+    )
+    await page.screenshot({ path: join(SHOTS, 'shot-14-dark-project.png') })
+    await page.click('.theme-toggle') // 立刻还原浅色,后面的用例都按浅色写
+    await waitThemeApplied()
+    await waitStyleSettled('.nav-btn', 'backgroundColor', { from: settled })
+  }
 
   // ---- Markdown:净化 + 相对资源 + 双视图 + 内链导航 ----
   await clickRow('README.md')
@@ -2462,8 +2605,21 @@ try {
   // ====== 键盘触发跳转 / 查找引用 + 可发现性(3.6 / 3b.5 / 3b.6 / 4.1 / 4.2)======
   {
     // ---- 3b.6:不用任何自定义键位也能到达帮助入口 ----
-    await page.evaluate(() => document.querySelector('.help-toggle')?.click())
+    // **用键盘打开**(聚焦入口 + Enter),不是 `el.click()`:programmatic click 不会
+    // 把焦点给按钮,于是面板记下的"回哪儿去"就不是这个按钮,下面 2.1 的往返
+    // 就测不到真东西了。spec 的场景原文也是"用户用键盘打开帮助面板"。
+    await page.evaluate(() => {
+      const b = document.querySelector('.help-toggle')
+      if (b instanceof HTMLElement) b.focus()
+    })
+    const helpOpenedFrom = await page.evaluate(() => document.activeElement?.className ?? null)
+    await page.keyboard.press('Enter')
     await new Promise((r) => setTimeout(r, 300))
+    check(
+      '帮助面板往返断言的前提成立:打开前焦点确实在帮助入口按钮上',
+      helpOpenedFrom === 'help-toggle',
+      `打开前焦点=${helpOpenedFrom}`,
+    )
     const helpRows = await page.$$eval('.help-row', (els) =>
       els.map((e) => ({
         label: e.querySelector('.help-row-label')?.textContent ?? '',
@@ -2486,14 +2642,83 @@ try {
       helpRows.some((r) => r.key.includes('Tab')) && helpRows.some((r) => r.key.includes('↑')),
       helpRows.filter((r) => r.key.includes('Tab') || r.key.includes('↑')).map((r) => r.key).join(' | '),
     )
+    // ---- fix-help-panel-a11y 1.2:打开时焦点必须**移入面板** ----
+    // 这条以前没有,而且缺了它,下面 2.1 的"焦点回到触发按钮"是**恒真**的:
+    // 旧实现根本不移动焦点,焦点一直待在触发按钮上,"归还"自然成立 ——
+    // 断言测的是"它没走",不是"它回来了"。先验它真的走了,归还才有意义。
+    const afterOpen = await page.evaluate(() => {
+      const panel = document.querySelector('.help-panel')
+      const ae = document.activeElement
+      return {
+        open: !!panel,
+        inPanel: !!(panel && ae && panel.contains(ae)),
+        active: ae?.className ?? null,
+      }
+    })
+    check(
+      '打开帮助面板后焦点移入面板(否则按键根本到不了它)',
+      afterOpen.open === true && afterOpen.inPanel === true,
+      JSON.stringify(afterOpen),
+    )
+
+    // ---- 2.2:打开期间 Tab 不逸出面板(焦点陷阱)----
+    // 连按而不是按一次:面板里只有一个可聚焦元素(✕),按一次很容易"碰巧"还在里面;
+    // 要看的是**循环**,所以按到超过元素个数的圈数,每一步都记下落点。
+    const tabTrail = []
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press('Tab')
+      await new Promise((r) => setTimeout(r, 60))
+      tabTrail.push(await page.evaluate(() => {
+        const panel = document.querySelector('.help-panel')
+        const ae = document.activeElement
+        return {
+          in: !!(panel && ae && panel.contains(ae)),
+          el: ae ? `${ae.tagName.toLowerCase()}.${ae.className}` : null,
+        }
+      }))
+    }
+    // 反向也要走一遍:Shift+Tab 从第一个元素往回走是最容易漏出去的那一步
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.down('Shift')
+      await page.keyboard.press('Tab')
+      await page.keyboard.up('Shift')
+      await new Promise((r) => setTimeout(r, 60))
+      tabTrail.push(await page.evaluate(() => {
+        const panel = document.querySelector('.help-panel')
+        const ae = document.activeElement
+        return {
+          in: !!(panel && ae && panel.contains(ae)),
+          el: ae ? `${ae.tagName.toLowerCase()}.${ae.className}` : null,
+        }
+      }))
+    }
+    check(
+      '帮助面板打开期间 Tab / Shift+Tab 焦点始终不逸出面板(9 步全程)',
+      tabTrail.length === 9 && tabTrail.every((t) => t.in === true),
+      tabTrail.map((t) => `${t.in ? '✓' : '✗'}${t.el}`).join(' → '),
+    )
+
+    // ---- 2.3:aria-modal 的**声明与实现一致** ----
+    // 这条不是查"属性在不在",而是查**声明与约束是否配套**:
+    // 声明了模态就必须真的约束焦点;没约束就不许声明。两种不配套都判红。
+    const modal = await page.evaluate(() => {
+      const panel = document.querySelector('.help-panel')
+      return { declared: panel?.getAttribute('aria-modal') ?? null, role: panel?.getAttribute('role') ?? null }
+    })
+    const trapped = tabTrail.every((t) => t.in === true)
+    // 断言取**双向**的强形式:声明在 **且** 约束成立。
+    // 只写"声明了就必须约束"是不够的 —— 那条在 `aria-modal` 被误删时照样绿,
+    // 而 1.3 已经落地、1.4 的前提已成立,此刻少了声明就是"做了却不告诉辅助技术"。
+    // 反过来若哪天陷阱被拆掉,这条也会红,不会留下一个孤零零的声明。
+    check(
+      'aria-modal 的声明与焦点约束互为背书(声明在 + 焦点真被约束,缺一即红)',
+      modal.declared === 'true' && modal.role === 'dialog' && trapped,
+      `aria-modal=${modal.declared} role=${modal.role} 焦点被约束=${trapped}`,
+    )
+
     // ---- fix-help-panel-a11y 2.1:Esc 关闭,**且焦点回到触发按钮** ----
     // 只断言"面板关了"不够:面板关了而焦点掉进虚空,键盘用户下一次 Tab
     // 会从页面开头重来 —— 焦点去哪了才是他真正在意的事。
-    await page.evaluate(() => {
-      const btn = document.querySelector('.help-toggle')
-      if (btn instanceof HTMLElement) btn.focus()
-    })
-    await new Promise((r) => setTimeout(r, 120))
     const beforeEsc = await page.evaluate(() => ({
       open: !!document.querySelector('.help-panel'),
       active: document.activeElement?.className ?? null,
@@ -3209,6 +3434,24 @@ try {
       }))))
     }
     check('按住修饰键悬停可跳转标识符 → 出现提示', onJumpable.found && onJumpable.hinted, JSON.stringify(onJumpable))
+
+    // 提示**看得见**,不只是类名挂上了。这条是 restyle-reader 补的:
+    // 该下划线的颜色取自 --hot-bar,而 --hot-bar 同时也是"选中左条"那一支;
+    // 换主题时若按"去左条"把 --hot-bar 置成 transparent,下划线会连带静默消失 ——
+    // 而上面那条只查 `.cm-jump-hint` 存不存在,照样全绿。
+    // 提示的全部内容就是那条线的颜色,所以颜色必须被断言,不能只断言类名。
+    const hintPaint = await page.evaluate(() => {
+      const el = document.querySelector('.cm-jump-hint')
+      if (!el) return null
+      const cs = getComputedStyle(el)
+      return { color: cs.textDecorationColor, thickness: cs.textDecorationThickness, line: cs.textDecorationLine }
+    })
+    const transparent = (c) => !c || /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*0\s*\)/.test(c)
+    check(
+      '可跳转提示的下划线真的画得出来(颜色非透明),而不只是类名挂上了',
+      !!hintPaint && hintPaint.line.includes('underline') && !transparent(hintPaint.color),
+      JSON.stringify(hintPaint),
+    )
 
     // 3.2 上半:释放修饰键 → 清除
     await releaseMeta()
@@ -3952,6 +4195,11 @@ try {
       const el = [...document.querySelectorAll('.cm-line span')].find((s) => s.className)
       return el ? getComputedStyle(el).color : null
     })
+    const lightBodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+    const lightNavBg = await page.evaluate(() => {
+      const el = document.querySelector('.nav-btn')
+      return el ? getComputedStyle(el).backgroundColor : null
+    })
     await page.click('.theme-toggle')
     await waitThemeApplied()
     const stored = await page.evaluate(() => localStorage.getItem('cv-theme'))
@@ -3982,6 +4230,23 @@ try {
       return el ? getComputedStyle(el).fontStyle : null
     })
     void cmComment
+    // 截图前的两道闸(restyle-reader 收尾 A)。原来这里紧接着切换就拍,
+    // 距 `.theme-toggle` 不足 130ms,`.nav-btn` 被拍成浅灰药丸 —— 断言没问题,脏的只有图。
+    // ① 终态守卫:深色真的画出来了。**这条是正向的** ——
+    //    "过渡稳定"是负向条件,起点静止也满足它,一张浅色图照样能过。
+    const painted7 = await waitDarkPainted(lightBodyBg)
+    check(
+      '深色单文件截图:深色确实已应用到画面(data-theme=dark 且 body 底色 = --bg 令牌 且 ≠ 浅色底)',
+      painted7?.theme === 'dark' && painted7.bodyBg === painted7.tokenBg && painted7.bodyBg !== lightBodyBg,
+      `${lightBodyBg} → ${painted7?.bodyBg}(令牌 ${painted7?.tokenBg},theme=${painted7?.theme})`,
+    )
+    // ② 再等过渡走完;传 `from` 以免"还没开始动"被当成"已经稳了"
+    const settled7 = await waitStyleSettled('.nav-btn', 'backgroundColor', { from: lightNavBg })
+    check(
+      '深色单文件截图前过渡已走完(.nav-btn 已离开浅色值并稳定)',
+      settled7 != null && settled7 !== lightNavBg,
+      `.nav-btn ${lightNavBg} → 稳态 ${settled7}`,
+    )
     await page.screenshot({ path: join(SHOTS, 'shot-7-dark.png') })
     await page.reload({ waitUntil: 'load' })
     await page.waitForSelector('.welcome', { timeout: 10000 })
