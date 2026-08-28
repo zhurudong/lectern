@@ -1006,26 +1006,57 @@ try {
 
   // ---- 焦点环与选中态视觉可区分(1.3),两主题(4.9 的可自动化部分)----
   {
-    await focusTree()
-    // A 方案下三者都是蓝色系,区分靠**形式**不靠色相:
-    //   焦点环 = ::after 内缩描边 / 选中底 = 整行背景 / 选中左条 = inset box-shadow
+    // **先真的选中一个文件。** 这条断言原本只 focusTree() 就去读 `.tree-row.selected`,
+    // 而那一刻树里根本没有选中行 —— `selectedBg` 恒为 null,`activeBg !== selectedBg`
+    // 于是永远成立。断言绿了三百多轮,却从来没有比较过两种视觉形式。
+    // 选 README.md(根层文件,不需要展开任何目录,不扰动后续用例的树状态)。
+    await openFile('README.md', 'README.md')
+    await focusTree() // 焦点回到树:焦点环挂在 `.tree:focus .tree-row.active::after` 上
+    // **再把活动行挪开。** focusTree() 会把活动行落到选中文件那一行,于是 active 与
+    // selected 是**同一个元素** —— 拿同一个元素的 backgroundColor 比两次,
+    // `activeBg !== selectedBg` 必然为假,断言会以"产品坏了"的样子红,其实是用例摆错了。
+    // 这两种形式本来就是设计成**能同时出现在不同的行上**的,断言也必须在那个局面下验。
+    await press('Home')
+    // `.tree-row` 上声明了 background-color 0.13s 过渡,且行是虚拟化重建的;
+    // 紧接着读计算值会读到过渡起点(透明),不是稳定值。等过渡走完再读。
+    await new Promise((r) => setTimeout(r, 300))
+    // B 方案(restyle-reader D3)把选中态从三形式减为两形式:
+    //   焦点环 = ::after 内缩描边 / 选中底 = 整行背景。左色条(--sel-bar)已置 transparent。
+    // 断言只认这**两种**形式,并额外要求"选中行 ≠ 普通行" —— 去掉左条后,
+    // 整行底成了选中态的唯一载体,它必须真的与普通行不同;
+    // 原来的三项断言不查这一点,若底色误配成与普通行同值,断言仍会绿。
     const ring = await page.evaluate(() => {
       const id = document.querySelector('.tree')?.getAttribute('aria-activedescendant')
       const el = id ? document.getElementById(id) : null
       const after = el ? getComputedStyle(el, '::after') : null
       const selEl = document.querySelector('.tree-row.selected')
       const selCs = selEl ? getComputedStyle(selEl) : null
+      const plainEl = [...document.querySelectorAll('.tree-row')].find(
+        (r) => r !== selEl && !r.classList.contains('selected') && !r.classList.contains('active'),
+      )
       return {
         ringWidth: after?.borderTopWidth ?? null,
         ringStyle: after?.borderTopStyle ?? null,
+        activeId: id ?? null,
+        selectedId: selEl?.id ?? null,
         activeBg: el ? getComputedStyle(el).backgroundColor : null,
         selectedBg: selCs?.backgroundColor ?? null,
+        plainBg: plainEl ? getComputedStyle(plainEl).backgroundColor : null,
         selectedBar: selCs?.boxShadow ?? null,
       }
     })
     check(
-      '活动行用内缩描边、选中行用背景填充 + 左色条,三种视觉形式各自存在且不同',
-      ring.ringWidth === '1px' && ring.ringStyle === 'solid' && ring.activeBg !== ring.selectedBg,
+      '选中态断言的前提成立:活动行与选中行确实是两个不同的行(否则下一条恒假/恒真)',
+      ring.selectedBg != null && ring.activeId != null && ring.activeId !== ring.selectedId,
+      JSON.stringify({ activeId: ring.activeId, selectedId: ring.selectedId }),
+    )
+    check(
+      '活动行用内缩描边、选中行用背景填充,两种视觉形式各自存在且互不相同,且选中行有别于普通行',
+      ring.ringWidth === '1px' &&
+        ring.ringStyle === 'solid' &&
+        ring.activeBg !== ring.selectedBg &&
+        !!ring.plainBg &&
+        ring.selectedBg !== ring.plainBg,
       JSON.stringify(ring),
     )
   }
@@ -3209,6 +3240,24 @@ try {
       }))))
     }
     check('按住修饰键悬停可跳转标识符 → 出现提示', onJumpable.found && onJumpable.hinted, JSON.stringify(onJumpable))
+
+    // 提示**看得见**,不只是类名挂上了。这条是 restyle-reader 补的:
+    // 该下划线的颜色取自 --hot-bar,而 --hot-bar 同时也是"选中左条"那一支;
+    // 换主题时若按"去左条"把 --hot-bar 置成 transparent,下划线会连带静默消失 ——
+    // 而上面那条只查 `.cm-jump-hint` 存不存在,照样全绿。
+    // 提示的全部内容就是那条线的颜色,所以颜色必须被断言,不能只断言类名。
+    const hintPaint = await page.evaluate(() => {
+      const el = document.querySelector('.cm-jump-hint')
+      if (!el) return null
+      const cs = getComputedStyle(el)
+      return { color: cs.textDecorationColor, thickness: cs.textDecorationThickness, line: cs.textDecorationLine }
+    })
+    const transparent = (c) => !c || /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*0\s*\)/.test(c)
+    check(
+      '可跳转提示的下划线真的画得出来(颜色非透明),而不只是类名挂上了',
+      !!hintPaint && hintPaint.line.includes('underline') && !transparent(hintPaint.color),
+      JSON.stringify(hintPaint),
+    )
 
     // 3.2 上半:释放修饰键 → 清除
     await releaseMeta()

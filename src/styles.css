@@ -1,66 +1,70 @@
 /* ===== VS Code Dark+ 风格基础样式 ===== */
 
 :root {
-  /* ===== A 方案「现代 IDE 风」浅色令牌(取自 design.md D1;D1 又取自 mockup 源码)=====
-     两套主题是**各自独立调校的完整值**,不是一套加透明度推导另一套。 */
-  --bg: #fbfcfe;            /* 底 / 代码区 */
-  --bg-sidebar: #f6f8fb;    /* 面板:侧栏 / 大纲 / 预览头 */
-  --bg-topbar: #f4f6fa;
-  --bg-hover: #eaeef5;
-  --bg-selected: #dde8fb;
-  --bg-input: #eef1f7;      /* 搜索框底 */
-  --border-input: #e0e5ee;  /* 搜索框边(与面板边框不同值) */
-  --fg: #2f3440;            /* 主文本 */
-  --fg-dim: #5a6272;        /* 次级文本 */
-  --fg-faint: #9aa4b6;      /* 弱文本:仅用于分组标题等非关键信息,不用于正文 */
-  --brand: #1f2430;
-  --accent: #3b6fd4;        /* 强调 / 选中左色条 */
-  --border: #e3e8f0;
-  --error: #c2410c;
-  --warn: #b5860b;
-  --link: #2b6cb0;
-  /* 选中行 = 整行底 + 细长左色条;当前代码行同构 */
-  --sel-bar: #3b6fd4;
-  --hot-bg: #eef3fc;
-  --hot-bar: #3b6fd4;
-  /* 搜索面板模式切换的激活态(mockup 里的 tab.on) */
-  --tab-active-bg: #e5ebf6;
-  --tab-active-fg: #2b4a8a;
+  /* ===== B 方案「阅读器风」浅色令牌(restyle-reader/design.md D1+D2)=====
+     两套主题是**各自独立调校的完整值**,不是一套加透明度推导另一套。
+     暖调/留白/书卷气,刻意与 IDE 拉开 —— 本产品是读码台,不是编辑器。 */
+  --bg: #f5f1e8;            /* 底 / 代码区 */
+  --bg-sidebar: #f1ebe0;    /* 面板:侧栏 / 大纲 / 预览头 */
+  --bg-topbar: #f1ebe0;
+  --bg-hover: #ece4d5;
+  --bg-selected: #e9dfcd;
+  --bg-input: #efe8db;      /* 搜索框底 */
+  --border-input: #e3dbcb;  /* 搜索框边(与面板边框不同值) */
+  --fg: #3a342a;            /* 主文本 */
+  --fg-dim: #6f6656;        /* 次级文本 */
+  --fg-faint: #a89b83;      /* 弱文本:仅用于分组标题等非关键信息,不用于正文 */
+  --brand: #2c271f;
+  --accent: #b0602a;        /* 强调 / 选中左色条 */
+  --border: #e4dccc;
+  --error: #b03d22;
+  --warn: #8b6815;
+  --link: #9a561f;
+  /* 选中行 = 暖色整行底 + 焦点环两形式(B 去掉了左色条,见 design D3)。
+     --hot-bar 则**保留为暖强调色**:它不止画落点行左条,还画候选/引用面板选中行的
+     左条(那里没有焦点环)与 .cm-jump-hint 的下划线色(那里"色"就是整个提示),
+     置 transparent 会让后两者静默消失。这是 D3 退路的窄用,不是遗漏。 */
+  --sel-bar: transparent;
+  --hot-bg: #efe6d3;
+  --hot-bar: #b0602a;
+  /* 搜索面板模式切换的激活态:B 去药丸,纯色字表达激活(design D4) */
+  --tab-active-bg: transparent;
+  --tab-active-fg: #a05726;
   /* 能力徽标 */
-  --badge-bg: #e0f2e7;
-  --badge-fg: #2f8f52;
-  --checker-a: #eef1f7;
-  --checker-b: #e3e8f0;
-  --md-code-bg: rgba(59, 111, 212, 0.10);
-  --md-pre-bg: #f4f6fa;
-  --md-border: #e3e8f0;
-  --md-zebra: rgba(47, 52, 64, 0.025);
-  --md-placeholder-border: #d3dae6;
-  /* 语法着色:A 只定 6 个角色(kw/fn/st/cm/ty/pa),下面按**语义**把既有 token 归到这 6 个里,
+  --badge-bg: #dde7d1;
+  --badge-fg: #4f6e37;
+  --checker-a: #efe8db;
+  --checker-b: #e4dccc;
+  --md-code-bg: rgba(176, 96, 42, 0.10);
+  --md-pre-bg: #f1ebe0;
+  --md-border: #e4dccc;
+  --md-zebra: rgba(58, 52, 42, 0.025);
+  --md-placeholder-border: #d8cfbd;
+  /* 语法着色:只定 6 个角色(kw/fn/st/cm/ty/pa),下面按**语义**把既有 token 归到这 6 个里,
      不额外发明第七种颜色。cmTheme.ts 用同一组值(E2E 6.2 交叉断言两者一致)。 */
-  --tok-keyword: #8a3ffc;
-  --tok-ctrl: #8a3ffc;
-  --tok-atom: #8a3ffc;
-  --tok-meta: #8a3ffc;
-  --tok-fn: #2b6cb0;
-  --tok-link: #2b6cb0;
-  --tok-string: #3f8a3f;
-  --tok-string2: #3f8a3f;
-  --tok-number: #3f8a3f;
-  --tok-literal: #3f8a3f;
-  --tok-inserted: #3f8a3f;
-  --tok-comment: #666d7a;  /* 提到 AA:阅读器里注释承载原作者意图,是信息密度最高的文本 */
-  --tok-type: #b5860b;
-  --tok-attr: #b5860b;
-  --tok-label: #b5860b;
-  --tok-tag: #c2410c;
-  --tok-heading: #c2410c;
-  --tok-deleted: #c2410c;
-  --tok-var: #2f3440;
-  --tok-var2: #2b6cb0;
-  --tok-prop: #2f3440;
-  --tok-op: #5a6272;
-  --tok-invalid: #c2410c;
+  --tok-keyword: #9c5228;
+  --tok-ctrl: #9c5228;
+  --tok-atom: #9c5228;
+  --tok-meta: #9c5228;
+  --tok-fn: #256d75;
+  --tok-link: #256d75;
+  --tok-string: #567032;
+  --tok-string2: #567032;
+  --tok-number: #567032;
+  --tok-literal: #567032;
+  --tok-inserted: #567032;
+  --tok-comment: #74673f;  /* 提到 AA:阅读器里注释承载原作者意图,是信息密度最高的文本 */
+  --tok-type: #7d5f28;
+  --tok-attr: #7d5f28;
+  --tok-label: #7d5f28;
+  --tok-tag: #b04426;
+  --tok-heading: #b04426;
+  --tok-deleted: #b04426;
+  --tok-var: #3a342a;
+  --tok-var2: #256d75;
+  --tok-prop: #3a342a;
+  --tok-op: #6f6656;
+  --tok-invalid: #b04426;
   /* 文件类型图标色板(浅色主题)。
      判据升级(2026-08-20,覆盖类型到 30+ 后):**按大类分色系,不按语言分色**。
      目录树是扫视对象,**扫得快 > 分得清** —— 二十种各不相同的颜色比五个色系更难扫。
@@ -70,7 +74,7 @@
      同色系内部允许色相靠近(那是同一大类,本就该成块),细分交给字形。
      注意与上一轮的区别:上一轮拉开 jvm/markup/js 是解决**细分**撞色,
      这一轮要的是**粗分**成块 —— 目标相反,不要把"拉开间隔"的惯性带过来。 */
-  --focus-ring: #0b63c5;   /* 键盘活动行的焦点环(与选中态的背景填充是两种手段) */
+  --focus-ring: #b0602a;   /* 键盘活动行的焦点环(与选中态的背景填充是两种手段) */
   --icon-go: #0f766e;      /* 冷色块 · 编译/后端:teal */
   --icon-py: #0369a1;      /*                    sky  */
   --icon-csys: #1d4ed8;    /*                    blue */
@@ -91,33 +95,33 @@
 /* ===== 暗色主题(初版 Dark+ 配色转为暗色档,html[data-theme='dark'] 启用) ===== */
 
 html[data-theme='dark'] {
-  /* ===== A 方案「现代 IDE 风」深色令牌(独立调校的完整一套)===== */
-  --bg: #13141b;
-  --bg-sidebar: #15161d;
-  --bg-topbar: #181a22;
-  --bg-hover: #1c1f29;
-  --bg-selected: #232a3d;
-  --bg-input: #1e212b;
-  --border-input: #2a2e3a;
-  --fg: #c8cdd8;
-  --fg-dim: #9aa2b2;
-  --fg-faint: #5a6172;
-  --brand: #e6e9ef;
-  --accent: #5b8cff;
-  --border: #23262f;
-  --error: #f78c6c;
-  --warn: #ffcb6b;
-  --link: #82aaff;
-  --sel-bar: #5b8cff;
-  --hot-bg: #1c2030;
-  --hot-bar: #5b8cff;
-  --tab-active-bg: #262a36;
-  --tab-active-fg: #dfe4ee;
-  --badge-bg: #183a2e;
-  --badge-fg: #4ade80;
+  /* ===== B 方案「阅读器风」深色令牌(独立调校的完整一套)===== */
+  --bg: #1a1714;
+  --bg-sidebar: #171512;
+  --bg-topbar: #171512;
+  --bg-hover: #241f18;
+  --bg-selected: #33291d;
+  --bg-input: #24201b;
+  --border-input: #332d25;
+  --fg: #e7e0d3;
+  --fg-dim: #a99f8c;
+  --fg-faint: #6a6153;
+  --brand: #f1ebdf;
+  --accent: #db8a4c;
+  --border: #2c2721;
+  --error: #e08a5c;
+  --warn: #d9a95a;
+  --link: #e0955a;
+  --sel-bar: transparent;
+  --hot-bg: #241e15;
+  --hot-bar: #db8a4c;
+  --tab-active-bg: transparent;
+  --tab-active-fg: #db8a4c;
+  --badge-bg: #2b3a26;
+  --badge-fg: #93ba7e;
   /* 文件类型图标色板(暗色主题):**另定一组色值**,不是给浅色那组加透明度 ——
      低饱和色相在深底上会接近隐形,这是这类改动最典型的翻车方式 */
-  --focus-ring: #6cb6ff;
+  --focus-ring: #e6a86a;
   --icon-go: #22d3ee;  /* 暗色下单独往蓝挪:#2dd4bf 提亮后偏绿,会桥接到数据绿块 */
   --icon-py: #38bdf8;
   --icon-csys: #60a5fa;
@@ -128,37 +132,37 @@ html[data-theme='dark'] {
   --icon-asset: #f472b6;
   --icon-text: #a8a29e;
   --icon-dir: #9aa4b2;
-  --checker-a: #1c1f29;
-  --checker-b: #181a22;
-  --md-code-bg: rgba(91, 140, 255, 0.14);
-  --md-pre-bg: #181a22;
-  --md-border: #23262f;
+  --checker-a: #241f18;
+  --checker-b: #171512;
+  --md-code-bg: rgba(219, 138, 76, 0.14);
+  --md-pre-bg: #171512;
+  --md-border: #2c2721;
   --md-zebra: rgba(255, 255, 255, 0.02);
-  --md-placeholder-border: #2a2e3a;
-  /* 语法着色:同样归入 A 的 6 个角色 */
-  --tok-keyword: #c792ea;
-  --tok-ctrl: #c792ea;
-  --tok-atom: #c792ea;
-  --tok-meta: #c792ea;
-  --tok-fn: #82aaff;
-  --tok-link: #82aaff;
-  --tok-string: #c3e88d;
-  --tok-string2: #c3e88d;
-  --tok-number: #c3e88d;
-  --tok-literal: #c3e88d;
-  --tok-inserted: #c3e88d;
-  --tok-comment: #7e8695;  /* 同上 */
-  --tok-type: #ffcb6b;
-  --tok-attr: #ffcb6b;
-  --tok-label: #ffcb6b;
-  --tok-tag: #f78c6c;
-  --tok-heading: #f78c6c;
-  --tok-deleted: #f78c6c;
-  --tok-var: #c8cdd8;
-  --tok-var2: #82aaff;
-  --tok-prop: #c8cdd8;
-  --tok-op: #9aa2b2;
-  --tok-invalid: #f78c6c;
+  --md-placeholder-border: #332d25;
+  /* 语法着色:同样归入这 6 个角色 */
+  --tok-keyword: #db8a4c;
+  --tok-ctrl: #db8a4c;
+  --tok-atom: #db8a4c;
+  --tok-meta: #db8a4c;
+  --tok-fn: #63a6c4;
+  --tok-link: #63a6c4;
+  --tok-string: #93ba7e;
+  --tok-string2: #93ba7e;
+  --tok-number: #93ba7e;
+  --tok-literal: #93ba7e;
+  --tok-inserted: #93ba7e;
+  --tok-comment: #9a8f78;  /* 同上 */
+  --tok-type: #d8b77e;
+  --tok-attr: #d8b77e;
+  --tok-label: #d8b77e;
+  --tok-tag: #e39070;
+  --tok-heading: #e39070;
+  --tok-deleted: #e39070;
+  --tok-var: #e7e0d3;
+  --tok-var2: #63a6c4;
+  --tok-prop: #e7e0d3;
+  --tok-op: #a99f8c;
+  --tok-invalid: #e39070;
 }
 
 
@@ -493,7 +497,9 @@ button {
 .tree:focus .tree-row.active::after {
   content: '';
   position: absolute;
-  /* 左侧多缩 6px:避开选中行的 2px 左色条,让两者不叠在一起 */
+  /* 左侧多缩 6px:沿用 A 期为「避开选中行 2px 左色条」留的间距。
+     B 已去左条(--sel-bar: transparent),这 2px 现在只是让环稍偏右 ——
+     纯令牌换主题**有意不动的几何**;要不要收回是另一个改动。 */
   inset: 2px 4px 2px 6px;
   border: 1px solid var(--focus-ring);
   border-radius: 4px;
@@ -502,7 +508,9 @@ button {
 
 .tree-row.selected {
   background: var(--bg-selected);
-  /* 细长左色条 —— 与"整行底"是两种形式,叠在同一行上仍分得清 */
+  /* 左色条槽位保留,B 里 --sel-bar 为 transparent(design D3:暖填充 + 焦点环
+     两形式已够区分,左条是 A 期蓝色系"靠形式不靠色相"的产物)。
+     结构不删 —— 若 review 裁定要暖左条,改一个令牌即可回来。 */
   box-shadow: inset 2px 0 0 var(--sel-bar);
 }
 
@@ -1240,7 +1248,13 @@ button {
   color: var(--fg);
 }
 
-.search-mode.active {
+/* 激活态必须压过 `.topbar button:hover` —— 那条是 (0,2,1),比 `.search-mode.active`
+   的 (0,2,0) 高一级,**不看书写顺序就赢**。这是 A 期就在的层叠问题,但那时看不出来:
+   激活字色 #2b4a8a 与 hover 字色 #2f3440 都是深灰、激活底与 hover 底也几乎同值,
+   被盖掉与没被盖掉长得一样。B(design D4)把激活态压缩成**只剩字色**一个信号,
+   一旦被 hover 盖掉,鼠标停在当前模式上时就完全看不出自己处在哪个模式。 */
+.search-mode.active,
+.search-mode.active:hover {
   background: var(--tab-active-bg);
   color: var(--tab-active-fg);
 }
