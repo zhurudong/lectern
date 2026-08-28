@@ -57,25 +57,14 @@ jobs:
           fi
           echo "OK: no leftover key mutation in src/."
 
-      # The project was built by several AI sessions with different roles. That
-      # is documented on purpose in HOW_THIS_WAS_BUILT, but the vocabulary of
-      # those sessions ("方案会话", "PM 裁定") does not belong in specs, docs or
-      # code comments that are read as the project speaking to its users.
+      # The project was built by several AI sessions with different roles.
+      # That is documented on purpose in HOW_THIS_WAS_BUILT, but the private
+      # vocabulary of those sessions does not belong in specs, docs or code
+      # comments that are read as the project speaking to its users.
       #
-      # Two exclusions, both deliberate — a gate that flags them would push the
-      # next person into "cleaning up" things we decided twice not to touch:
-      #   openspec/changes/archive/**  historical records; editing one after the
-      #                                fact would make it a fabricated record
-      #   HOW_THIS_WAS_BUILT*          its subject IS the multi-session process,
-      #                                so that vocabulary is its legitimate topic
-      #   this file                    it has to name the words to forbid them;
-      #                                a rule cannot be its own violation
+      # The word list, the exclusions and the reasoning all live in the script,
+      # which also self-tests its matcher before reporting. This was a `git grep`
+      # once; it silently matched nothing on macOS and matched random bytes
+      # inside tracked PNGs on Linux. See the header of the script.
       - name: No internal role vocabulary
-        run: |
-          if git grep -nE "开源会话|方案会话|开发会话|评审会话|review 会话|方案探索会话|\\bPM\\b" \
-               -- . ':!openspec/changes/archive/**' ':!HOW_THIS_WAS_BUILT*' \
-                  ':!.github/workflows/ci.yml'; then
-            echo "::error::Internal session-role vocabulary in a published file — use the neutral function names (product / spec / implementation / review)."
-            exit 1
-          fi
-          echo "OK: no internal role vocabulary outside the archive."
+        run: node scripts/check-role-vocabulary.mjs
