@@ -1,0 +1,9 @@
+schema: spec-driven
+created: 2026-08-27
+# 纯令牌/视觉替换,不改行为 spec。
+# 唯一相关的 spec 是 file-tree/spec.md:157 + 其 Scenario(176):要求"活动行与选中文件
+# 可区分"。B 用「暖填充 + 焦点环」两形式仍然可区分 —— spec 没有写"三种视觉形式"、
+# 也没规定"左色条",D3 减掉的是实现细节,不是 spec 承诺。
+# 该承诺由 e2e.mjs 的 activeBg≠selectedBg + selectedBg≠plainBg 验证
+# (本 change 顺带把那条从"恒真"修成真断言)。
+skip_specs: true
