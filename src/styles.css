@@ -13,13 +13,30 @@
   --border-input: #e3dbcb;  /* 搜索框边(与面板边框不同值) */
   --fg: #3a342a;            /* 主文本 */
   --fg-dim: #6f6656;        /* 次级文本 */
-  --fg-faint: #a89b83;      /* 弱文本:仅用于分组标题等非关键信息,不用于正文 */
+  /* 弱文本档。**它低于 AA(浅 2.30 / 深 2.99)是有意的,不是漏改** ——
+     ⚠️ 下一个做对比度审计的人:这个决定已经被复核过一次,请不要"顺手修好"。
+     两条理由:
+     ① 它同时是 `cmTheme.ts` 的 `LIGHT/DARK.gutter`,也就是**行号色**。抬亮它
+        等于把行号加重到与正文争夺注意力 —— 行号是补充信息,不是要读的正文。
+     ② 它的其余用处(分组标题、次要计数、空态角标)都是"扫过即可"的信息。
+     **真正要读的正文一律不许用它**:欢迎页说明 `.welcome .hint` 与空态
+     `.recent-empty` 曾经用了,已在 fix-help-panel-a11y 改为 `--fg-dim`(≥AA)。 */
+  --fg-faint: #a89b83;
   --brand: #2c271f;
   --accent: #b0602a;        /* 强调 / 选中左色条 */
   --border: #e4dccc;
   --error: #b03d22;
   --warn: #8b6815;
   --link: #9a561f;
+  /* 压在 --accent 实底上的字色。**两套不能共用一个值**:浅色下 #ffffff 压 #b0602a
+     是 4.61(过 AA),而换成 --bg(#f5f1e8)只有 4.09;深色下反过来,#ffffff 压
+     #db8a4c 只有 2.71,必须用暗字(6.59)。所以它是一支独立令牌,不是"白色"。 */
+  --on-accent: #ffffff;
+  /* 滚动条。不修这一条,浅色下 Chrome 会给出中性灰滑块(#c1c1c1)贴在暖米面板上,
+     在界面正中拉出一条冷灰带 —— 这是 B 唯一没被令牌覆盖到的大面积色。
+     轨道用 transparent:滚动条出现在侧栏(--bg-sidebar)、代码区(--bg)、面板里,
+     各处底色本就不同,让轨道透出所在容器自己的底,比钉死一个值更准。 */
+  --scrollbar-thumb: #d3c8b4;
   /* 选中行 = 暖色整行底 + 焦点环两形式(B 去掉了左色条,见 design D3)。
      --hot-bar 则**保留为暖强调色**:它不止画落点行左条,还画候选/引用面板选中行的
      左条(那里没有焦点环)与 .cm-jump-hint 的下划线色(那里"色"就是整个提示),
@@ -112,6 +129,8 @@ html[data-theme='dark'] {
   --error: #e08a5c;
   --warn: #d9a95a;
   --link: #e0955a;
+  --on-accent: #1a1714;   /* 暖橙实底上必须用暗字:白字只有 2.71,击穿 AA */
+  --scrollbar-thumb: #423a30;
   --sel-bar: transparent;
   --hot-bg: #241e15;
   --hot-bar: #db8a4c;
@@ -165,6 +184,21 @@ html[data-theme='dark'] {
   --tok-invalid: #e39070;
 }
 
+
+/* UA 控件(滚动条、表单件、输入框自动填充底)的明暗,必须跟**应用自己的主题**走。
+ *
+ * **不能写 `color-scheme: light dark`** —— 那是让 UA 按**操作系统**偏好去挑,
+ * 而本应用是手动切主题(`cv-theme`)。于是"系统浅色 + 应用切深色"的用户会拿到
+ * 一套浅色滚动条和浅色表单件:正是我们要修的症状,只是换了触发条件,还更难复现
+ * (在深色系统上开发的人永远看不到)。所以按 `html[data-theme]` 显式绑定。 */
+:root {
+  color-scheme: light;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
 
 * {
   margin: 0;
@@ -334,7 +368,7 @@ button {
 
 .welcome .actions button {
   background: var(--accent);
-  color: #ffffff;
+  color: var(--on-accent);
   border: none;
   border-radius: 4px;
   padding: 8px 18px;
@@ -355,7 +389,10 @@ button {
 }
 
 .welcome .hint {
-  color: var(--fg-faint);
+  /* **这段是要读的正文,不是弱信息。** --fg-faint 那一档(2.30 / 2.99)是给
+     分组标题一类"扫过即可"的文字用的;而这里整段讲的是首次授权与受保护目录,
+     用户真的需要读完。用 --fg-dim(5.02 / 6.82,过 AA)。 */
+  color: var(--fg-dim);
   font-size: 12px;
   max-width: 420px;
   text-align: center;
@@ -426,7 +463,8 @@ button {
 }
 
 .recent-empty {
-  color: var(--fg-faint);
+  /* 同 .welcome .hint:空态文案是给人读的指引,不是装饰 */
+  color: var(--fg-dim);
   font-size: 12px;
   padding: 6px 10px;
 }
@@ -1475,10 +1513,13 @@ button {
   flex: none;
 }
 
+/* **这里不写 background / color。** 曾经写过 `background: none; color: var(--fg-dim)`,
+   但 `.preview-header button`(0,1,1)压过 `.nav-btn`(0,1,0),那两条从未生效过 ——
+   导航按钮一直渲染成 `--bg-input` 的药丸。删掉死声明**不改变任何像素**,
+   只是不再让下一个人以为它是透明的;要真改成透明是另一个视觉决定。
+   (`:disabled` / `:hover` 那两条是 (0,2,0) / (0,3,0),压得过,确实生效。) */
 .nav-btn {
-  background: none;
   border: none;
-  color: var(--fg-dim);
   font-size: 13px;
   line-height: 1;
   padding: 3px 6px;
