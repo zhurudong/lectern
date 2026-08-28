@@ -1,5 +1,5 @@
 import { signal } from '@preact/signals'
-import { useEffect } from 'preact/hooks'
+import { useOverlayKeyboard } from '../lib/useOverlayKeyboard'
 import { KEYS, display, isActive, type KeyId } from '../lib/keys'
 
 // 键盘操作帮助(add-keyboard-first-navigation 3b.3 / 3b.4)。
@@ -24,51 +24,84 @@ export function closeHelp(): void {
 
 const GROUP_ORDER = ['面板', '目录树', '代码区', '大纲', '搜索'] as const
 
-// **这里故意没有 `aria-modal="true"`。**
+/** 面板内可被 Tab 落上的元素;顺序即 DOM 顺序,与浏览器的 Tab 顺序一致 */
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+  'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+// **`aria-modal="true"` 现在成立了,所以加了回来。**
 //
-// 那个属性不是"标注得更详细",而是一个**行为承诺**:辅助技术会据此告诉用户
+// 它不是"标注得更详细",而是一个**行为承诺**:辅助技术会据此告诉用户
 // "对话框之外的内容此刻是惰性的",于是用户不会去尝试 Tab 出去。
-// 而本面板目前**没有做焦点约束** —— 打开后焦点仍在触发按钮上,Tab 会走到面板背后。
-// 声明了却不兑现,用户得到的是与承诺不符的体验,**而且他无从得知原因,
-// 因为他信的正是我们给出的那个声明**。
+// 上一版**故意没有它** —— 那时面板不做任何焦点约束,Tab 会走到面板背后,
+// 声明与实现不符,而用户无从得知原因,因为他信的正是我们给的那个声明。
 //
-// 所以先撤掉这句不成立的声明(不减任何能力),等 `fix-help-panel-a11y` 把
-// Escape 关闭 + 焦点移入 / 归还 / 循环做完、**焦点约束真的成立之后,再把它加回来**。
+// 本版把焦点移入 / 归还 / 循环三件都做了(fix-help-panel-a11y 1.2 / 1.3),
+// **约束真的成立之后**才把声明加回来 —— 顺序不能反过来。
 export function KeyboardHelp() {
   const open = helpOpen.value
 
-  // Esc 关闭(fix-help-panel-a11y 1.1)。沿用 IntelOverlay 里同一种写法:
-  // 打开期间才挂 keydown,关掉即卸载 —— **不是一个常驻的全局分发器**,
-  // 它的作用域由面板的开合决定,而不是由"我现在在哪个面板"的条件判断决定。
+  // 焦点的**移入与归还**复用 `useOverlayKeyboard`(候选 / 引用 / 全文三处同一份)。
+  // 那段逻辑被两个真实缺陷咬过(卸载时 `contains` 恒假导致一次都不归还;
+  // 放宽判据后又在别人接管焦点之后抢回来),在这里重写一遍等于把同样的坑再挖一次。
   //
-  // 本次**只做关闭**,不做焦点移入 / 归还 / 循环(那三件是一整包,见 change 说明:
-  // 只移入不归还会把用户扔在面板残骸的位置上;没有出口的焦点陷阱比现状更糟)。
-  // 因为焦点自始至终没被移走(仍在触发按钮上),关闭后它**本来就还在那儿** ——
-  // 2.1 断言的正是这一点,而不是"面板消失了"。
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
+  // 但**它的列表键盘映射这里不用**:那份 `onKeyDown` 对 ↑↓/Home/End 一律
+  // `preventDefault()`,而本面板是一块**可滚动的长文**,吞掉方向键就等于让它滚不动 ——
+  // 于是 `count: 0` 只是"没有列表项",按键由下面这份自己处理。
+  const k = useOverlayKeyboard({
+    open,
+    count: 0,
+    idPrefix: 'help',
+    onActivate: () => {},
+    onClose: closeHelp,
+  })
+
+  // Esc 关闭(1.1)+ Tab 焦点循环(1.3)。**其余按键一律放行** —— 方向键要留给滚动。
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
       e.preventDefault()
-      closeHelp()
+      k.close()
+      return
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open])
+    if (e.key !== 'Tab') return
+    // 焦点陷阱。**它必须与 Esc 同时存在**:没有出口的陷阱是真的把人困住,
+    // 比不做陷阱糟得多(见 change 说明里的依赖链)。
+    const panel = k.containerRef.current
+    if (!panel) return
+    const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)]
+    e.preventDefault()
+    if (items.length === 0) {
+      // 面板里一个可聚焦元素都没有时,焦点留在容器上 —— 容器自己 tabIndex=-1,
+      // 不 preventDefault 的话浏览器会把焦点送到面板**背后**去。
+      panel.focus()
+      return
+    }
+    const at = items.indexOf(document.activeElement as HTMLElement)
+    // 焦点还在容器上(刚打开、尚未 Tab 过)时 `at` 为 -1:
+    // 正向从第一个起、反向从最后一个起,与浏览器从容器 Tab 出去的直觉一致。
+    const next = e.shiftKey
+      ? (at <= 0 ? items.length - 1 : at - 1)
+      : (at === -1 || at === items.length - 1 ? 0 : at + 1)
+    items[next].focus()
+  }
 
   if (!open) return null
   const ids = Object.keys(KEYS) as KeyId[]
   return (
-    <div class="help-backdrop" onClick={closeHelp}>
+    <div class="help-backdrop" onClick={() => k.close()}>
       <div
         class="help-panel"
         role="dialog"
+        aria-modal="true"
         aria-label="键盘操作"
+        ref={k.containerRef}
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
         onClick={(e) => e.stopPropagation()}
       >
         <div class="help-header">
           <span class="help-title">键盘操作</span>
-          <button class="help-close" title="关闭" onClick={closeHelp}>
+          <button class="help-close" title="关闭" onClick={() => k.close()}>
             ✕
           </button>
         </div>

@@ -135,6 +135,38 @@ try {
       { timeout: 5000 },
     )
 
+  /**
+   * 等某个元素的某个计算样式**稳定下来**,再往下走(通常是截图前)。
+   *
+   * 为什么不 `sleep(130)`:过渡时长正好是 130ms,睡 130 卡在边界上,偶尔仍会拍到
+   * 最后一帧;而且它的症状是"截图偶尔有点脏",没人会把它认成 bug。
+   * 这里等的是**可观测条件**——连续两次读到同一个值才算稳——与我们对 E2E
+   * "等状态不等时间"的一贯要求一致。
+   */
+  const waitStyleSettled = async (selector, prop = 'backgroundColor', timeout = 4000) => {
+    const t0 = Date.now()
+    let prev = null
+    let stable = 0
+    while (Date.now() - t0 < timeout) {
+      const v = await page.evaluate(
+        (sel, pr) => {
+          const el = document.querySelector(sel)
+          return el ? getComputedStyle(el)[pr] : null
+        },
+        selector, prop,
+      )
+      if (v !== null && v === prev) {
+        stable += 1
+        if (stable >= 2) return v
+      } else {
+        stable = 0
+      }
+      prev = v
+      await new Promise((r) => setTimeout(r, 40))
+    }
+    return prev
+  }
+
   await page.goto(`chrome-extension://${extId}/viewer.html`, { waitUntil: 'load' })
   await page.waitForSelector('.welcome', { timeout: 10000 })
   check('查看器页面(欢迎页)在扩展 CSP 下正常渲染', true)
@@ -1448,6 +1480,27 @@ try {
   }
   await page.screenshot({ path: join(SHOTS, 'shot-3-code.png') })
 
+  // 深色**项目模式**截图(restyle-reader 收尾 B)。此前全套只有 shot-7 一张深色,
+  // 且是单文件模式 —— 没有目录树、没有滚动条、没有注释,
+  // 而"项目模式 + 目录树 + 带注释源码"才是深色下最常见的那一屏,从没被拍过。
+  {
+    await page.click('.theme-toggle')
+    await waitThemeApplied()
+    // 主题令牌已切 ≠ 过渡已走完:.tree-row / .nav-btn 都挂着 130ms 背景过渡,
+    // 立刻截图会拍到中间帧(shot-7 就是这么脏的)。等到真的稳。
+    const settled = await waitStyleSettled('.nav-btn')
+    await waitStyleSettled('.tree-row')
+    check(
+      '深色项目截图前过渡已稳定(不是拍在切换动画的中间帧上)',
+      settled != null,
+      `.nav-btn 稳态背景=${settled}`,
+    )
+    await page.screenshot({ path: join(SHOTS, 'shot-14-dark-project.png') })
+    await page.click('.theme-toggle') // 立刻还原浅色,后面的用例都按浅色写
+    await waitThemeApplied()
+    await waitStyleSettled('.nav-btn')
+  }
+
   // ---- Markdown:净化 + 相对资源 + 双视图 + 内链导航 ----
   await clickRow('README.md')
   await page.waitForSelector('.markdown-body')
@@ -2493,8 +2546,21 @@ try {
   // ====== 键盘触发跳转 / 查找引用 + 可发现性(3.6 / 3b.5 / 3b.6 / 4.1 / 4.2)======
   {
     // ---- 3b.6:不用任何自定义键位也能到达帮助入口 ----
-    await page.evaluate(() => document.querySelector('.help-toggle')?.click())
+    // **用键盘打开**(聚焦入口 + Enter),不是 `el.click()`:programmatic click 不会
+    // 把焦点给按钮,于是面板记下的"回哪儿去"就不是这个按钮,下面 2.1 的往返
+    // 就测不到真东西了。spec 的场景原文也是"用户用键盘打开帮助面板"。
+    await page.evaluate(() => {
+      const b = document.querySelector('.help-toggle')
+      if (b instanceof HTMLElement) b.focus()
+    })
+    const helpOpenedFrom = await page.evaluate(() => document.activeElement?.className ?? null)
+    await page.keyboard.press('Enter')
     await new Promise((r) => setTimeout(r, 300))
+    check(
+      '帮助面板往返断言的前提成立:打开前焦点确实在帮助入口按钮上',
+      helpOpenedFrom === 'help-toggle',
+      `打开前焦点=${helpOpenedFrom}`,
+    )
     const helpRows = await page.$$eval('.help-row', (els) =>
       els.map((e) => ({
         label: e.querySelector('.help-row-label')?.textContent ?? '',
@@ -2517,14 +2583,83 @@ try {
       helpRows.some((r) => r.key.includes('Tab')) && helpRows.some((r) => r.key.includes('↑')),
       helpRows.filter((r) => r.key.includes('Tab') || r.key.includes('↑')).map((r) => r.key).join(' | '),
     )
+    // ---- fix-help-panel-a11y 1.2:打开时焦点必须**移入面板** ----
+    // 这条以前没有,而且缺了它,下面 2.1 的"焦点回到触发按钮"是**恒真**的:
+    // 旧实现根本不移动焦点,焦点一直待在触发按钮上,"归还"自然成立 ——
+    // 断言测的是"它没走",不是"它回来了"。先验它真的走了,归还才有意义。
+    const afterOpen = await page.evaluate(() => {
+      const panel = document.querySelector('.help-panel')
+      const ae = document.activeElement
+      return {
+        open: !!panel,
+        inPanel: !!(panel && ae && panel.contains(ae)),
+        active: ae?.className ?? null,
+      }
+    })
+    check(
+      '打开帮助面板后焦点移入面板(否则按键根本到不了它)',
+      afterOpen.open === true && afterOpen.inPanel === true,
+      JSON.stringify(afterOpen),
+    )
+
+    // ---- 2.2:打开期间 Tab 不逸出面板(焦点陷阱)----
+    // 连按而不是按一次:面板里只有一个可聚焦元素(✕),按一次很容易"碰巧"还在里面;
+    // 要看的是**循环**,所以按到超过元素个数的圈数,每一步都记下落点。
+    const tabTrail = []
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press('Tab')
+      await new Promise((r) => setTimeout(r, 60))
+      tabTrail.push(await page.evaluate(() => {
+        const panel = document.querySelector('.help-panel')
+        const ae = document.activeElement
+        return {
+          in: !!(panel && ae && panel.contains(ae)),
+          el: ae ? `${ae.tagName.toLowerCase()}.${ae.className}` : null,
+        }
+      }))
+    }
+    // 反向也要走一遍:Shift+Tab 从第一个元素往回走是最容易漏出去的那一步
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.down('Shift')
+      await page.keyboard.press('Tab')
+      await page.keyboard.up('Shift')
+      await new Promise((r) => setTimeout(r, 60))
+      tabTrail.push(await page.evaluate(() => {
+        const panel = document.querySelector('.help-panel')
+        const ae = document.activeElement
+        return {
+          in: !!(panel && ae && panel.contains(ae)),
+          el: ae ? `${ae.tagName.toLowerCase()}.${ae.className}` : null,
+        }
+      }))
+    }
+    check(
+      '帮助面板打开期间 Tab / Shift+Tab 焦点始终不逸出面板(9 步全程)',
+      tabTrail.length === 9 && tabTrail.every((t) => t.in === true),
+      tabTrail.map((t) => `${t.in ? '✓' : '✗'}${t.el}`).join(' → '),
+    )
+
+    // ---- 2.3:aria-modal 的**声明与实现一致** ----
+    // 这条不是查"属性在不在",而是查**声明与约束是否配套**:
+    // 声明了模态就必须真的约束焦点;没约束就不许声明。两种不配套都判红。
+    const modal = await page.evaluate(() => {
+      const panel = document.querySelector('.help-panel')
+      return { declared: panel?.getAttribute('aria-modal') ?? null, role: panel?.getAttribute('role') ?? null }
+    })
+    const trapped = tabTrail.every((t) => t.in === true)
+    // 断言取**双向**的强形式:声明在 **且** 约束成立。
+    // 只写"声明了就必须约束"是不够的 —— 那条在 `aria-modal` 被误删时照样绿,
+    // 而 1.3 已经落地、1.4 的前提已成立,此刻少了声明就是"做了却不告诉辅助技术"。
+    // 反过来若哪天陷阱被拆掉,这条也会红,不会留下一个孤零零的声明。
+    check(
+      'aria-modal 的声明与焦点约束互为背书(声明在 + 焦点真被约束,缺一即红)',
+      modal.declared === 'true' && modal.role === 'dialog' && trapped,
+      `aria-modal=${modal.declared} role=${modal.role} 焦点被约束=${trapped}`,
+    )
+
     // ---- fix-help-panel-a11y 2.1:Esc 关闭,**且焦点回到触发按钮** ----
     // 只断言"面板关了"不够:面板关了而焦点掉进虚空,键盘用户下一次 Tab
     // 会从页面开头重来 —— 焦点去哪了才是他真正在意的事。
-    await page.evaluate(() => {
-      const btn = document.querySelector('.help-toggle')
-      if (btn instanceof HTMLElement) btn.focus()
-    })
-    await new Promise((r) => setTimeout(r, 120))
     const beforeEsc = await page.evaluate(() => ({
       open: !!document.querySelector('.help-panel'),
       active: document.activeElement?.className ?? null,
@@ -4031,6 +4166,9 @@ try {
       return el ? getComputedStyle(el).fontStyle : null
     })
     void cmComment
+    // 截图前等过渡走完(restyle-reader 收尾 A)。原来这里紧接着切换就拍,
+    // 距 `.theme-toggle` 不足 130ms,`.nav-btn` 被拍成浅灰药丸 —— 断言没问题,脏的只有图。
+    await waitStyleSettled('.nav-btn')
     await page.screenshot({ path: join(SHOTS, 'shot-7-dark.png') })
     await page.reload({ waitUntil: 'load' })
     await page.waitForSelector('.welcome', { timeout: 10000 })
