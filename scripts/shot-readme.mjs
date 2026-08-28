@@ -1,137 +1,49 @@
-// README / 商店截图。产出到 docs/images/。
+// README / 商店截图的 README 那一半。产出到 docs/images/。
 //
-// **取样口径(不要改成合成项目)**:截图必须展示真实仓库打开后的样子 —— 真实文件名、
-// 真实代码、真实的 `node_modules` / `.git`(它们正是"已隐藏 N 项"存在的理由)。
-// 合成项目不长这两样,拿它拍出来的图**证明不了任何事**,而且与用户打开后看到的不一致。
-//
-// 为什么仍然经由 OPFS:原生目录选择器无法自动化(它是浏览器 UI,CDP 合成事件进不去)。
-// 所以本脚本把**本仓库自己的真实文件**灌进 OPFS 再打开 —— "合成"的只剩"字节是怎么
-// 进去的",那一点观者看不见,也不构成任何虚假陈述。**不接受的是另外两种做法:造一个
-// 好看的假项目,或挑一个不会触发缺陷的样本 —— 那是修图的变体。**
-import puppeteer from 'puppeteer-core'
+// **取样口径不在这个文件里**，在 `shot-fixture.mjs` —— 它和 `shot-store.mjs` 共用
+// 同一份。口径曾经在这里各写一份，结果是：这里写着"不要改成合成项目"，商店那批
+// 却真的用了一个合成的 2 文件玩具项目，**两份都没红**。一条规则只要有两个副本，
+// 它就会漂移，而漂移时两边看上去都在正常工作。
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { PROJECT } from './paths.mjs'
+import {
+  collectRealFiles, launchViewer, openRealProject, makeClickRow, settle,
+} from './shot-fixture.mjs'
 import { execSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, readdirSync, statSync, mkdirSync, existsSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, relative, extname } from 'node:path'
-import { PROJECT, resolveChrome } from './paths.mjs'
 
-const DIST = join(PROJECT, 'dist-dev')
 const OUT = join(PROJECT, 'docs', 'images')
-const CHROME = resolveChrome()
-
-// 真实文件:体积上限只是为了让 CDP 传输可控,不改变"内容是真的"这一点
-const MAX_BYTES = 96 * 1024
-const TEXT_EXT = new Set(['.ts', '.tsx', '.js', '.mjs', '.json', '.md', '.html', '.css', '.svg', '.yml', '.yaml', ''])
-const INCLUDE = ['src', 'docs', 'openspec', 'scripts', 'public', 'assets', '.github']
-const ROOT_FILES = [
-  'README.md', 'README.zh-CN.md', 'CONTRIBUTING.md', 'SECURITY.md', 'PRIVACY.md',
-  'LICENSE', 'NOTICE', 'package.json', 'tsconfig.json', 'vite.config.ts', 'viewer.html',
-]
-
-/** 收集真实文件 → [{path, text}],路径相对仓库根 */
-function collect() {
-  const files = []
-  const walk = (dir) => {
-    for (const name of readdirSync(dir)) {
-      const abs = join(dir, name)
-      const st = statSync(abs)
-      if (st.isDirectory()) { walk(abs); continue }
-      if (st.size > MAX_BYTES) continue
-      if (!TEXT_EXT.has(extname(name))) continue
-      files.push({ path: relative(PROJECT, abs), text: readFileSync(abs, 'utf8') })
-    }
-  }
-  for (const d of INCLUDE) if (existsSync(join(PROJECT, d))) walk(join(PROJECT, d))
-  for (const f of ROOT_FILES) {
-    const abs = join(PROJECT, f)
-    if (existsSync(abs) && statSync(abs).size <= MAX_BYTES) {
-      files.push({ path: f, text: readFileSync(abs, 'utf8') })
-    }
-  }
-  // 被默认排除的重目录。**「已隐藏 N 项」的 N 数的是"该层被排除的条目数",不是文件数**
-  // (开发核过),所以这里放的是真实存在的那几个目录名即可 —— 把 node_modules 的几千个
-  // 文件灌进来只会让脚本跑几分钟,**图上一个字都不会变**。
-  const real = readdirSync(join(PROJECT, 'node_modules')).filter((n) => !n.startsWith('.')).slice(0, 3)
-  for (const name of real) files.push({ path: `node_modules/${name}/package.json`, text: `{ "name": "${name}" }` })
-  files.push({ path: '.git/HEAD', text: 'ref: refs/heads/main\n' })
-  files.push({ path: 'dist/manifest.json', text: '{}' })
-  return files
-}
 
 console.log('building dev bundle…')
 execSync('npx vite build --mode development --outDir dist-dev', { cwd: PROJECT, stdio: 'inherit' })
 mkdirSync(OUT, { recursive: true })
 
-const payload = collect()
+const payload = collectRealFiles()
 console.log(`真实文件 ${payload.length} 个`)
 
-const browser = await puppeteer.launch({
-  executablePath: CHROME,
-  headless: false,
-  pipe: true,
-  enableExtensions: true,
-  args: [`--user-data-dir=${mkdtempSync(join(tmpdir(), 'lectern-shot-'))}`, '--no-first-run', '--no-default-browser-check'],
-  defaultViewport: { width: 1440, height: 900, deviceScaleFactor: 2 },
-})
+const { browser, page } = await launchViewer({ width: 1440, height: 900, deviceScaleFactor: 2 })
+const clickRow = makeClickRow(page)
 
-const settle = (ms = 500) => new Promise((r) => setTimeout(r, ms))
-const shot = async (page, name) => {
+const shot = async (name) => {
   await settle()
   await page.screenshot({ path: join(OUT, name) })
   console.log('截图:', join('docs/images', name))
 }
 
 try {
-  const extId = await browser.installExtension(DIST)
-  const page = await browser.newPage()
-  await page.goto(`chrome-extension://${extId}/viewer.html`, { waitUntil: 'load' })
-  await page.waitForSelector('.welcome', { timeout: 10000 })
+  await openRealProject(page, payload)
 
-  await page.evaluate(async (files) => {
-    const root = await navigator.storage.getDirectory()
-    for await (const n of root.keys()) await root.removeEntry(n, { recursive: true })
-    for (const { path, text } of files) {
-      const parts = path.split('/')
-      let dir = root
-      for (const seg of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(seg, { create: true })
-      const fh = await dir.getFileHandle(parts[parts.length - 1], { create: true })
-      const w = await fh.createWritable()
-      await w.write(text)
-      await w.close()
-    }
-  }, payload)
-
-  await page.evaluate(async () => {
-    window.__cv.enterProject(await navigator.storage.getDirectory())
-  })
-  await page.waitForSelector('.tree-row', { timeout: 20000 })
-  await settle(1200)
-
-  // 首屏:展开 src 再打开一个真实源码文件;树里同时能看到「已隐藏 N 项」那一行
-  // 行的 textContent 以三角符号开头(`▸`),所以按 `.label` 的精确文本匹配,
-  // 不按整行前缀 —— 前缀匹配在这里静默失效过一次:点击没发生、脚本照常出图。
-  const clickRow = async (name) => {
-    const ok = await page.evaluate((n) => {
-      const label = [...document.querySelectorAll('.tree-row .label')].find((el) => el.textContent.trim() === n)
-      if (!label) return false
-      label.closest('.tree-row').dispatchEvent(new MouseEvent('click', { bubbles: true }))
-      return true
-    }, name)
-    await settle(700)
-    if (!ok) throw new Error(`目录树里找不到「${name}」—— 出图前中止,免得产出一张没打开文件的首屏图`)
-    return ok
-  }
   await clickRow('src')
   await clickRow('intel')
   await clickRow('extract.ts')
   await page.waitForSelector('.cm-content', { timeout: 10000 })
   await settle(900)
 
-  await shot(page, 'hero-light.png')
+  await shot('hero-light.png')
 
   await page.click('.theme-toggle')
   await page.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'dark', { timeout: 5000 })
-  await shot(page, 'hero-dark.png')
+  await shot('hero-dark.png')
 
   // 第三张:收起展开的目录,让「已隐藏 N 项」回到视口 —— 那一行是"默认排除但不静默"
   // 这条产品承诺唯一看得见的证据,**把它裁出画面等于把最想展示的克制裁掉**。
@@ -144,7 +56,7 @@ try {
     .catch(() => null)
   if (!hiddenLabel) throw new Error('「已隐藏 N 项」不在视口内 —— 中止,不出一张缺了它的树图')
   console.log('隐藏提示行:', hiddenLabel)
-  await shot(page, 'tree-hidden-light.png')
+  await shot('tree-hidden-light.png')
 
   // ---- 纯键盘链路：我不为一个没亲眼见过的行为写使用说明，所以这里真按一遍 ----
   // 断言的是**按下去发生了什么**（面包屑变了 / 面板出现了 / 退回原处），
@@ -199,7 +111,7 @@ try {
   await settle(600)
   const help = await page.$('.help-panel')
   console.log(`帮助面板(点按钮):${help ? '出现 ✓' : '未出现 ✗'}`)
-  if (help) await shot(page, 'keyboard-help.png')
+  if (help) await shot('keyboard-help.png')
 
   // 面板自己列出了退出键,所以退出键必须真的有效 —— 界面说什么,按下去就得是什么
   await page.keyboard.press('Escape')

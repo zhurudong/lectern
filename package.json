@@ -1,6 +1,6 @@
 {
   "name": "lectern-extension",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "description": "Lectern — a zero-network, read-only local code reader (Chrome MV3 extension)",
