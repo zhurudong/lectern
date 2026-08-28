@@ -68,3 +68,19 @@ jobs:
       # inside tracked PNGs on Linux. See the header of the script.
       - name: No internal role vocabulary
         run: node scripts/check-role-vocabulary.mjs
+
+      # release.yml refuses to publish without docs/releases/<version>.md, but
+      # it only finds out at tag time — after the tag exists and the release
+      # run has already failed. Cutting 0.3.2 hit exactly that: the version was
+      # bumped, everything was green, and the notes did not exist. Checking it
+      # here moves the failure to the commit that bumped the version, which is
+      # the commit that can still fix it cheaply.
+      - name: Release notes exist for the current version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          notes="docs/releases/${version}.md"
+          if [ ! -f "${notes}" ]; then
+            echo "::error::${notes} is missing — release.yml will refuse to publish v${version}."
+            exit 1
+          fi
+          echo "OK: ${notes} exists."
