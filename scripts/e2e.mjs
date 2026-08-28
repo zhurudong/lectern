@@ -140,21 +140,34 @@ try {
    *
    * 为什么不 `sleep(130)`:过渡时长正好是 130ms,睡 130 卡在边界上,偶尔仍会拍到
    * 最后一帧;而且它的症状是"截图偶尔有点脏",没人会把它认成 bug。
-   * 这里等的是**可观测条件**——连续两次读到同一个值才算稳——与我们对 E2E
-   * "等状态不等时间"的一贯要求一致。
+   *
+   * **"连续两次读到同一个值"自己有个起点假稳的坑**:若在过渡**还没开始**时就来轮询,
+   * 头两次读到的都是初始值,于是判"已稳定"直接放行 —— 等的是"没在动",
+   * 而"还没开始动"同样没在动。所以给了 `from`:先等值**离开过初始值**,再等它稳。
+   * 不传 `from` 时退化成原来的语义(只在确知过渡已开始时才这么用)。
    */
-  const waitStyleSettled = async (selector, prop = 'backgroundColor', timeout = 4000) => {
+  const waitStyleSettled = async (selector, prop = 'backgroundColor', { from = null, timeout = 5000 } = {}) => {
+    const read = () => page.evaluate(
+      (sel, pr) => {
+        const el = document.querySelector(sel)
+        return el ? getComputedStyle(el)[pr] : null
+      },
+      selector, prop,
+    )
     const t0 = Date.now()
+    if (from !== null) {
+      // 阶段一:必须先看见它动过
+      while (Date.now() - t0 < timeout) {
+        const v = await read()
+        if (v !== null && v !== from) break
+        await new Promise((r) => setTimeout(r, 30))
+      }
+    }
+    // 阶段二:再等它停下来
     let prev = null
     let stable = 0
     while (Date.now() - t0 < timeout) {
-      const v = await page.evaluate(
-        (sel, pr) => {
-          const el = document.querySelector(sel)
-          return el ? getComputedStyle(el)[pr] : null
-        },
-        selector, prop,
-      )
+      const v = await read()
       if (v !== null && v === prev) {
         stable += 1
         if (stable >= 2) return v
@@ -165,6 +178,40 @@ try {
       await new Promise((r) => setTimeout(r, 40))
     }
     return prev
+  }
+
+  /**
+   * **深色截图的正向守卫。**
+   *
+   * 上一版这里只断言"过渡已稳定" —— 那是个**负向**条件("没在动"),
+   * 而我们真正要的是**终态**:深色是不是真的画出来了。两者不等价,
+   * 起点静止也满足"没在动",于是一张浅色的图照样能过。
+   *
+   * 这里守三件事,缺一不可:
+   *   ① `data-theme` 确实是 `dark`(应用层已切);
+   *   ② `body` 的实际背景**等于当前 `--bg` 令牌**(样式已应用到画面,不只是变量变了);
+   *   ③ 这个值**不等于切换前的浅色值**(排除"根本没换套"这一种)。
+   * 返回实测底色,交给调用方 `check` —— 让它成为一条会红的断言,而不是一次静默等待。
+   */
+  const waitDarkPainted = async (lightBg, timeout = 6000) => {
+    const probe = () => page.evaluate(() => {
+      const tokenBg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()
+      const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(tokenBg)
+      const want = m ? `rgb(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)})` : tokenBg
+      return {
+        theme: document.documentElement.getAttribute('data-theme'),
+        bodyBg: getComputedStyle(document.body).backgroundColor,
+        tokenBg: want,
+      }
+    })
+    const t0 = Date.now()
+    let last = null
+    while (Date.now() - t0 < timeout) {
+      last = await probe()
+      if (last.theme === 'dark' && last.bodyBg === last.tokenBg && last.bodyBg !== lightBg) return last
+      await new Promise((r) => setTimeout(r, 50))
+    }
+    return last
   }
 
   await page.goto(`chrome-extension://${extId}/viewer.html`, { waitUntil: 'load' })
@@ -1484,21 +1531,33 @@ try {
   // 且是单文件模式 —— 没有目录树、没有滚动条、没有注释,
   // 而"项目模式 + 目录树 + 带注释源码"才是深色下最常见的那一屏,从没被拍过。
   {
+    const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+    const lightNav = await page.evaluate(() => {
+      const el = document.querySelector('.nav-btn')
+      return el ? getComputedStyle(el).backgroundColor : null
+    })
     await page.click('.theme-toggle')
-    await waitThemeApplied()
-    // 主题令牌已切 ≠ 过渡已走完:.tree-row / .nav-btn 都挂着 130ms 背景过渡,
-    // 立刻截图会拍到中间帧(shot-7 就是这么脏的)。等到真的稳。
-    const settled = await waitStyleSettled('.nav-btn')
-    await waitStyleSettled('.tree-row')
+    // ① 终态守卫:深色**真的画出来了**(不是"过渡不动了")
+    const painted = await waitDarkPainted(lightBg)
     check(
-      '深色项目截图前过渡已稳定(不是拍在切换动画的中间帧上)',
-      settled != null,
-      `.nav-btn 稳态背景=${settled}`,
+      '深色项目截图:深色确实已应用到画面(data-theme=dark 且 body 底色 = --bg 令牌 且 ≠ 浅色底)',
+      painted?.theme === 'dark' && painted.bodyBg === painted.tokenBg && painted.bodyBg !== lightBg,
+      `${lightBg} → ${painted?.bodyBg}(令牌 ${painted?.tokenBg},theme=${painted?.theme})`,
+    )
+    // ② 再等过渡走完。传 `from` 是必须的:不传的话"还没开始动"也算稳。
+    // 只等 `.nav-btn` 就够:树行与它挂在同一条 130ms 过渡上、同一刻起跑,
+    // 而树行背景多数是 transparent,取不到一个有意义的"起始值"来做起点守卫 ——
+    // 用一个守不住的等待凑数,不如不等。
+    const settled = await waitStyleSettled('.nav-btn', 'backgroundColor', { from: lightNav })
+    check(
+      '深色项目截图前过渡已走完(.nav-btn 已离开浅色值并稳定)',
+      settled != null && settled !== lightNav,
+      `.nav-btn ${lightNav} → 稳态 ${settled}`,
     )
     await page.screenshot({ path: join(SHOTS, 'shot-14-dark-project.png') })
     await page.click('.theme-toggle') // 立刻还原浅色,后面的用例都按浅色写
     await waitThemeApplied()
-    await waitStyleSettled('.nav-btn')
+    await waitStyleSettled('.nav-btn', 'backgroundColor', { from: settled })
   }
 
   // ---- Markdown:净化 + 相对资源 + 双视图 + 内链导航 ----
@@ -4136,6 +4195,11 @@ try {
       const el = [...document.querySelectorAll('.cm-line span')].find((s) => s.className)
       return el ? getComputedStyle(el).color : null
     })
+    const lightBodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+    const lightNavBg = await page.evaluate(() => {
+      const el = document.querySelector('.nav-btn')
+      return el ? getComputedStyle(el).backgroundColor : null
+    })
     await page.click('.theme-toggle')
     await waitThemeApplied()
     const stored = await page.evaluate(() => localStorage.getItem('cv-theme'))
@@ -4166,9 +4230,23 @@ try {
       return el ? getComputedStyle(el).fontStyle : null
     })
     void cmComment
-    // 截图前等过渡走完(restyle-reader 收尾 A)。原来这里紧接着切换就拍,
+    // 截图前的两道闸(restyle-reader 收尾 A)。原来这里紧接着切换就拍,
     // 距 `.theme-toggle` 不足 130ms,`.nav-btn` 被拍成浅灰药丸 —— 断言没问题,脏的只有图。
-    await waitStyleSettled('.nav-btn')
+    // ① 终态守卫:深色真的画出来了。**这条是正向的** ——
+    //    "过渡稳定"是负向条件,起点静止也满足它,一张浅色图照样能过。
+    const painted7 = await waitDarkPainted(lightBodyBg)
+    check(
+      '深色单文件截图:深色确实已应用到画面(data-theme=dark 且 body 底色 = --bg 令牌 且 ≠ 浅色底)',
+      painted7?.theme === 'dark' && painted7.bodyBg === painted7.tokenBg && painted7.bodyBg !== lightBodyBg,
+      `${lightBodyBg} → ${painted7?.bodyBg}(令牌 ${painted7?.tokenBg},theme=${painted7?.theme})`,
+    )
+    // ② 再等过渡走完;传 `from` 以免"还没开始动"被当成"已经稳了"
+    const settled7 = await waitStyleSettled('.nav-btn', 'backgroundColor', { from: lightNavBg })
+    check(
+      '深色单文件截图前过渡已走完(.nav-btn 已离开浅色值并稳定)',
+      settled7 != null && settled7 !== lightNavBg,
+      `.nav-btn ${lightNavBg} → 稳态 ${settled7}`,
+    )
     await page.screenshot({ path: join(SHOTS, 'shot-7-dark.png') })
     await page.reload({ waitUntil: 'load' })
     await page.waitForSelector('.welcome', { timeout: 10000 })
