@@ -3831,6 +3831,62 @@ try {
       JSON.stringify(contentAfterActivate),
     )
 
+    // ---- 全文面板 ③ **鼠标点过一条结果,再点✕关闭**(真机复现的那条路径) ----
+    // 排查记录:一开始以为"鼠标点结果→Esc"就能复现,实测不成立——`.ref-body`
+    // 带 tabIndex={-1},结果行本身没有 tabindex,点行时 Chrome 的点击聚焦会
+    // 顺着找最近的可聚焦祖先(容器自己),不会把 activeElement 带出容器,
+    // 所以 close() 里 `inside` 仍是 true,Esc 归还正常。
+    // 真正复现的是点右上角「✕」按钮关闭:它是原生 <button>,点击会先把
+    // DOM 焦点抢到按钮自己身上——而按钮在 `.ref-header` 里,是 `.ref-body`
+    // 的兄弟节点,不被它 contains。于是 `inside` 变 false,归还被跳过;
+    // 紧接着 onClose() 把整个面板(含那颗按钮)卸载,浏览器就把焦点摔到了 body。
+    await gotoDeepAnchor()
+    await runContent('DeepAnchor')
+    await page.waitForSelector('.content-panel .ref-row', { timeout: 20000 })
+    await new Promise((r) => setTimeout(r, 200))
+    await page.click('.content-panel .ref-row')
+    await new Promise((r) => setTimeout(r, 700))
+    const stillOpenAfterMouse = await page.evaluate(() => !!document.querySelector('.content-panel'))
+    check('全文面板:鼠标点一条结果之后面板仍保持打开(本条动线的前提)', stillOpenAfterMouse, String(stillOpenAfterMouse))
+    {
+      // 必须是 Puppeteer 的真实鼠标点击(会经过 mousedown → 原生聚焦 → click),
+      // 不能用 `el.click()`(DOM API 合成的 click 事件不带 mousedown 聚焦这一步,
+      // 复现不出问题——这里踩过一次:改成这样之前,这条断言在修复前也是假绿的)。
+      const btns = await page.$$('.content-panel .ref-btn')
+      let xBtn = null
+      for (const b of btns) { if ((await b.evaluate((e) => e.textContent)).trim() === '✕') xBtn = b }
+      await xBtn.click()
+    }
+    await new Promise((r) => setTimeout(r, 500))
+    const contentAfterMouseActivate = await focusNow()
+    check(
+      '全文面板:**鼠标点过一条结果、再点✕关闭** → 焦点仍被归还(不能只靠 activeElement 当前是否在容器内判断)',
+      restored(contentAfterMouseActivate),
+      JSON.stringify(contentAfterMouseActivate),
+    )
+
+    // ---- 全文面板 ④ **鼠标点过一条结果,再按 Esc 关闭**(用户真机报的原始动线) ----
+    // 这条在本仓库的自动化环境里本来就是绿的(dist-dev 里 Esc 不复现,见③的排查记录),
+    // 但用户真机报的失败动作原文就是"按 Esc",不是点✕。close() 的修法(无条件归还,
+    // 不看 activeElement 此刻在哪)理应同时盖住两条路径——把这条也锁进断言,
+    // 不能只validate 点✕那一条就当作事情办完了。
+    await gotoDeepAnchor()
+    await runContent('DeepAnchor')
+    await page.waitForSelector('.content-panel .ref-row', { timeout: 20000 })
+    await new Promise((r) => setTimeout(r, 200))
+    await page.click('.content-panel .ref-row')
+    await new Promise((r) => setTimeout(r, 700))
+    const stillOpenAfterMouseEsc = await page.evaluate(() => !!document.querySelector('.content-panel'))
+    check('全文面板:鼠标点一条结果之后面板仍保持打开(④ 前提)', stillOpenAfterMouseEsc, String(stillOpenAfterMouseEsc))
+    await page.keyboard.press('Escape')
+    await new Promise((r) => setTimeout(r, 500))
+    const contentAfterMouseEsc = await focusNow()
+    check(
+      '全文面板:**鼠标点过一条结果、再按 Esc 关闭**(用户真机原始动线) → 焦点仍被归还',
+      restored(contentAfterMouseEsc),
+      JSON.stringify(contentAfterMouseEsc),
+    )
+
     // ---- 引用面板 ① 未激活直接 Esc ----
     if (await openRefPanel()) {
       await new Promise((r) => setTimeout(r, 400))
@@ -3861,6 +3917,46 @@ try {
       )
     } else {
       check('引用面板:**激活过一条之后**再 Esc → 焦点仍被归还', false, '引用面板未能打开,前提不成立')
+    }
+
+    // ---- 引用面板 ③ 鼠标点过一条结果、再点✕关闭(同一形状,同一根因,一并补) ----
+    if (await openRefPanel()) {
+      await new Promise((r) => setTimeout(r, 400))
+      await page.click('.ref-panel:not(.content-panel) .ref-row')
+      await new Promise((r) => setTimeout(r, 700))
+      {
+        // 见全文面板③的踩坑记录:必须用 Puppeteer 的真实点击,不能用 el.click()。
+        const btns = await page.$$('.ref-panel:not(.content-panel) .ref-btn')
+        let xBtn = null
+        for (const b of btns) { if ((await b.evaluate((e) => e.textContent)).trim() === '✕') xBtn = b }
+        await xBtn.click()
+      }
+      await new Promise((r) => setTimeout(r, 500))
+      const refAfterMouseActivate = await focusNow()
+      check(
+        '引用面板:**鼠标点过一条结果、再点✕关闭** → 焦点仍被归还',
+        restored(refAfterMouseActivate),
+        JSON.stringify(refAfterMouseActivate),
+      )
+    } else {
+      check('引用面板:**鼠标点过一条结果、再点✕关闭** → 焦点仍被归还', false, '引用面板未能打开,前提不成立')
+    }
+
+    // ---- 引用面板 ④ 鼠标点过一条结果、再按 Esc 关闭(同一形状,同一根因,一并补) ----
+    if (await openRefPanel()) {
+      await new Promise((r) => setTimeout(r, 400))
+      await page.click('.ref-panel:not(.content-panel) .ref-row')
+      await new Promise((r) => setTimeout(r, 700))
+      await page.keyboard.press('Escape')
+      await new Promise((r) => setTimeout(r, 500))
+      const refAfterMouseEsc = await focusNow()
+      check(
+        '引用面板:**鼠标点过一条结果、再按 Esc 关闭** → 焦点仍被归还',
+        restored(refAfterMouseEsc),
+        JSON.stringify(refAfterMouseEsc),
+      )
+    } else {
+      check('引用面板:**鼠标点过一条结果、再按 Esc 关闭** → 焦点仍被归还', false, '引用面板未能打开,前提不成立')
     }
   }
 
