@@ -130,13 +130,20 @@ export function useOverlayKeyboard(opts: {
    * —— 实测代价:候选面板刚拿到焦点,就被一个正在卸载的面板把焦点拉回编辑器。
    *
    * 关闭时刻没有这两个问题:容器还在、焦点归属是确定的。
+   *
+   * **不看"此刻 activeElement 是否还在容器内"** —— `close()` 只可能被
+   * Esc / ✕ / 点背景这三条"用户主动关闭"的路径调用(激活走的是 `activate()`,
+   * 从不调这里),能走到这儿本身就代表交接已经发起,不需要再用当前归属确认一遍。
+   * 真机踩过这个判据的坑:点击结果行跳转后,面板容器仍持有焦点,
+   * 但用户随后点击右上角「✕」按钮关闭 —— 原生 `<button>` 在 mousedown
+   * 时会先把焦点抢到它自己身上(它在 `.ref-header` 里,是容器的兄弟节点,
+   * 不被 `contains` 判进去),`inside` 因此判成 false,归还被跳过;
+   * 紧接着 `onClose()` 卸载整个面板(连同那颗按钮),浏览器就把焦点摔到了 body。
    */
   const close = () => {
-    const c = containerRef.current
-    const inside = !!c && c.contains(document.activeElement)
     const back = returnToRef.current
     onClose()
-    if (inside && back instanceof HTMLElement && document.contains(back)) back.focus()
+    if (back instanceof HTMLElement && document.contains(back)) back.focus()
   }
 
   const activate = (index: number) => {
