@@ -3960,6 +3960,64 @@ try {
     }
   }
 
+  // ---- 全文面板:再次搜索后 ↑↓ 仍可选中新结果(真机复现:第二次搜索后方向键失灵) ----
+  // 根因:`ContentPanel` 里 `useOverlayKeyboard({ open: true, ... })` 的 `open` 是字面量
+  // 常量,移入焦点的 `useLayoutEffect(..., [open])` 只在组件**挂载**(面板从关到开)
+  // 那一刻跑一次。第一次搜索:`contentPanelOpen` false→true → 组件挂载 → 抢到焦点 →
+  // ↑↓ 生效。再次呼出全文搜索(等效再按一次 ⇧⌘F)时面板已经挂载着(`contentPanelOpen`
+  // 保持 true,组件不重新挂载),`focusInput('content')` 把焦点重新放回 search-input,
+  // 之后再也没人把焦点移交给结果容器——`search-input` 自己的 `onInputKey` 对
+  // `searchMode === 'content'` 时的 ArrowDown 没有对应处理,于是按 ↓ 无事发生。
+  {
+    // 注意:`selected` 默认就是 0,第 0 行天生带 `selected` class —— 断言"有没有行被
+    // 选中"对这条 bug 是**恒真**的假绿(踩过一次才发现)。必须比较 ArrowDown **前后**
+    // 选中下标是否真的移动(0→1),这才是能证明"键盘够得到结果列表"的证据。
+    const selectedIndex = () => page.evaluate(() => {
+      const rows = [...document.querySelectorAll('.content-panel .ref-row')]
+      return rows.findIndex((r) => r.classList.contains('selected'))
+    })
+
+    await runContent('Handler')
+    await page.waitForSelector('.content-panel .ref-row', { timeout: 20000 })
+    await new Promise((r) => setTimeout(r, 300))
+    const before1 = await selectedIndex()
+    await page.keyboard.press('ArrowDown')
+    await new Promise((r) => setTimeout(r, 150))
+    const after1 = await selectedIndex()
+    check(
+      '全文面板:首次搜索后 ↑↓ 能移动选中下标(本条断言的前提)',
+      after1 === before1 + 1,
+      `${before1} → ${after1}`,
+    )
+
+    // 修法是"↓ 把焦点转进结果容器"(不是让面板重新挂载),所以再次搜索后的
+    // 第一下 ↓ 只负责**从输入框进入列表**(落在新查询已重置好的第 0 项,
+    // 视觉上不一定挪动——第 0 项本来就默认高亮,跟首次打开一致);
+    // 真正证明"↑↓ 复活"的是**第二下** ↓ 让下标继续前进。两下都得验:
+    // 第一下验的是"进得去"(真机报的"焦点还在搜索框里"),第二下验的是
+    // "进去之后还能动"(真机报的"↑↓ 用不了")。
+    await runContent('DeepAnchor')
+    await page.waitForSelector('.content-panel .ref-row', { timeout: 20000 })
+    await new Promise((r) => setTimeout(r, 300))
+    await page.keyboard.press('ArrowDown')
+    await new Promise((r) => setTimeout(r, 150))
+    const enteredClass = await page.evaluate(() => document.activeElement?.className ?? null)
+    check(
+      '全文面板:**再次搜索**之后按 ↓ 焦点能进入结果列表(不再卡在搜索输入框里)',
+      enteredClass === 'ref-body',
+      String(enteredClass),
+    )
+    const afterEnter = await selectedIndex()
+    await page.keyboard.press('ArrowDown')
+    await new Promise((r) => setTimeout(r, 150))
+    const afterSecondPress = await selectedIndex()
+    check(
+      '全文面板:**再次搜索**之后 ↑↓ 仍能移动选中下标(真机报的"第二次搜索后方向键失灵")',
+      afterSecondPress === afterEnter + 1,
+      `${afterEnter} → ${afterSecondPress}`,
+    )
+  }
+
   // ---- 三个搜索入口互不干扰(10.6):同一关键词,三种模式结果集各自正确 ----
   {
     const keyword = 'Handler'
