@@ -131,6 +131,15 @@ export function SearchBox() {
   const onInputKey = (e: KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
+      // 全文模式下,结果容器只在面板**挂载那一刻**(useOverlayKeyboard 的
+      // useLayoutEffect 依赖恒为 true)抢一次焦点——面板保持打开时再次搜索
+      // (⇧⌘F 再按一次)不会重新挂载,焦点会被 focusInput() 放回这个输入框、
+      // 此后再没人接手。这里补一条通用兜底:不管是第几次搜索,焦点在输入框时
+      // 按 ↓ 都能进结果列表(没有结果时 querySelector 为 null,是安全的空操作)。
+      if (searchMode === 'content') {
+        document.querySelector<HTMLElement>('.content-panel .ref-body')?.focus()
+        return
+      }
       setActive((a) => Math.min(a + 1, count - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
