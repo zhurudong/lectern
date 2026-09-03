@@ -1,3 +1,4 @@
+import { useEffect } from 'preact/hooks'
 import { navigateWithHistory } from '../intel/navStack'
 import { useOverlayKeyboard } from '../lib/useOverlayKeyboard'
 import type { GrepHit } from '../intel/symbolWorker'
@@ -50,6 +51,12 @@ export function ContentPanel() {
     },
     onClose: closeContentSearch,
   })
+  // 面板保持打开、只是换了一次查询(⇧⌘F 再按一次)时不会重新挂载,
+  // `useOverlayKeyboard` 挂载时的 `setSelected(0)` 不会再跑一遍 ——
+  // 不重置的话,新结果会从上一次查询残留的下标开始高亮,跟"新结果"对不上。
+  useEffect(() => {
+    kb.setSelected(0)
+  }, [q])
   let flatIndex = -1
 
   return (
