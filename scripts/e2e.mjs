@@ -4018,6 +4018,31 @@ try {
     )
   }
 
+  // ---- 全文面板:结果首行再按 ↑ → 焦点回到搜索输入框(闭合键盘环的另一半) ----
+  // 跟"输入框按 ↓ 进结果"对称:用户在结果第一行(selected===0)再按 ↑ 不该被
+  // clamp 在原地吞掉,而是把焦点交还给触发它的搜索输入框,让用户能接着改关键词
+  // ——否则键盘只能进、不能退,退回去还得靠鼠标点输入框。
+  {
+    await runContent('Handler')
+    await page.waitForSelector('.content-panel .ref-row', { timeout: 20000 })
+    await new Promise((r) => setTimeout(r, 300))
+    // 这个 block 跑在前面几个 block 之后,面板早已挂载过,不能假定这次焦点会
+    // 自动落进容器 —— 用刚修好的"输入框按 ↓ 进结果"路径显式把焦点带进去,
+    // 这样也顺带保证 `selected` 是本条断言需要的 0(重开一次查询已经重置过)。
+    await page.keyboard.press('ArrowDown')
+    await new Promise((r) => setTimeout(r, 200))
+    const beforeUp = await page.evaluate(() => document.activeElement?.className ?? null)
+    check('全文面板:首行 ↑ 断言前提——此刻焦点已在结果容器里', beforeUp === 'ref-body', String(beforeUp))
+    await page.keyboard.press('ArrowUp')
+    await new Promise((r) => setTimeout(r, 200))
+    const afterUp = await page.evaluate(() => document.activeElement?.className ?? null)
+    check(
+      '全文面板:结果首行再按 ↑ → 焦点回到搜索输入框',
+      afterUp === 'search-input',
+      String(afterUp),
+    )
+  }
+
   // ---- 三个搜索入口互不干扰(10.6):同一关键词,三种模式结果集各自正确 ----
   {
     const keyword = 'Handler'
