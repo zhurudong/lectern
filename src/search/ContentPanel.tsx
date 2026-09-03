@@ -89,7 +89,19 @@ export function ContentPanel() {
         role="listbox"
         aria-label="全文搜索结果"
         aria-activedescendant={kb.activeId}
-        onKeyDown={(e) => kb.onKeyDown(e as unknown as KeyboardEvent)}
+        onKeyDown={(e) => {
+          const ke = e as unknown as KeyboardEvent
+          // 键盘环的另一半:输入框按 ↓ 能进结果列表(见 SearchBox.onInputKey),
+          // 结果首行(selected===0)再按 ↑ 就该退回去,不然只能进不能退,
+          // 退回去还得靠鼠标点输入框。首行以外的 ↑ 仍走通用的"移动选中项"。
+          // content-search spec 待补 Scenario:结果首行 ↑ 返回搜索输入框。
+          if (ke.key === 'ArrowUp' && kb.selected === 0) {
+            ke.preventDefault()
+            document.querySelector<HTMLInputElement>('.search-input')?.focus()
+            return
+          }
+          kb.onKeyDown(ke)
+        }}
       >
         {tooShort ? (
           <div class="ref-empty">关键词过短,未启动全项目扫描。</div>
