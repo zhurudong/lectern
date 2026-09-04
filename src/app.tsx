@@ -2,6 +2,7 @@ import { useEffect } from 'preact/hooks'
 import { lazy, Suspense } from 'preact/compat'
 import { mode, projectView, rootHandle, rootName, goWelcome } from './state'
 import { theme, toggleTheme } from './theme'
+import { lang, toggleLang, t } from './i18n'
 import { openFolder, openSingleFile } from './lib/access'
 import { useResizable } from './lib/useResizable'
 import { startIndex, stopIndex } from './search/searchStore'
@@ -70,6 +71,11 @@ function TopBar() {
       </button>
       <button class="theme-toggle" title="切换浅色/暗色主题" onClick={toggleTheme}>
         {theme.value === 'light' ? '🌙 暗色' : '☀️ 浅色'}
+      </button>
+      {/* i18n 语言开关(样板):切换即时重渲染已接入 i18n 的面板(当前为入口页)。
+          最终态见 add-english-ui-i18n 方案 —— 全量迁移后此开关切换整个界面语言。 */}
+      <button class="lang-toggle" title={t('topbar.langToggleTitle')} aria-label={t('topbar.langToggleTitle')} onClick={toggleLang}>
+        {lang.value === 'zh' ? 'EN' : '中'}
       </button>
     </header>
   )
