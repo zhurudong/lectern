@@ -420,8 +420,51 @@ try {
       '',                                // 6
       '#endif',                          // 7
     ].join('\n'))
-    // B 组高频语言 + C 组整文件名 + D 组近似高亮(任务 2c / 2d / 2e)
-    await write(src, 'main.rs', 'fn main() {\n    let x: u32 = 1;\n    println!("{}", x);\n}\n')
+    // Rust / PHP 已升到"可跳转"档(官方 Lezer 语法)。文件保持紧凑以便全部行都在视口内渲染
+    // (CodeMirror 虚拟滚动,视口外的行不入 DOM,clickWord 就点不到);同时目标定义**不在第 1 行**,
+    // 避免"跳转后 caret 落在目标行"与"caret 恒在第 1 行"的缺陷碰巧重合而假绿。
+    await write(src, 'main.rs', [
+      '// Rust 可跳转夹具',                    // 1
+      'pub const RUST_LIMIT: u32 = 3;',        // 2
+      '',                                      // 3
+      'struct RustBox {',                      // 4
+      '    slot: u32,',                        // 5
+      '}',                                     // 6
+      '',                                      // 7
+      'impl RustBox {',                        // 8
+      '    fn peek(&self) -> u32 { self.slot }', // 9
+      '}',                                     // 10
+      '',                                      // 11
+      'fn rustEntry(seed: u32) -> u32 {',      // 12
+      '    seed * 2',                          // 13
+      '}',                                     // 14
+      '',                                      // 15
+      'fn rustCaller() -> u32 {',              // 16
+      '    rustEntry(21)',                     // 17
+      '}',                                     // 18
+    ].join('\n'))
+    // app.php 刻意放在**项目根**而非 src/:src 的子项数一旦 +1,会把根层尾部的
+    // added-later.txt 挤出"刷新后"那条断言的虚拟滚动渲染窗口(实测过);放根层则 src
+    // 子项数与基线一致,那条既有断言不受影响。可跳转能力与文件位置无关。
+    await write(root, 'app.php', [
+      '<?php',                                 // 1
+      'namespace PhpDemo;',                    // 2
+      '',                                      // 3
+      'const PHP_LIMIT = 3;',                  // 4
+      '',                                      // 5
+      'class PhpBox {',                        // 6
+      '    public $slot;',                     // 7
+      '    public function peek() { return $this->slot; }', // 8
+      '}',                                     // 9
+      '',                                      // 10
+      'function phpEntry($seed) {',            // 11
+      '    return $seed * 2;',                 // 12
+      '}',                                     // 13
+      '',                                      // 14
+      'function phpCaller() {',                // 15
+      '    return phpEntry(21);',              // 16
+      '}',                                     // 17
+    ].join('\n'))
     await write(src, 'app.rb', 'class Greeter\n  def initialize(name)\n    @name = name\n  end\nend\n')
     await write(src, 'Main.kt', 'fun main() {\n    val x: Int = 1\n    println(x)\n}\n')
     await write(src, 'Prog.cs', [
@@ -1929,7 +1972,7 @@ try {
 
   // ---- B 组高频语言 / C 组整文件名 / D 组近似高亮(任务 2c / 2d / 2e)----
   for (const [file, path, probe, label] of [
-    ['main.rs', 'src/main.rs', 'fn main()', 'Rust'],
+    // 注意:Rust / PHP 已升到"可跳转"档,不在此"仅高亮"清单里(见下方专门的可跳转断言)
     ['app.rb', 'src/app.rb', 'class Greeter', 'Ruby'],
     ['Main.kt', 'src/Main.kt', 'fun main()', 'Kotlin'],
     ['Prog.cs', 'src/Prog.cs', 'namespace App', 'C#'],
@@ -1963,6 +2006,79 @@ try {
       shown === label && kinds >= 3 && cap === '仅高亮',
       `语言=${shown} 高亮类=${kinds} 能力=${cap}`,
     )
+  }
+
+  // ---- Rust / PHP:新升"可跳转"档 —— 每门:大纲有符号 + ⌘点击跳转到定义 + 查找引用非空 ----
+  // 由官方 Lezer 语法(@lezer/rust、@lezer/php)驱动,走与 Go/TS 同一条符号抽取通道。
+  for (const t of [
+    {
+      file: 'main.rs', path: 'src/main.rs', lang: 'Rust', probe: 'fn rustCaller',
+      expect: ['RUST_LIMIT@2', 'RustBox@4', 'slot@5', 'peek@9', 'rustEntry@12', 'rustCaller@16'],
+      forbid: ['seed', 'self'],
+      callWord: 'rustEntry', defLine: 'fn rustEntry(seed', refCount: 2,
+    },
+    {
+      file: 'app.php', path: 'app.php', lang: 'PHP', probe: 'function phpCaller',
+      expect: ['PhpDemo@2', 'PHP_LIMIT@4', 'PhpBox@6', '$slot@7', 'peek@8', 'phpEntry@11', 'phpCaller@15'],
+      forbid: ['seed', 'this', '$seed'],
+      callWord: 'phpEntry', defLine: 'function phpEntry($seed', refCount: 2,
+    },
+  ]) {
+    await openFile(t.file, t.path)
+    await waitOutline('peek')
+    // ① 大纲有符号且行号正确
+    {
+      const rows = await outlineRows()
+      const got = rows.map((r) => `${r.name}@${r.line}`)
+      const missing = t.expect.filter((e) => !got.includes(e))
+      check(`大纲条目内容与行号正确(${t.lang})`, missing.length === 0, missing.length ? '缺失 ' + missing.join(',') : got.join(' '))
+      const leaked = t.forbid.filter((f) => rows.some((r) => r.name === f))
+      check(`${t.lang} 形参/局部变量未进入大纲`, leaked.length === 0, leaked.length ? '误收 ' + leaked.join(',') : '已排除')
+    }
+    // 能力标识为"可跳转",语言名正确
+    {
+      const cap = await page.$eval('.intel-cap', (el) => ({ text: el.textContent, cls: el.className }))
+      check(`${t.lang} 显示"可跳转"能力标识`, cap.text === '可跳转' && cap.cls.includes('intel-cap-full'), JSON.stringify(cap))
+      const shown = await page.$eval('.intel-lang', (el) => el.textContent)
+      check(`${t.lang} 预览区显示语言名`, shown === t.lang, shown)
+    }
+    // ② ⌘+点击调用点跳转到定义(定义不在第 1 行,排除 caret 恒在开头的假绿)
+    await page.waitForFunction(
+      (p) => document.querySelector('.cm-content')?.textContent?.includes(p),
+      { timeout: 10000 }, t.probe,
+    )
+    {
+      // callWord 出现两次:第 1 次是定义行,第 2 次是调用点 —— 取第 2 个
+      await clickWord(t.callWord, { nth: 2, meta: true })
+      await page.waitForSelector('.cm-target-line', { timeout: 8000 })
+      const line = await targetLineText()
+      check(`${t.lang} ⌘+点击调用点跳转到定义行`, !!line && line.includes(t.defLine), line?.trim())
+    }
+    // ③ 查找引用非空,命中定义处与调用处(均在本文件)
+    {
+      await clickWord(t.callWord, { right: true })
+      await page.waitForSelector('.intel-menu', { timeout: 8000 })
+      await page.evaluate(() => {
+        const btn = [...document.querySelectorAll('.intel-menu-item')].find((b) => b.textContent?.startsWith('查找引用'))
+        btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      })
+      await page.waitForSelector('.ref-panel', { timeout: 8000 })
+      await page.waitForFunction(
+        () => (document.querySelector('.ref-status')?.textContent ?? '').includes('扫描完成'),
+        { timeout: 30000 },
+      )
+      const files = await page.$$eval('.ref-file', (els) => els.map((e) => e.textContent?.trim().split(' ')[0] ?? ''))
+      const refRows = await page.$$eval('.ref-row', (els) => els.length)
+      check(
+        `${t.lang} 查找引用非空且命中定义处与调用处(${t.refCount} 处)`,
+        files.includes(t.path) && refRows === t.refCount,
+        `文件=${files.join('|')} 条数=${refRows}`,
+      )
+      await page.evaluate(() => {
+        const btn = [...document.querySelectorAll('.ref-btn')].find((b) => b.textContent === '✕')
+        btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      })
+    }
   }
 
   // 2d.3:Makefile 没有可用模式 —— 按纯文本展示,MUST NOT 借别的模式假装有高亮

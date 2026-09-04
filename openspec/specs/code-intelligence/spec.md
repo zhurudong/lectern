@@ -5,7 +5,7 @@
 ## Requirements
 ### Requirement: 代码理解的支持范围与能力明示
 
-代码理解(跳转定义、查找引用、大纲、符号搜索)SHALL 至少覆盖 Python、Java、C、C++、Go、JavaScript、TypeScript(含 JSX/TSX)。其余已支持高亮的类型(JSON、HTML、CSS、SQL、YAML、XML、Shell、纯文本)MUST NOT 提供跳转与查找引用能力;Markdown 例外地 SHALL 提供仅含标题层级的大纲,但同样 MUST NOT 提供跳转与查找引用。
+代码理解(跳转定义、查找引用、大纲、符号搜索)SHALL 至少覆盖 Python、Java、C、C++、Go、JavaScript、TypeScript(含 JSX/TSX)、Rust、PHP。其余已支持高亮的类型(JSON、HTML、CSS、SQL、YAML、XML、Shell、纯文本)MUST NOT 提供跳转与查找引用能力;Markdown 例外地 SHALL 提供仅含标题层级的大纲,但同样 MUST NOT 提供跳转与查找引用。
 
 查看器 SHALL 在界面上明示当前预览文件是否支持代码理解(例如预览区的语言能力标识),MUST NOT 让用户通过"点了没反应"来推断。不支持的语言下,语法高亮、Markdown 渲染与既有预览行为 MUST NOT 受影响。
 

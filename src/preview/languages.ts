@@ -18,7 +18,9 @@ import { shell } from '@codemirror/legacy-modes/mode/shell'
 // 既然有一等模式,就不必制造一个需要向用户解释的"近似高亮"。零新增依赖。
 import { sCSS, less } from '@codemirror/legacy-modes/mode/css'
 import { sass } from '@codemirror/legacy-modes/mode/sass'
-import { rust } from '@codemirror/legacy-modes/mode/rust'
+// Rust / PHP 有官方 Lezer 语法包,走一等语法树通道(与 Go/TS 同),而非 legacy-modes 近似。
+import { rust } from '@codemirror/lang-rust'
+import { php } from '@codemirror/lang-php'
 import { ruby } from '@codemirror/legacy-modes/mode/ruby'
 import { kotlin, csharp } from '@codemirror/legacy-modes/mode/clike'
 import { groovy } from '@codemirror/legacy-modes/mode/groovy'
@@ -72,7 +74,10 @@ export function languageExtension(id?: string): Extension {
     case 'shell':
       return StreamLanguage.define(shell)
     case 'rust':
-      return StreamLanguage.define(rust)
+      return rust()
+    case 'php':
+      // 顶层无需 <?php 包裹也能高亮:多数 .php 文件确实以 <?php 开头,plain 模式两者兼容
+      return php()
     case 'ruby':
       return StreamLanguage.define(ruby)
     case 'kotlin':
@@ -125,7 +130,8 @@ export function languageParser(id: string): Parser | null {
       case 'xml': cached = xml().language.parser; break
       case 'markdown': cached = markdown().language.parser; break
       case 'shell': cached = StreamLanguage.define(shell).parser; break
-      case 'rust': cached = StreamLanguage.define(rust).parser; break
+      case 'rust': cached = rust().language.parser; break
+      case 'php': cached = php().language.parser; break
       case 'ruby': cached = StreamLanguage.define(ruby).parser; break
       case 'kotlin': cached = StreamLanguage.define(kotlin).parser; break
       case 'csharp': cached = StreamLanguage.define(csharp).parser; break
@@ -160,6 +166,7 @@ export function normalizeFenceLang(lang: string): string | null {
     css: 'css',
     scss: 'scss', sass: 'sass', less: 'less',
     rust: 'rust', rs: 'rust',
+    php: 'php', php3: 'php', php4: 'php', php5: 'php', phtml: 'php',
     ruby: 'ruby', rb: 'ruby',
     kotlin: 'kotlin', kt: 'kotlin', kts: 'kotlin',
     csharp: 'csharp', cs: 'csharp', 'c#': 'csharp',
