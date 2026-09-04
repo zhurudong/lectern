@@ -516,6 +516,40 @@ try {
     await write(root, 'temp.txt', 'to be deleted\n')
     await write(root, 'photo.svg', '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><circle cx="30" cy="30" r="25" fill="#c586c0"/></svg>')
     await write(root, 'single.md', '单文件模式相对图片: ![x](docs/logo.svg)\n')
+    // ---- 文件对比(C1)夹具 ----
+    // 两份相似 YAML:验证"并排对比 + 行级差异 + 两侧各按自身类型高亮"(task 3.1),
+    // 以及"对比不进导航栈"(task 3.4)。刻意各写几行不同。
+    await write(root, 'cmp-a.yaml', [
+      'server:',
+      '  host: localhost',
+      '  port: 8080',
+      '  workers: 4',
+      'logging:',
+      '  level: info',
+      '  file: /var/log/a.log',
+    ].join('\n') + '\n')
+    await write(root, 'cmp-b.yaml', [
+      'server:',
+      '  host: localhost',
+      '  port: 9090',           // 改
+      '  workers: 8',           // 改
+      'logging:',
+      '  level: debug',         // 改
+      '  file: /var/log/a.log',
+    ].join('\n') + '\n')
+    // ~32 KB、只在 8 个分散行上不同:验证"小改动不得被呈现为整份改变"(task 8.4)。
+    // A = 当前文件,B = 对比目标。改动分散,精算应得到多个分离的差异块;
+    // 若退回默认 scanLimit:500(按字符,32 KB 超阈值),会悄悄退化成 1 块"整份都变了"。
+    {
+      const base = Array.from({ length: 1000 }, (_, i) =>
+        `line ${String(i).padStart(4, '0')}: the quick brown fox jumps over`)
+      const variant = base.slice()
+      for (const idx of [120, 240, 360, 480, 600, 720, 840, 960]) {
+        variant[idx] = `line ${String(idx).padStart(4, '0')}: THE LAZY DOG SLEEPS SOUNDLY tonight`
+      }
+      await write(root, 'cmp-32k-a.txt', base.join('\n') + '\n')
+      await write(root, 'cmp-32k-b.txt', variant.join('\n') + '\n')
+    }
     // 二进制:含 NUL
     await write(bin, 'blob.bin', new Uint8Array([0x7f, 0x45, 0x4c, 0x46, 0, 0, 1, 2, 3, 0, 250, 251]))
     // 6MB 的支持语言文件:验证"超过 5MB 不参与符号索引"在预览区与大纲区都要明示(任务 9.2)
@@ -770,7 +804,14 @@ try {
     const dirsFirst = names.slice(0, 4).join(',')
     check('目录优先排序', dirsFirst === 'bigdir,bin,docs,many', dirsFirst)
     const fileSeg = names.slice(4)
-    check('文件名自然排序', fileSeg.join(',').includes('big.log,data.json'), fileSeg.join(','))
+    // 根层文件按名称自然排序(不区分大小写);对比夹具 cmp-* 排在 big.log 与 data.json 之间。
+    check(
+      '文件名自然排序',
+      fileSeg
+        .join(',')
+        .includes('big.log,cmp-32k-a.txt,cmp-32k-b.txt,cmp-a.yaml,cmp-b.yaml,data.json'),
+      fileSeg.join(','),
+    )
   }
   await page.screenshot({ path: join(SHOTS, 'shot-2-project.png') })
 
@@ -4715,6 +4756,400 @@ try {
       `活动行=${race.activeLabel} 首行=${race.firstRowLabel}`,
     )
     await racePage.close()
+  }
+
+  // ================= 文件对比(C1,change: add-file-compare)=================
+  {
+    // 回到原始合成项目(前面若干块动过 page 的项目)。
+    await page.evaluate(async () => {
+      window.__cv.enterProject(await navigator.storage.getDirectory())
+    })
+    await page.waitForSelector('.tree-row', { timeout: 10000 })
+
+    // 探针:整个对比动线里,系统文件选择器一次都不许被调用(task 2.3)——
+    // 原生对话框自动化驱不动,主动线一旦建在它上面,这个功能就永久只能靠人验。
+    await page.evaluate(() => {
+      window.__pickerCalls = 0
+      for (const k of ['showOpenFilePicker', 'showDirectoryPicker', 'showSaveFilePicker']) {
+        const orig = window[k]
+        window[k] = (...a) => {
+          window.__pickerCalls++
+          return orig ? orig.apply(window, a) : Promise.reject(new Error('blocked'))
+        }
+      }
+    })
+
+    const stats = () => page.evaluate(() => window.__cv.compareStats.value)
+    const waitCompareReady = () =>
+      page.waitForFunction(
+        () =>
+          !!document.querySelector('.compare-view .cm-mergeView') &&
+          window.__cv.compareStats.value !== null,
+        { timeout: 15000 },
+      )
+    const setOverride = (k, v) => page.evaluate((k, v) => window.__cv.setCompareOverride(k, v), k, v)
+    const exit = () => page.evaluate(() => window.__cv.exitCompare())
+    // 「对比文件」按钮只在当前文件读成 text(state='ready')后才渲染 —— 而 openFile 只等
+    // 文件路径进 header(读取是异步的)。所以点它之前先等它真的挂上;再**轮询式自愈**地
+    // 开选择器:每轮若选择器还没出现就点一次按钮(重渲染瞬间的一次点击可能没落到位),
+    // 直到 `.compare-picker` 出现。用 evaluate 触发 click 而非 page.click,绕开 puppeteer
+    // 的"可点击点"几何判定。
+    const openPicker = async () => {
+      await page.waitForFunction(() => !!document.querySelector('.compare-entry'), { timeout: 10000 })
+      await page.waitForFunction(
+        () => {
+          if (document.querySelector('.compare-picker')) return true
+          document.querySelector('.compare-entry')?.click()
+          return false
+        },
+        { timeout: 10000, polling: 300 },
+      )
+    }
+    // 真人动线:点「对比文件」→ 选择器里按文件名搜 → 点结果。
+    // **不先在普通预览里打开目标**(task 6.3 的硬要求:直接进对比态)。
+    const enterCompareViaPicker = async (targetName) => {
+      await openPicker()
+      // 输入框自愈:若刚开的选择器被 sel.nonce 变化触发的 resetCompare 顺手关掉了,
+      // 再点一次入口重开(与 openPicker 同一套自愈)。
+      await page.waitForFunction(
+        () => {
+          if (document.querySelector('.compare-picker-input')) return true
+          document.querySelector('.compare-entry')?.click()
+          return false
+        },
+        { timeout: 10000, polling: 300 },
+      )
+      await page.type('.compare-picker-input', targetName)
+      await page.waitForFunction(
+        (n) =>
+          [...document.querySelectorAll('.compare-picker-results .result-name')].some(
+            (e) => e.textContent === n,
+          ),
+        { timeout: 20000 },
+        targetName,
+      )
+      await page.evaluate((n) => {
+        const el = [...document.querySelectorAll('.compare-picker-results .search-result')].find(
+          (r) => r.querySelector('.result-name')?.textContent === n,
+        )
+        el?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+      }, targetName)
+    }
+
+    // ---- 3.1 / spec「对比项目内的两个文件」:并排两栏 + 行级差异高亮 + 两侧各自高亮 ----
+    await openFile('cmp-a.yaml', 'cmp-a.yaml')
+    await enterCompareViaPicker('cmp-b.yaml')
+    await waitCompareReady()
+    {
+      const layout = await page.evaluate(() => ({
+        editors: document.querySelectorAll('.compare-host .cm-mergeViewEditor').length,
+        changed: document.querySelectorAll(
+          '.compare-host .cm-changedLine, .compare-host .cm-changedText',
+        ).length,
+        // 两侧各自语法高亮:YAML 会被 lezer 着色成若干 span(不是纯文本一坨)
+        highlightSpans: document.querySelectorAll('.compare-host .cm-line span').length,
+      }))
+      check(
+        '3.1 并排两栏渲染 + 行级差异高亮 + 两侧各自语法高亮',
+        layout.editors === 2 && layout.changed > 0 && layout.highlightSpans > 0,
+        JSON.stringify(layout),
+      )
+      const txt = await page.$eval('.compare-toolbar', (el) => el.textContent)
+      check(
+        '9.1 命名诚实:视图称"文件对比",不含 git / 版本对比 字样',
+        /文件对比/.test(txt) && !/git|版本对比|diff 于/i.test(txt),
+        txt,
+      )
+    }
+
+    // ---- 4.1 / spec「两侧都拒绝修改」----
+    {
+      const beforeText = await page.$eval('.compare-host .cm-content', (el) => el.textContent)
+      await page.click('.compare-host .cm-content')
+      await page.keyboard.type('SHOULD_NOT_APPEAR')
+      const afterText = await page.$eval('.compare-host .cm-content', (el) => el.textContent)
+      check(
+        '4.1 只读:对比视图任一侧键盘输入后内容不变',
+        beforeText === afterText && !afterText.includes('SHOULD_NOT_APPEAR'),
+        beforeText === afterText ? '内容未变' : '内容被改动',
+      )
+    }
+
+    // ---- 4.3 只读控件负向断言:界面上查不到接受/回退/合并控件 ----
+    const revertControlCount = () =>
+      page.evaluate(
+        () =>
+          document.querySelectorAll('.compare-host .cm-merge-revert button').length +
+          document.querySelectorAll('.compare-host .cm-chunkButtons button').length,
+      )
+    {
+      const n = await revertControlCount()
+      check(
+        '4.3 只读:对比视图内查不到接受/回退/合并控件(负向断言,非"传了 readOnly"的配置断言)',
+        n === 0,
+        `找到 ${n} 个`,
+      )
+    }
+    // ---- 4.4 让 4.3 红过一次:强开回退控件,确认同一条负向断言确实抓得到 ----
+    {
+      await exit()
+      await setOverride('forceRevertControls', true)
+      await enterCompareViaPicker('cmp-b.yaml')
+      await waitCompareReady()
+      const forced = await page
+        .waitForFunction(
+          () => document.querySelectorAll('.compare-host .cm-merge-revert button').length > 0,
+          { timeout: 5000 },
+        )
+        .then(() => true)
+        .catch(() => false)
+      const n = await revertControlCount()
+      check(
+        '4.4 红过一次:强开回退控件后,4.3 的负向断言确实抓到控件(证明它咬得住,不是恒绿)',
+        forced && n > 0,
+        `强开后找到 ${n} 个`,
+      )
+      await exit()
+      await setOverride('forceRevertControls', false)
+    }
+
+    // ---- 3.4 对比是临时视图态:进出对比不改动导航栈,退出后仍在原文件普通预览 ----
+    {
+      // 先用会入栈的入口(符号跳转)造一个非空导航栈,否则 before/after 都是 null 的等式太弱。
+      await clickRow('src') // 展开 src
+      await new Promise((r) => setTimeout(r, 200))
+      await openFile('handler.go', 'src/handler.go')
+      await clickSearchMode('符号')
+      await page.keyboard.type('Dispatch')
+      await page.waitForFunction(
+        () =>
+          [...document.querySelectorAll('.search-result .result-name')].some(
+            (e) => e.textContent === 'Dispatch',
+          ),
+        { timeout: 20000 },
+      )
+      await page.keyboard.press('Enter')
+      await page.waitForFunction(
+        () => document.querySelector('.preview-header .file-path')?.textContent === 'src/handler.go',
+        { timeout: 10000 },
+      )
+      await new Promise((r) => setTimeout(r, 300))
+      const stackBefore = await page.evaluate(() => window.__cvNavStack?.() ?? null)
+      await enterCompareViaPicker('cmp-b.yaml')
+      await waitCompareReady()
+      await exit()
+      const stackAfter = await page.evaluate(() => window.__cvNavStack?.() ?? null)
+      const nonEmpty = !!stackBefore && Array.isArray(stackBefore.stack) && stackBefore.stack.length > 0
+      check(
+        '3.4 进出对比不改动导航栈(对比不入 navStack)',
+        nonEmpty && JSON.stringify(stackBefore) === JSON.stringify(stackAfter),
+        `before=${JSON.stringify(stackBefore)} after=${JSON.stringify(stackAfter)}`,
+      )
+      const stillFile = await page.$eval('.preview-header .file-path', (el) => el.textContent)
+      check('3.4 退出对比后仍停在原文件的普通预览', stillFile === 'src/handler.go', stillFile)
+    }
+
+    // ---- 7.3 退出对比后焦点交还到触发按钮(不落 body)----
+    {
+      await openFile('cmp-a.yaml', 'cmp-a.yaml')
+      await enterCompareViaPicker('cmp-b.yaml')
+      await waitCompareReady()
+      await exit()
+      const af = await page.evaluate(() => ({
+        tag: document.activeElement?.tagName ?? null,
+        isEntry: document.activeElement?.classList?.contains('compare-entry') ?? false,
+      }))
+      check(
+        '7.3 退出对比后焦点交还到触发它的「对比文件」按钮,不落 document.body',
+        af.isEntry === true && af.tag !== 'BODY',
+        JSON.stringify(af),
+      )
+    }
+    // ---- 7.4 让 7.3 红过一次:去掉焦点归还,确认焦点确实掉到 body ----
+    {
+      await setOverride('skipFocusReturn', true)
+      await enterCompareViaPicker('cmp-b.yaml')
+      await waitCompareReady()
+      await exit()
+      const af = await page.evaluate(() => ({
+        tag: document.activeElement?.tagName ?? null,
+        isEntry: document.activeElement?.classList?.contains('compare-entry') ?? false,
+      }))
+      check(
+        '7.4 红过一次:去掉焦点归还后焦点确实掉到 body(证明 7.3 咬得住)',
+        af.tag === 'BODY' && af.isEntry === false,
+        JSON.stringify(af),
+      )
+      await setOverride('skipFocusReturn', false)
+    }
+
+    // ---- 7.1 差异间键盘通道登记进键盘帮助面板 ----
+    {
+      await page.click('.help-toggle')
+      await page.waitForSelector('.help-panel', { timeout: 5000 })
+      const rows = await page.$$eval('.help-row-label', (els) => els.map((e) => e.textContent))
+      check(
+        '7.1 差异间键盘通道登记进帮助面板(0.3.4 与 git 对比共用同一份 上/下一处差异)',
+        rows.includes('上一处差异') && rows.includes('下一处差异'),
+        rows.filter((r) => /差异|对比/.test(r)).join(' | ') || '(未找到)',
+      )
+      await page.keyboard.press('Escape')
+      await new Promise((r) => setTimeout(r, 150))
+    }
+
+    // ---- 8.4 小改动不得被呈现为整份改变(约 32 KB、8 处分散改动)----
+    {
+      await openFile('cmp-32k-a.txt', 'cmp-32k-a.txt')
+      await enterCompareViaPicker('cmp-32k-b.txt')
+      await waitCompareReady()
+      const good = await stats()
+      check(
+        '8.4 32 KB / 只改几行:精算定位到分散的多处差异,不是"整份都变了",且未降级为近似',
+        good.chunkCount >= 2 && good.imprecise === false && good.spansWhole === false,
+        JSON.stringify(good),
+      )
+      // 8.4 红过一次:退回 MergeView 默认 scanLimit:500(按字符,32 KB 超阈值),
+      // 确认它确实把 8 处分散小改动并成 1 个覆盖大半份文档的块 =“整份都变了”,
+      // 即上面那条断言抓得到。**注意:此路径 precise 仍为 true(悄悄退化)** ——
+      // 所以红过一次靠 spansWhole,不靠 imprecise,这正是 task 8.3 禁用默认 scanLimit 的实证。
+      await exit()
+      await setOverride('useDefaultScanLimit', true)
+      await enterCompareViaPicker('cmp-32k-b.txt')
+      await waitCompareReady()
+      const degraded = await stats()
+      check(
+        '8.4 红过一次:退回默认 scanLimit 后,8 处小改动被并成 1 个覆盖大半份的块="整份都变了"(证明该断言咬得住)',
+        degraded.chunkCount === 1 && degraded.spansWhole === true,
+        JSON.stringify(degraded),
+      )
+      await exit()
+      await setOverride('useDefaultScanLimit', false)
+    }
+
+    // ---- 8.2 / spec「比对降级为近似时必须说出来」:超工作量预算 → precise:false → 视图内明示近似 ----
+    {
+      // 把 timeout 压到 1ms,让精算必定超预算 → 库自报 precise:false(可检出的降级)。
+      await openFile('cmp-32k-a.txt', 'cmp-32k-a.txt')
+      await setOverride('tinyTimeout', true)
+      await enterCompareViaPicker('cmp-32k-b.txt')
+      await waitCompareReady()
+      const approx = await stats()
+      const approxNotice = await page
+        .$eval('.compare-view .compare-reliability', (el) => el.textContent)
+        .catch(() => null)
+      check(
+        '8.2 / spec:超工作量预算降级为近似(precise:false)时,对比视图内明示"近似、可能与实际不符"',
+        approx.imprecise === true && !!approxNotice && /近似/.test(approxNotice),
+        `imprecise=${approx.imprecise} 提示=${approxNotice ?? '(无)'}`,
+      )
+      await exit()
+      await setOverride('tinyTimeout', false)
+    }
+
+    // ---- 6.3 / 6.4 截断:直接进对比态与一个 50 MB 文件对比,视图内明示未加载部分差异未知 ----
+    {
+      // 6.4 夹具自检:big.log 确实超过 5 MB(否则"截断"这个前提根本不成立,断言会空绿)
+      const bigSize = await page.evaluate(async () => {
+        const root = await navigator.storage.getDirectory()
+        const fh = await root.getFileHandle('big.log')
+        return (await fh.getFile()).size
+      })
+      check('6.4 夹具自检:截断夹具 big.log 确实 > 5 MB', bigSize > 5 * 1024 * 1024, `${bigSize} 字节`)
+
+      // 直接进对比态:当前是小文件 cmp-a.yaml,从未在普通预览里打开过 big.log(task 6.3)
+      await openFile('cmp-a.yaml', 'cmp-a.yaml')
+      await enterCompareViaPicker('big.log')
+      await waitCompareReady()
+      const st = await stats()
+      check(
+        '6.4 夹具自检:big.log 在对比里确实触发了截断(truncated=true)',
+        st.truncatedB === true,
+        JSON.stringify(st),
+      )
+      const notice = await page
+        .$eval('.compare-view .compare-reliability', (el) => el.textContent)
+        .catch(() => null)
+      check(
+        '6.2/6.3 截断侧:对比视图内(非依赖普通预览)明示只对比了已加载部分、未加载部分差异未知',
+        !!notice && /截断/.test(notice) && /未加载部分/.test(notice),
+        notice ?? '(无提示)',
+      )
+      await exit()
+    }
+
+    // ---- 5.1/5.2/5.3 可解释地缺席:同一文件 / 图片 / 二进制 / 读不到 ----
+    {
+      const noticeFor = async (targetPath) => {
+        await openPicker()
+        await page.evaluate((p) => window.__cv.chooseCompareTarget(p), targetPath)
+        const t = await page
+          .$eval('.compare-picker-notice', (el) => el.textContent)
+          .catch(() => null)
+        await page.evaluate(() => window.__cv.exitCompare())
+        return t
+      }
+      await openFile('cmp-a.yaml', 'cmp-a.yaml')
+      // 等 sel.nonce 触发的 resetCompare 落定,避免它把随后开的选择器顺手关掉
+      await new Promise((r) => setTimeout(r, 400))
+      const sameFile = await noticeFor('cmp-a.yaml')
+      check('5.1 与自身对比:给出可解释的缺席(不报错、不静默)', !!sameFile && /当前.*预览|另一个文件/.test(sameFile), sameFile ?? '(无)')
+      const image = await noticeFor('photo.svg')
+      check('5.1 目标是图片:给出可解释的缺席', !!image && /图片/.test(image), image ?? '(无)')
+      const binary = await noticeFor('bin/blob.bin')
+      check('5.1 目标是二进制:给出可解释的缺席', !!binary && /二进制/.test(binary), binary ?? '(无)')
+      const missing = await noticeFor('nope/does-not-exist.txt')
+      check('5.1 目标读不到(已删除/移动/授权失效):给出可解释的缺席', !!missing && /读不到/.test(missing), missing ?? '(无)')
+    }
+
+    // ---- 2.4 / 5.1 单文件模式:没有项目 → 可解释地缺席,不是点了没反应的入口 ----
+    {
+      await page.evaluate(async () => {
+        const root = await navigator.storage.getDirectory()
+        window.__cv.enterSingleFile(await root.getFileHandle('cmp-a.yaml'))
+      })
+      await page.waitForFunction(
+        () => document.querySelector('.preview-header .file-path')?.textContent === 'cmp-a.yaml',
+        { timeout: 10000 },
+      )
+      await new Promise((r) => setTimeout(r, 400)) // 让 enterSingleFile 的 resetCompare 落定
+      await openPicker()
+      // 单文件模式下选择器无输入框,自愈等"缺席解释"出现(必要时重开)
+      await page.waitForFunction(
+        () => {
+          if (document.querySelector('.compare-picker-empty')) return true
+          if (!document.querySelector('.compare-picker')) document.querySelector('.compare-entry')?.click()
+          return false
+        },
+        { timeout: 8000, polling: 300 },
+      )
+      const empty = await page.$eval('.compare-picker-empty', (el) => el.textContent).catch(() => null)
+      check(
+        '2.4 单文件模式:入口给出"需先打开项目"的可解释缺席(不是点了没反应,也不是无解释消失)',
+        !!empty && /项目/.test(empty),
+        empty ?? '(无解释)',
+      )
+      await page.evaluate(() => window.__cv.exitCompare())
+    }
+
+    // ---- 2.3 全程未调用系统文件选择器 ----
+    {
+      const calls = await page.evaluate(() => window.__pickerCalls)
+      check(
+        '2.3 发起并完成多次对比全程,showOpenFilePicker / showDirectoryPicker 从未被调用',
+        calls === 0,
+        `调用次数 ${calls}`,
+      )
+    }
+
+    // 交还给后续(旗舰)用例:项目模式 + **打开一个文件**。
+    // 旗舰块第一步 runContent 在**根项目**里跑(此时尚未 enterProject(flagship)),
+    // 而 ContentPanel 渲染在预览区的 selectedFile 分支内 —— 没有文件在,面板不挂载。
+    // 本块开头 enterProject 清空了选中文件,这里补开一个,恢复"项目+文件"这个后续块依赖的前提。
+    await page.evaluate(async () => {
+      window.__cv.enterProject(await navigator.storage.getDirectory())
+    })
+    await page.waitForSelector('.tree-row', { timeout: 10000 })
+    await openFile('cmp-a.yaml', 'cmp-a.yaml')
   }
 
   // ---- 旗舰场景:10,000 文件 / 支持语言占比 85% 不得降级(10.8b + 11.1)----
