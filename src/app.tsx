@@ -1,5 +1,6 @@
 import { useEffect } from 'preact/hooks'
-import { mode, rootHandle, rootName, goWelcome } from './state'
+import { lazy, Suspense } from 'preact/compat'
+import { mode, projectView, rootHandle, rootName, goWelcome } from './state'
 import { theme, toggleTheme } from './theme'
 import { openFolder, openSingleFile } from './lib/access'
 import { useResizable } from './lib/useResizable'
@@ -13,6 +14,10 @@ import { Welcome } from './welcome/Welcome'
 import { KeyboardHelp, openHelp } from './help/KeyboardHelp'
 import { Tree } from './tree/Tree'
 import { Preview } from './preview/Preview'
+import { startGitWorker, stopGitWorker } from './git/workerClient'
+import { switchProjectView } from './lib/projectViewFocus'
+
+const GitComparison = lazy(() => import('./git/GitComparison').then((module) => ({ default: module.GitComparison })))
 
 const SIDEBAR_KEY = 'cv-sidebar-width'
 const SIDEBAR_MIN = 180
@@ -72,6 +77,7 @@ function TopBar() {
 
 export function App() {
   const m = mode.value
+  const activeProjectView = projectView.value
   const root = rootHandle.value
 
   // 项目进入/离开时同步文件名索引生命周期,并清空导航栈与引用面板(任务 9.6)
@@ -82,6 +88,41 @@ export function App() {
     if (root) startIndex(root)
     else stopIndex()
   }, [root])
+
+  // Git parsing is a separate, lazy worker path. Merely opening a project keeps
+  // the normal file reader unchanged; entering/leaving changes owns its worker.
+  useEffect(() => {
+    if (m !== 'project' || activeProjectView !== 'changes' || !root) {
+      stopGitWorker()
+      return
+    }
+    startGitWorker()
+    return stopGitWorker
+  }, [m, activeProjectView, root])
+
+  // The project-view tab that was clicked is unmounted during the switch.
+  // Focus its selected replacement after the new tree commits instead of
+  // letting the browser fall back to <body>.
+  useEffect(() => {
+    if (m !== 'project') return
+    let cancelled = false
+    let timer = 0
+    const focusSelectedView = () => {
+      const target = document.querySelector<HTMLButtonElement>(
+        `[data-project-view="${activeProjectView}"][aria-current="page"]`,
+      )
+      if (target) {
+        target.focus()
+        return
+      }
+      if (!cancelled) timer = window.setTimeout(focusSelectedView, 25)
+    }
+    timer = window.setTimeout(focusSelectedView, 0)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [m, activeProjectView])
 
   // 侧栏宽度:与大纲面板共用同一套拖拽 + 持久化实现(见 lib/useResizable)
   const { width: sidebarWidth, onResizeStart } = useResizable({
@@ -97,15 +138,25 @@ export function App() {
       <TopBar />
       <KeyboardHelp />
       <div class="main">
-        {m === 'project' && (
+        {m === 'project' && activeProjectView === 'files' && (
           <>
             <aside class="sidebar" style={{ width: `${sidebarWidth}px` }}>
+              <nav class="project-view-tabs project-view-tabs-files" aria-label="项目视图">
+                <button type="button" class="active" aria-current="page" data-project-view="files" autoFocus>文件</button>
+                <button type="button" data-project-view="changes" onClick={() => switchProjectView('changes')}>变更</button>
+              </nav>
               <Tree />
             </aside>
             <div class="resizer" onMouseDown={(e) => onResizeStart(e as unknown as MouseEvent)} />
           </>
         )}
-        <section class="preview">{m === 'welcome' ? <Welcome /> : <Preview />}</section>
+        {m === 'project' && activeProjectView === 'changes' && root ? (
+          <Suspense fallback={<section class="git-comparison"><div class="git-page-state" role="status">正在载入 Git 对比…</div></section>}>
+            <GitComparison root={root} />
+          </Suspense>
+        ) : (
+          <section class="preview">{m === 'welcome' ? <Welcome /> : <Preview />}</section>
+        )}
       </div>
     </div>
   )
