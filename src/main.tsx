@@ -1,6 +1,6 @@
 import { render } from 'preact'
 import { App } from './app'
-import { caretLine, enterProject, enterSingleFile, viewportLine } from './state'
+import { caretLine, enterProject, enterSingleFile, rootHandle, setProjectView, viewportLine } from './state'
 import { lastNavKey } from './intel/navStack'
 import { __setSymbolCap, __simulateIndexFailure } from './intel/indexStore'
 import { __setIndexPaused, __setExtractPaused } from './intel/pool'
@@ -16,6 +16,8 @@ if (__CV_TEST_HOOK__) {
   ;(window as unknown as Record<string, unknown>).__cv = {
     enterProject,
     enterSingleFile,
+    setProjectView,
+    rootHandle,
     lastNavKey,
     // caret 行:E2E 用它精确判断"落在第几行"。
     // **不能靠 DOM getSelection** —— CM6 的选区只在编辑器持有焦点时反映到 DOM,
@@ -26,5 +28,24 @@ if (__CV_TEST_HOOK__) {
     simulateIndexFailure: __simulateIndexFailure,
     setIndexPaused: __setIndexPaused,
     setExtractPaused: __setExtractPaused,
+  }
+  const gitParams = new URLSearchParams(location.search)
+  const requestedGitFixture = gitParams.get('git-fixture')
+  if (gitParams.get('git-visual-demo') === '1' || requestedGitFixture) {
+    void import('./git/devFixture').then(async ({ createGitVisualFixture, fingerprintGitVisualFixture }) => {
+      const fixture = await createGitVisualFixture((requestedGitFixture ?? 'normal') as Parameters<typeof createGitVisualFixture>[0])
+      const initial = await fingerprintGitVisualFixture(fixture.root)
+      document.documentElement.dataset.gitFixtureVariant = fixture.variant
+      if (fixture.ambiguousPrefix) document.documentElement.dataset.gitAmbiguousPrefix = fixture.ambiguousPrefix
+      document.documentElement.dataset.gitFixtureInitialHash = initial
+      document.documentElement.dataset.gitFixtureCurrentHash = initial
+      window.setInterval(() => {
+        void fingerprintGitVisualFixture(fixture.root).then((hash) => {
+          document.documentElement.dataset.gitFixtureCurrentHash = hash
+        })
+      }, 750)
+      enterProject(fixture.root)
+      setProjectView('changes')
+    })
   }
 }
