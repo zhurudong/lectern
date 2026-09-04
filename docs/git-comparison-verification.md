@@ -23,6 +23,31 @@ automation environment cannot drive `showDirectoryPicker`: it emits no
 injectable filechooser event, and the native picker is outside the permitted
 Codex UI-control surface.
 
+## Real FSA evidence recorded on 2026-09-04
+
+Chrome on macOS opened controlled repositories through the native
+`showDirectoryPicker` flow against the 0.3.3 release candidate:
+
+- a normal SHA-1 repository exposed the current worktree, three local branches,
+  one `origin/main` remote-tracking ref marked **本地快照**, one Tag and the
+  Commit SHA input; review/direct comparison returned one modified, two added
+  and one deleted path, with `binary.bin` routed to the metadata-only view;
+- Escape closed the anchored ref picker and restored focus to its opening
+  target selector; switching back to **文件** restored the previously selected
+  `modified.txt` preview;
+- a linked worktree and a directly opened submodule both reported
+  **Git 对象库位于已授权目录之外**, rather than “not a Git repository” or a broader
+  permission request;
+- comparing the parent repository's `main` and `updated-submodule` commits
+  rendered the gitlink as one modified metadata entry with old OID
+  `f0ea50e5ec72` and new OID `2020206f36d7`, never as text;
+- the complete fixture-tree SHA-256 was
+  `7623719a9fb96aaa1dc5ecaa4e53d955bfda59030cd36296fc2425a81df3ea47`
+  both before and after the browser flow. Both repositories remained clean.
+
+The production build's automated invariant checker separately remained green
+for zero network symbols, zero write symbols and empty extension permissions.
+
 ## Standard system clone
 
 1. Open a normal SHA-1, non-bare clone at its repository root.
