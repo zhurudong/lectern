@@ -22,7 +22,8 @@ export function closeHelp(): void {
   helpOpen.value = false
 }
 
-const GROUP_ORDER = ['面板', '目录树', '代码区', '变更', '大纲', '搜索'] as const
+// '对比' 一组统管两个功能的差异导航(git 变更对比 + 文件对比)+ 退出对比(0.3.4 合流)。
+const GROUP_ORDER = ['面板', '目录树', '代码区', '对比', '大纲', '搜索'] as const
 
 /** 面板内可被 Tab 落上的元素;顺序即 DOM 顺序,与浏览器的 Tab 顺序一致 */
 const FOCUSABLE =

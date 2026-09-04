@@ -4,6 +4,14 @@ import { caretLine, enterProject, enterSingleFile, rootHandle, setProjectView, v
 import { lastNavKey } from './intel/navStack'
 import { __setSymbolCap, __simulateIndexFailure } from './intel/indexStore'
 import { __setIndexPaused, __setExtractPaused } from './intel/pool'
+import {
+  compareTarget,
+  compareStats,
+  __setCompareOverride,
+  openComparePicker,
+  chooseCompareTarget,
+  exitCompare,
+} from './preview/compareStore'
 import './styles.css'
 
 render(<App />, document.getElementById('app')!)
@@ -28,6 +36,16 @@ if (__CV_TEST_HOOK__) {
     simulateIndexFailure: __simulateIndexFailure,
     setIndexPaused: __setIndexPaused,
     setExtractPaused: __setExtractPaused,
+    // 文件对比(C1)的 E2E 入口:
+    //  - compareTarget / compareStats:读对比态与差异统计(读不到 MergeView 私有块结构,故走这里)
+    //  - setCompareOverride:注入 4.4 / 7.4 / 8.4 的"红过一次"证据(强开控件 / 跳过焦点归还 / 退回默认 scanLimit)
+    //  - chooseCompareTarget:直接进对比态(task 6.3 要求截断断言走"直接进对比"而非先普通预览)
+    compareTarget,
+    compareStats,
+    setCompareOverride: __setCompareOverride,
+    openComparePicker,
+    chooseCompareTarget,
+    exitCompare,
   }
   const gitParams = new URLSearchParams(location.search)
   const requestedGitFixture = gitParams.get('git-fixture')

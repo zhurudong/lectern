@@ -14,6 +14,9 @@ import { CodeView } from './CodeView'
 import { MarkdownView } from './MarkdownView'
 import { ImageView } from './ImageView'
 import { BinaryView } from './BinaryView'
+import { CompareView } from './CompareView'
+import { ComparePicker } from './ComparePicker'
+import { compareTarget, openComparePicker, resetCompare } from './compareStore'
 
 // 渲染分发器(file-preview spec):代码 / Markdown / 图片 / 二进制提示 / 纯文本 五通道。
 // 读取全程异步,不阻塞界面;selectedFile.nonce 变化即重新读取(点击即重读,不缓存)。
@@ -29,6 +32,12 @@ const OUTLINE_KEY = 'cv-outline-width'
 export function Preview() {
   const sel = selectedFile.value
   const [state, setState] = useState<LoadState>({ status: 'idle' })
+  // 对比是**当前文件**的临时视图态:换文件即退出(它对新文件不成立)。
+  // 订阅同一个 nonce,与下面的读取生命周期一致。
+  const compare = compareTarget.value
+  useEffect(() => {
+    resetCompare()
+  }, [sel?.nonce])
 
   // 大纲面板宽度:与左侧目录树共用同一套实现,只是增宽方向相反(见 lib/useResizable)。
   // 宽度经 CSS 变量下发给 `.outline`,这样 OutlinePanel(src/intel/)完全不需要改动。
@@ -80,6 +89,20 @@ export function Preview() {
         <NavButtons />
         <span class="file-path">{sel.path.join('/')}</span>
         <span class="spacer" />
+        {/* 文件对比入口(D1):仅当前文件是文本时呈现 —— 对比是文本文件的能力。
+            单文件模式下按钮照常出现,点击后由选择器给出"需要先打开项目"的可解释缺席,
+            **不做成一个点了没反应或无解释消失的入口**(task 5.3)。 */}
+        {/* 对比态下按钮**保持挂载**:退出对比要把焦点交还到它身上(task 7.2),
+            若在对比期间把它从 DOM 摘掉,退出那一刻焦点归还就落空(el 已 disconnected)。 */}
+        {state.status === 'ready' && state.data.kind === 'text' && (
+          <button
+            class={`compare-entry${compare ? ' active' : ''}`}
+            title={compare ? '正在对比 —— 点此改选对比目标' : '与项目内的另一个文件并排对比'}
+            onClick={(e) => openComparePicker(e.currentTarget as HTMLElement)}
+          >
+            对比文件
+          </button>
+        )}
         <IntelBadge fileName={sel.name} />
       </div>
       {/* 3.3:"能打开却搜不到"必须是**被解释过的行为**,不能让用户当成缺陷 */}
@@ -105,10 +128,14 @@ export function Preview() {
               这个条件取决于**渲染出哪个视图**,不是运行期的"我现在在哪"判断。 */}
           <div
             class="preview-body"
-            tabIndex={hasFocusableView(state) ? -1 : 0}
+            tabIndex={compare || hasFocusableView(state) ? -1 : 0}
             aria-label="预览区"
           >
-            <PreviewBody state={state} path={sel.path} />
+            {compare ? (
+              <CompareView target={compare} />
+            ) : (
+              <PreviewBody state={state} path={sel.path} />
+            )}
           </div>
           {refPanelOpen.value && <ReferencePanel />}
           {contentPanelOpen.value && <ContentPanel />}
@@ -120,6 +147,7 @@ export function Preview() {
         <OutlinePanel />
       </div>
       <IntelOverlay />
+      <ComparePicker />
     </>
   )
 }

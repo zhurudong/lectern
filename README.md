@@ -234,6 +234,21 @@ The interface is in Chinese; the labels below are given as you will see them.
 8. **Refresh after editing elsewhere** — the ↻ button above the tree re-reads
    the directory; clicking a file always re-reads it from disk. Nothing is
    watched automatically, because the API provides no change events.
+8. **Compare two files** (*对比文件*) — while previewing a text file, click
+   *对比文件* in the preview header and pick **another file from the same
+   project**; the two are shown side by side with changed lines highlighted.
+   `⌥↓` / `⌥↑` (and the *下一处 / 上一处* buttons) move between differences;
+   `Esc` leaves the comparison and returns you to where you were.
+
+   This compares **two files you choose** — it is **not** git, version history,
+   or a diff against any commit; there is no baseline and nothing is written.
+   Both sides are read-only: there are deliberately no accept / revert / merge
+   controls. Targets come only from the project you already opened — comparing
+   never opens a system file picker or asks for new access. If a side is a very
+   large file the comparison says so in the view itself (it only covers the
+   loaded part), and if the diff has to fall back to an approximate result it
+   says that too — a fast-but-wrong "everything changed" is never shown as if it
+   were exact.
 
 On macOS there are two extra shortcuts, verified on real hardware: `⌘⇧O` for
 symbol search and `⌘⇧F` for full-text search. They are deliberately not bound

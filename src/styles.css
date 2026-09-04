@@ -2745,3 +2745,183 @@ html[data-theme='dark'] .git-status-A { color: #75bf94; }
   .git-control-label { display: none; }
   .git-ref-trigger { min-width: 125px; max-width: 155px; }
 }
+
+/* ===== 文件对比(C1) ===== */
+
+/* 预览区头部的对比入口:沿用 .preview-header button 的底样式,仅描个强调边框 */
+.compare-entry {
+  border: 1px solid var(--accent) !important;
+  color: var(--accent) !important;
+  background: transparent !important;
+}
+
+.compare-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.compare-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.compare-toolbar .spacer {
+  flex: 1;
+}
+
+.compare-badge {
+  flex: none;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.compare-side {
+  font-family: var(--mono);
+  color: var(--fg-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 34%;
+}
+
+.compare-vs {
+  flex: none;
+  color: var(--fg-faint);
+}
+
+.compare-nav,
+.compare-exit {
+  flex: none;
+  background: var(--bg-input);
+  border: none;
+  border-radius: 3px;
+  color: var(--fg);
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.compare-exit {
+  border: 1px solid var(--border);
+}
+
+.compare-nav:hover,
+.compare-exit:hover {
+  filter: brightness(0.93);
+}
+
+/* 结论不可靠提示(截断 / 近似归一为同一条)——沿用 preview-notice 的告警配色 */
+.compare-reliability {
+  line-height: 1.5;
+}
+
+.compare-error {
+  margin: 16px;
+}
+
+.compare-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* MergeView 默认不可滚动,需自行给高度 + overflow(见 @codemirror/merge 文档) */
+.compare-host .cm-mergeView,
+.compare-host .cm-mergeViewEditors {
+  height: 100%;
+}
+
+.compare-host .cm-scroller {
+  overflow: auto;
+}
+
+/* ===== 对比目标选择器 ===== */
+
+.compare-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #000 38%, transparent);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  z-index: 60;
+}
+
+.compare-picker {
+  width: min(560px, 92vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px color-mix(in srgb, #000 30%, transparent);
+  overflow: hidden;
+}
+
+.compare-picker-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-picker-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.compare-picker-close {
+  flex: none;
+  background: transparent;
+  border: none;
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+
+.compare-picker-input {
+  margin: 12px 16px 6px;
+  width: auto;
+}
+
+.compare-picker-notice {
+  margin: 0 16px 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  color: var(--warn);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.compare-picker-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.compare-picker-empty {
+  padding: 20px 18px 24px;
+  color: var(--fg-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.compare-narrow {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--fg-dim);
+  line-height: 1.5;
+}
