@@ -1,0 +1,26 @@
+## MODIFIED Requirements
+
+### Requirement: 代码理解的支持范围与能力明示
+
+代码理解(跳转定义、查找引用、大纲、符号搜索)SHALL 至少覆盖 Python、Java、C、C++、Go、JavaScript、TypeScript(含 JSX/TSX)、Rust、PHP。其余已支持高亮的类型(JSON、HTML、CSS、SQL、YAML、XML、Shell、Ruby、Kotlin、C#、Groovy、TOML、纯文本)MUST NOT 提供跳转与查找引用能力;Markdown 例外地 SHALL 提供仅含标题层级的大纲,但同样 MUST NOT 提供跳转与查找引用。
+
+新增语言进入"可跳转"档的准入条件 SHALL 是该语言有一等 Lezer 语法(产出带命名节点的语法树,可据此按直接父节点白名单抽取定义符号并排除形参与局部变量);仅有 `legacy-modes` 流式高亮的语言 MUST NOT 进入本档(它无法抽符号,强行接入只会产出把局部变量当定义的噪声大纲)。Ruby、Kotlin、C# 因当前无官方一等 Lezer 语法而停留在"仅高亮",这是明确边界而非欠条。
+
+查看器 SHALL 在界面上明示当前预览文件是否支持代码理解(例如预览区的语言能力标识),MUST NOT 让用户通过"点了没反应"来推断。不支持的语言下,语法高亮、Markdown 渲染与既有预览行为 MUST NOT 受影响。
+
+#### Scenario: Rust 文件支持跳转与大纲
+
+- **WHEN** 用户预览一个 `.rs` 文件且索引已就绪
+- **THEN** 预览区显示"可跳转"能力标识,大纲列出该文件的 struct / trait / 函数 / impl 方法等符号(不含形参与局部变量)
+- **AND** 对调用点的标识符 ⌘+点击可跳转到其定义行,查找引用返回非空结果
+
+#### Scenario: PHP 文件支持跳转与大纲
+
+- **WHEN** 用户预览一个 `.php` 文件且索引已就绪
+- **THEN** 预览区显示"可跳转"能力标识,大纲列出 namespace / class / 方法 / 函数 / 类属性等符号(不含形参、局部变量与 `$this->` 成员访问)
+- **AND** 对函数调用点 ⌘+点击可跳转到其定义行,查找引用返回非空结果
+
+#### Scenario: 无官方语法的高频语言维持仅高亮
+
+- **WHEN** 用户预览一个 `.rb`(Ruby)或 `.kt`(Kotlin)文件
+- **THEN** 语法高亮正常,预览区标识为"仅高亮",不提供跳转与查找引用入口

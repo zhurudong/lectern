@@ -32,7 +32,7 @@
 
 ---
 
-## 1. 可跳转(7 类语言 / 12 个扩展名)
+## 1. 可跳转(9 类语言)
 
 | 语言 | 扩展名 |
 |---|---|
@@ -43,6 +43,8 @@
 | Go | `.go` |
 | JavaScript | `.js` `.mjs` `.cjs` / JSX `.jsx` |
 | TypeScript | `.ts` `.mts` `.cts` / TSX `.tsx` |
+| Rust | `.rs` |
+| PHP | `.php` `.php3` `.php4` `.php5` `.phtml` |
 
 跳转与引用是**基于符号名与语法树的启发式**,不做类型推断、作用域解析、导入解析或宏展开,
 **不承诺编译级精确**。C/C++ 的函数原型按"声明"种类单独收录。
@@ -53,7 +55,7 @@
 |---|---|---|
 | Markdown | `.md` `.markdown` | 提供标题层级大纲;**不**参与跳转与查找引用 |
 
-## 3. 仅高亮(18 类)
+## 3. 仅高亮(17 类)
 
 | 语言 | 扩展名 / 文件名 |
 |---|---|
@@ -68,7 +70,6 @@
 | Sass | `.sass` |
 | Less | `.less` |
 | Shell | `.sh` `.bash` `.zsh`(以及带 shebang 的无扩展名脚本) |
-| Rust | `.rs` |
 | Ruby | `.rb` |
 | Kotlin | `.kt` `.kts` |
 | C# | `.cs` |
@@ -77,6 +78,11 @@
 | CMake | `CMakeLists.txt` |
 
 CSS 家族(SCSS / Sass / Less)各用**专用**高亮模式,不是拿 CSS 近似顶替。
+
+Ruby / Kotlin / C# 停在"仅高亮"是有原因的:可跳转档要求一等 Lezer 语法(能产出带命名节点的
+语法树,符号抽取据此过滤形参与局部变量),而这三门语言当前在 npm 上没有官方 Lezer 语法包 ——
+只有 legacy-modes 的流式高亮,产出的是扁平 token 流而非语法树,无法据此抽符号。Rust 与 PHP 能升到
+可跳转,正是因为有 `@lezer/rust` 与 `@lezer/php`。
 
 ## 4. 近似高亮(2 类)
 
@@ -102,7 +108,7 @@ CSS 家族(SCSS / Sass / Less)各用**专用**高亮模式,不是拿 CSS 近似�
 以下是**常见类型中当前明确不覆盖**的部分,按纯文本(含行号)展示。
 **该清单是常见项的举例,并非穷举 —— 未列出 ≠ 已覆盖**:
 
-Swift、Dart、Lua、Scala、R、Perl、PowerShell、Protobuf、PHP、GraphQL、Terraform/HCL,
+Swift、Dart、Lua、Scala、R、Perl、PowerShell、Protobuf、GraphQL、Terraform/HCL,
 以及 Makefile(见上表,有意为之)。
 
 判断某个类型是否被覆盖,以第 1–4 节的**覆盖清单**为准:**列在那里的才是覆盖的**,

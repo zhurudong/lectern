@@ -91,9 +91,9 @@
 
 | 档位 | 语言 |
 | --- | --- |
-| **可跳转**（高亮 + 大纲 + 跳转 + 引用 + 符号搜索） | Python、Java、C、C++、Go、JavaScript（含 JSX）、TypeScript（含 TSX） |
+| **可跳转**（高亮 + 大纲 + 跳转 + 引用 + 符号搜索） | Python、Java、C、C++、Go、JavaScript（含 JSX）、TypeScript（含 TSX）、Rust、PHP |
 | **仅大纲** | Markdown（标题层级） |
-| **仅高亮** | JSON、YAML、TOML、SQL、XML、HTML、CSS、SCSS、Sass、Less、Shell、Rust、Ruby、Kotlin、C#、Groovy、Dockerfile、CMake |
+| **仅高亮** | JSON、YAML、TOML、SQL、XML、HTML、CSS、SCSS、Sass、Less、Shell、Ruby、Kotlin、C#、Groovy、Dockerfile、CMake |
 | **近似高亮**（界面上明示） | Vue、Svelte |
 
 其余一律按纯文本（含行号）展示，Makefile 是有意为之。常见类型中当前明确**不覆盖**

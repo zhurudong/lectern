@@ -122,9 +122,9 @@ expansion, and no promise of compiler-grade accuracy.
 
 | Tier | Languages |
 | --- | --- |
-| **Navigable** (highlight + outline + definitions + references + symbol search) | Python, Java, C, C++, Go, JavaScript (incl. JSX), TypeScript (incl. TSX) |
+| **Navigable** (highlight + outline + definitions + references + symbol search) | Python, Java, C, C++, Go, JavaScript (incl. JSX), TypeScript (incl. TSX), Rust, PHP |
 | **Outline only** | Markdown (heading hierarchy) |
-| **Highlight only** | JSON, YAML, TOML, SQL, XML, HTML, CSS, SCSS, Sass, Less, Shell, Rust, Ruby, Kotlin, C#, Groovy, Dockerfile, CMake |
+| **Highlight only** | JSON, YAML, TOML, SQL, XML, HTML, CSS, SCSS, Sass, Less, Shell, Ruby, Kotlin, C#, Groovy, Dockerfile, CMake |
 | **Approximate highlight** (marked as such in the UI) | Vue, Svelte |
 
 Everything else — including Makefiles, deliberately — is shown as plain text
