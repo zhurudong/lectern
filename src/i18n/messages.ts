@@ -192,6 +192,65 @@ const zh: Dict = {
   'keys.previousHunk': '上一处差异',
   'keys.nextHunk': '下一处差异',
   'keys.exitCompare': '退出对比',
+
+  // —— 预览区外壳 ——
+  'preview.placeholder': '在左侧选择一个文件开始预览',
+  'preview.compareActive': '正在对比 —— 点此改选对比目标',
+  'preview.compareEntry': '与项目内的另一个文件并排对比',
+  'preview.compareBtn': '对比文件',
+  'preview.bodyLabel': '预览区',
+  'preview.excludedNotice':
+    '此目录默认不参与项目级搜索与跳转(依赖包 / 版本库等重目录)—— 文件可以正常预览与查看大纲,但**不会**出现在文件名搜索、符号搜索与全文搜索结果中。',
+  'preview.readFailed': '读取 {name} 失败:{message}',
+  'preview.readFailedHint': '文件可能已被外部删除或移动,可刷新目录树后重试。',
+  'preview.truncated': '文件过大({size}),已截断展示前 {limit}',
+  'preview.truncatedIntel': ';该文件超过 5 MB,符号索引受限,大纲与跳转不覆盖此文件',
+
+  // —— 文件对比视图 ——
+  'compare.badge': '文件对比',
+  'compare.navPrev': '‹ 上一处',
+  'compare.navNext': '下一处 ›',
+  'compare.navPrevTitleKey': '上一处差异({key})',
+  'compare.navNextTitleKey': '下一处差异({key})',
+  'compare.exitTitle': '退出对比(Esc)',
+  'compare.narrow': '窗口较窄,并排对比会比较拥挤。可折叠左侧目录树或右侧大纲以腾出空间;两栏仍可各自横向滚动查看完整内容。',
+  'compare.reliabilityPrefix': '本次对比结论可能不可靠:',
+  'compare.truncWhichBoth': '两侧文件都',
+  'compare.truncWhichCur': '当前文件',
+  'compare.truncWhichTarget': '对比目标',
+  'compare.truncated': '{which}过大已被截断,本次只对比了已加载部分;未加载部分的差异未知(不要把"后面没有差异"当作结论)。',
+  'compare.approx': '差异计算超出工作量预算,已改用近似比对,结果可能与实际不符(典型是把小改动放大成"整份都变了")。',
+  'compare.errUnreadable': '读不到对比目标 “{name}”:{message}。它可能已被删除、移动,或授权已失效 —— 退出对比即可继续查看当前文件。',
+  'compare.errNotText': '“{name}” 不是文本文件,无法按文本对比 —— 退出对比即可继续查看当前文件。',
+
+  // —— 对比目标选择器 ——
+  'cmpPick.dialogLabel': '选择对比目标',
+  'cmpPick.title': '选择要与当前文件对比的另一个文件',
+  'cmpPick.needProjectPre': '文件对比需要先打开一个',
+  'cmpPick.needProjectBold': '项目(文件夹)',
+  'cmpPick.needProjectPost': '才能选取对比目标。 当前是单文件模式,没有项目树,因而没有可选的另一个文件。',
+  'cmpPick.searchPh': '按文件名搜索项目内的文件',
+  'cmpPick.startTyping': '输入文件名开始搜索',
+  'cmpPick.noticeNeedProject': '文件对比需要先打开一个项目',
+  'cmpPick.noticeSameFile': '这是当前正在预览的文件 —— 请选择另一个文件来对比',
+  'cmpPick.kindImage': '图片',
+  'cmpPick.kindBinary': '二进制',
+  'cmpPick.noticeNotText': '“{name}” 是{kind}文件,不能按文本对比',
+  'cmpPick.noticeUnreadable': '读不到 “{name}”:它可能已被删除、移动,或授权已失效',
+
+  // —— Markdown 预览 / 二进制 / 代码区 / Markdown 占位 ——
+  'mdview.tabRendered': '渲染',
+  'mdview.tabSource': '源码',
+  'mdview.rendering': '渲染中…',
+  'binary.unsupported': '暂不支持预览此类型的文件',
+  'code.outOfRange': '目标行 {line} 超出当前可定位范围(共 {total} 行,大文件已截断展示),已定位到最近位置',
+  'md.imageAlt': '图片',
+  'md.linkUnresolved': '链接目标无法解析',
+  'md.imgNoSrc': '缺少图片地址',
+  'md.imgRemote': '远程图片不自动加载(零网络边界)',
+  'md.imgNoContext': '单文件模式无目录上下文,无法解析相对路径',
+  'md.imgRelUnresolved': '相对路径无法解析(文件不存在或越出项目)',
+  'md.imgReadFailed': '图片读取失败',
 }
 
 const en: Dict = {
@@ -375,6 +434,65 @@ const en: Dict = {
   'keys.previousHunk': 'Previous difference',
   'keys.nextHunk': 'Next difference',
   'keys.exitCompare': 'Exit compare',
+
+  // —— Preview shell ——
+  'preview.placeholder': 'Select a file on the left to preview',
+  'preview.compareActive': 'Comparing — click to change the compare target',
+  'preview.compareEntry': 'Compare side by side with another file in the project',
+  'preview.compareBtn': 'Compare file',
+  'preview.bodyLabel': 'Preview',
+  'preview.excludedNotice':
+    'This folder is excluded from project-wide search and jumps by default (dependency / version-control heavy folders) — files still preview and outline normally, but they do **not** appear in file-name, symbol, or content search results.',
+  'preview.readFailed': 'Failed to read {name}: {message}',
+  'preview.readFailedHint': 'The file may have been deleted or moved externally; refresh the file tree and try again.',
+  'preview.truncated': 'File too large ({size}); showing the first {limit}',
+  'preview.truncatedIntel': '; over 5 MB — symbol indexing is limited, and outline and jumps do not cover this file',
+
+  // —— File compare view ——
+  'compare.badge': 'File compare',
+  'compare.navPrev': '‹ Previous',
+  'compare.navNext': 'Next ›',
+  'compare.navPrevTitleKey': 'Previous difference ({key})',
+  'compare.navNextTitleKey': 'Next difference ({key})',
+  'compare.exitTitle': 'Exit compare (Esc)',
+  'compare.narrow': 'The window is narrow, so a side-by-side comparison is cramped. Collapse the file tree on the left or the outline on the right to free up space; both panes still scroll horizontally to show their full content.',
+  'compare.reliabilityPrefix': 'This comparison may be unreliable: ',
+  'compare.truncWhichBoth': 'Both files are',
+  'compare.truncWhichCur': 'The current file is',
+  'compare.truncWhichTarget': 'The compare target is',
+  'compare.truncated': '{which} too large and truncated, so only the loaded portion was compared; differences in the unloaded portion are unknown (do not treat "no differences after this point" as a conclusion).',
+  'compare.approx': 'Diff computation exceeded the work budget and fell back to an approximate comparison, so the result may not match reality (typically inflating a small change into "the whole file changed").',
+  'compare.errUnreadable': 'Could not read the compare target "{name}": {message}. It may have been deleted or moved, or access may have expired — exit compare to keep viewing the current file.',
+  'compare.errNotText': '"{name}" is not a text file and cannot be compared as text — exit compare to keep viewing the current file.',
+
+  // —— Compare-target picker ——
+  'cmpPick.dialogLabel': 'Choose a compare target',
+  'cmpPick.title': 'Choose another file to compare with the current one',
+  'cmpPick.needProjectPre': 'File compare requires opening a ',
+  'cmpPick.needProjectBold': 'project (folder)',
+  'cmpPick.needProjectPost': ' to pick a compare target. You are in single-file mode with no project tree, so there is no other file to choose.',
+  'cmpPick.searchPh': 'Search files in the project by name',
+  'cmpPick.startTyping': 'Type a file name to search',
+  'cmpPick.noticeNeedProject': 'File compare requires opening a project first',
+  'cmpPick.noticeSameFile': 'This is the file currently open — pick a different file to compare',
+  'cmpPick.kindImage': 'an image',
+  'cmpPick.kindBinary': 'a binary',
+  'cmpPick.noticeNotText': '"{name}" is {kind} file and cannot be compared as text',
+  'cmpPick.noticeUnreadable': 'Could not read "{name}": it may have been deleted or moved, or access may have expired',
+
+  // —— Markdown preview / binary / editor / Markdown placeholders ——
+  'mdview.tabRendered': 'Rendered',
+  'mdview.tabSource': 'Source',
+  'mdview.rendering': 'Rendering…',
+  'binary.unsupported': 'Preview is not supported for this file type',
+  'code.outOfRange': 'Target line {line} is beyond the locatable range ({total} lines; large file shown truncated); jumped to the nearest position',
+  'md.imageAlt': 'image',
+  'md.linkUnresolved': 'Link target could not be resolved',
+  'md.imgNoSrc': 'Missing image source',
+  'md.imgRemote': 'Remote images are not loaded automatically (zero-network boundary)',
+  'md.imgNoContext': 'Single-file mode has no folder context; relative paths cannot be resolved',
+  'md.imgRelUnresolved': 'Relative path could not be resolved (file missing or outside the project)',
+  'md.imgReadFailed': 'Failed to load image',
 }
 
 export const messages: Record<Lang, Dict> = { zh, en }

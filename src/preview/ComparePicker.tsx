@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { t } from '../i18n'
 import { mode, selectedFile } from '../state'
 import { searchFiles, indexing, indexPaths } from '../search/searchStore'
 import {
@@ -74,12 +75,12 @@ export function ComparePicker() {
       <div
         class="compare-picker"
         role="dialog"
-        aria-label="选择对比目标"
+        aria-label={t('cmpPick.dialogLabel')}
         onClick={(e) => e.stopPropagation()}
       >
         <div class="compare-picker-header">
-          <span class="compare-picker-title">选择要与当前文件对比的另一个文件</span>
-          <button class="compare-picker-close" title="关闭" onClick={closeComparePicker}>
+          <span class="compare-picker-title">{t('cmpPick.title')}</span>
+          <button class="compare-picker-close" title={t('common.close')} onClick={closeComparePicker}>
             ✕
           </button>
         </div>
@@ -87,8 +88,7 @@ export function ComparePicker() {
         {m !== 'project' ? (
           // 单文件模式:可解释地缺席(task 2.4 / 5.1),不是报错也不是点了没反应的入口
           <div class="compare-picker-empty">
-            文件对比需要先打开一个<b>项目(文件夹)</b>才能选取对比目标。
-            当前是单文件模式,没有项目树,因而没有可选的另一个文件。
+            {t('cmpPick.needProjectPre')}<b>{t('cmpPick.needProjectBold')}</b>{t('cmpPick.needProjectPost')}
           </div>
         ) : (
           <>
@@ -96,7 +96,7 @@ export function ComparePicker() {
               ref={inputRef}
               class="search-input compare-picker-input"
               type="text"
-              placeholder="按文件名搜索项目内的文件"
+              placeholder={t('cmpPick.searchPh')}
               value={query}
               onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
               onKeyDown={onKey}
@@ -104,10 +104,10 @@ export function ComparePicker() {
             {notice && <div class="compare-picker-notice">{notice}</div>}
             <div class="compare-picker-results">
               {query.trim() === '' ? (
-                <div class="search-status">输入文件名开始搜索</div>
+                <div class="search-status">{t('cmpPick.startTyping')}</div>
               ) : results.length === 0 ? (
                 <div class="search-status">
-                  {indexing.value ? '暂无匹配(索引仍在构建)' : '无匹配文件'}
+                  {indexing.value ? t('search.noMatchIndexing') : t('search.noMatchFile')}
                 </div>
               ) : (
                 results.map((path, i) => {

@@ -3,6 +3,7 @@ import { EditorState, type Extension } from '@codemirror/state'
 import { keymap, lineNumbers, drawSelection } from '@codemirror/view'
 import { MergeView, goToNextChunk, goToPreviousChunk } from '@codemirror/merge'
 import { theme } from '../theme'
+import { t } from '../i18n'
 import { selectedFile } from '../state'
 import { loadPreview } from '../lib/fs'
 import { KEYS, isActive, display } from '../lib/keys'
@@ -111,14 +112,16 @@ export function CompareView({ target }: { target: CompareTarget }) {
         // 目标读不到(已删除 / 移动 / 授权失效):可解释地缺席,不报错白屏(D5 / task 5.1)。
         // 退出即回到当前文件的普通预览(spec 场景「对比目标在选定后被删除」)。
         setError(
-          `读不到对比目标 “${target.name}”:${err instanceof Error ? err.message : String(err)}。` +
-            `它可能已被删除、移动,或授权已失效 —— 退出对比即可继续查看当前文件。`,
+          t('compare.errUnreadable', {
+            name: target.name,
+            message: err instanceof Error ? err.message : String(err),
+          }),
         )
         return
       }
       if (cancelled) return
       if (!b.isText) {
-        setError(`“${target.name}” 不是文本文件,无法按文本对比 —— 退出对比即可继续查看当前文件。`)
+        setError(t('compare.errNotText', { name: target.name }))
         return
       }
 
@@ -178,17 +181,19 @@ export function CompareView({ target }: { target: CompareTarget }) {
       const parts: string[] = []
       if (a.truncated || b.truncated) {
         const which =
-          a.truncated && b.truncated ? '两侧文件都' : a.truncated ? '当前文件' : '对比目标'
-        parts.push(
-          `${which}过大已被截断,本次只对比了已加载部分;未加载部分的差异未知(不要把"后面没有差异"当作结论)。`,
-        )
+          a.truncated && b.truncated
+            ? t('compare.truncWhichBoth')
+            : a.truncated
+              ? t('compare.truncWhichCur')
+              : t('compare.truncWhichTarget')
+        parts.push(t('compare.truncated', { which }))
       }
       if (imprecise) {
-        parts.push(
-          '差异计算超出工作量预算,已改用近似比对,结果可能与实际不符(典型是把小改动放大成"整份都变了")。',
-        )
+        parts.push(t('compare.approx'))
       }
-      setReliability(cancelled || parts.length === 0 ? null : `本次对比结论可能不可靠:${parts.join(' ')}`)
+      setReliability(
+        cancelled || parts.length === 0 ? null : t('compare.reliabilityPrefix') + parts.join(' '),
+      )
     })()
 
     return () => {
@@ -240,7 +245,7 @@ export function CompareView({ target }: { target: CompareTarget }) {
   return (
     <div class="compare-view">
       <div class="compare-toolbar">
-        <span class="compare-badge">文件对比</span>
+        <span class="compare-badge">{t('compare.badge')}</span>
         <span class="compare-side" title={curPath}>
           A · {curName}
         </span>
@@ -253,22 +258,22 @@ export function CompareView({ target }: { target: CompareTarget }) {
           <>
             <button
               class="compare-nav"
-              title={prevKey ? `上一处差异(${prevKey})` : '上一处差异'}
+              title={prevKey ? t('compare.navPrevTitleKey', { key: prevKey }) : t('keys.previousHunk')}
               onClick={() => nav(goToPreviousChunk)}
             >
-              ‹ 上一处
+              {t('compare.navPrev')}
             </button>
             <button
               class="compare-nav"
-              title={nextKey ? `下一处差异(${nextKey})` : '下一处差异'}
+              title={nextKey ? t('compare.navNextTitleKey', { key: nextKey }) : t('keys.nextHunk')}
               onClick={() => nav(goToNextChunk)}
             >
-              下一处 ›
+              {t('compare.navNext')}
             </button>
           </>
         )}
-        <button class="compare-exit" title="退出对比(Esc)" onClick={exitCompare}>
-          退出对比
+        <button class="compare-exit" title={t('compare.exitTitle')} onClick={exitCompare}>
+          {t('keys.exitCompare')}
         </button>
       </div>
       {reliability && (
@@ -276,8 +281,7 @@ export function CompareView({ target }: { target: CompareTarget }) {
       )}
       {!error && narrow && (
         <div class="preview-notice compare-narrow">
-          窗口较窄,并排对比会比较拥挤。可折叠左侧目录树或右侧大纲以腾出空间;
-          两栏仍可各自横向滚动查看完整内容。
+          {t('compare.narrow')}
         </div>
       )}
       {error ? (

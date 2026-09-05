@@ -1,6 +1,7 @@
 import MarkdownIt from 'markdown-it'
 import DOMPurify from 'dompurify'
 import { highlightCode, classHighlighter } from '@lezer/highlight'
+import { t } from '../i18n'
 import { languageParser, normalizeFenceLang } from './languages'
 import { resolveFile } from '../lib/resolve'
 
@@ -84,7 +85,7 @@ function replaceWithPlaceholder(img: HTMLImageElement, reason: string): void {
   const span = img.ownerDocument.createElement('span')
   span.className = 'md-img-placeholder'
   const alt = img.getAttribute('alt')
-  span.textContent = `🖼 ${alt || img.getAttribute('src') || '图片'}`
+  span.textContent = `🖼 ${alt || img.getAttribute('src') || t('md.imageAlt')}`
   span.title = reason
   img.replaceWith(span)
 }
@@ -92,7 +93,7 @@ function replaceWithPlaceholder(img: HTMLImageElement, reason: string): void {
 function markDeadLink(a: HTMLAnchorElement): void {
   a.removeAttribute('href')
   a.classList.add('md-link-dead')
-  a.title = '链接目标无法解析'
+  a.title = t('md.linkUnresolved')
 }
 
 /** 是否带协议(含 // 开头的协议相对地址) */
@@ -116,21 +117,21 @@ export async function renderMarkdown(text: string, ctx: MdContext): Promise<Rend
   for (const img of Array.from(container.querySelectorAll('img'))) {
     const src = img.getAttribute('src') ?? ''
     if (!src) {
-      replaceWithPlaceholder(img, '缺少图片地址')
+      replaceWithPlaceholder(img, t('md.imgNoSrc'))
       continue
     }
     if (/^data:/i.test(src)) continue // 内联本地内容,保留
     if (hasScheme(src)) {
-      replaceWithPlaceholder(img, '远程图片不自动加载(零网络边界)')
+      replaceWithPlaceholder(img, t('md.imgRemote'))
       continue
     }
     if (!ctx.root) {
-      replaceWithPlaceholder(img, '单文件模式无目录上下文,无法解析相对路径')
+      replaceWithPlaceholder(img, t('md.imgNoContext'))
       continue
     }
     const resolved = await resolveFile(ctx.root, ctx.baseDir, src)
     if (!resolved) {
-      replaceWithPlaceholder(img, '相对路径无法解析(文件不存在或越出项目)')
+      replaceWithPlaceholder(img, t('md.imgRelUnresolved'))
       continue
     }
     try {
@@ -139,7 +140,7 @@ export async function renderMarkdown(text: string, ctx: MdContext): Promise<Rend
       objectUrls.push(url)
       img.setAttribute('src', url)
     } catch {
-      replaceWithPlaceholder(img, '图片读取失败')
+      replaceWithPlaceholder(img, t('md.imgReadFailed'))
     }
   }
 

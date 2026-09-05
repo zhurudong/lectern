@@ -1,4 +1,5 @@
 import { signal } from '@preact/signals'
+import { t } from '../i18n'
 import { rootHandle, selectedFile } from '../state'
 import { resolveFile } from '../lib/resolve'
 import { identifyByName } from '../lib/filetypes'
@@ -106,13 +107,13 @@ export async function chooseCompareTarget(path: string): Promise<void> {
   const root = rootHandle.value
   const cur = selectedFile.value
   if (!root || !cur) {
-    comparePickerNotice.value = '文件对比需要先打开一个项目'
+    comparePickerNotice.value = t('cmpPick.noticeNeedProject')
     return
   }
 
   // 两侧解析为同一个文件:与自身对比没有意义(D5 / task 5.1)
   if (cur.path.join('/') === path) {
-    comparePickerNotice.value = '这是当前正在预览的文件 —— 请选择另一个文件来对比'
+    comparePickerNotice.value = t('cmpPick.noticeSameFile')
     return
   }
 
@@ -120,15 +121,17 @@ export async function chooseCompareTarget(path: string): Promise<void> {
   const name = path.slice(path.lastIndexOf('/') + 1)
   const info = identifyByName(name)
   if (info?.channel === 'image' || info?.channel === 'binary') {
-    comparePickerNotice.value =
-      `“${name}” 是${info.channel === 'image' ? '图片' : '二进制'}文件,不能按文本对比`
+    comparePickerNotice.value = t('cmpPick.noticeNotText', {
+      name,
+      kind: info.channel === 'image' ? t('cmpPick.kindImage') : t('cmpPick.kindBinary'),
+    })
     return
   }
 
   // 目标读不出来(已删除 / 移动 / 授权失效):给出原因,不报错、不白屏(D5 / task 5.1)
   const resolved = await resolveFile(root, [], path)
   if (!resolved) {
-    comparePickerNotice.value = `读不到 “${name}”:它可能已被删除、移动,或授权已失效`
+    comparePickerNotice.value = t('cmpPick.noticeUnreadable', { name })
     return
   }
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
+import { t } from '../i18n'
 import { selectedFile } from '../state'
 import { loadPreview, formatSize, type LoadedPreview, TRUNCATE_BYTES } from '../lib/fs'
 import { useResizable } from '../lib/useResizable'
@@ -78,7 +79,7 @@ export function Preview() {
     return (
       <div class="preview-placeholder">
         <div style="font-size: 32px">📄</div>
-        <div>在左侧选择一个文件开始预览</div>
+        <div>{t('preview.placeholder')}</div>
       </div>
     )
   }
@@ -97,10 +98,10 @@ export function Preview() {
         {state.status === 'ready' && state.data.kind === 'text' && (
           <button
             class={`compare-entry${compare ? ' active' : ''}`}
-            title={compare ? '正在对比 —— 点此改选对比目标' : '与项目内的另一个文件并排对比'}
+            title={compare ? t('preview.compareActive') : t('preview.compareEntry')}
             onClick={(e) => openComparePicker(e.currentTarget as HTMLElement)}
           >
-            对比文件
+            {t('preview.compareBtn')}
           </button>
         )}
         <IntelBadge fileName={sel.name} />
@@ -108,8 +109,7 @@ export function Preview() {
       {/* 3.3:"能打开却搜不到"必须是**被解释过的行为**,不能让用户当成缺陷 */}
       {isInExcludedPath(sel.path) && (
         <div class="preview-notice preview-notice-scope">
-          此目录默认不参与项目级搜索与跳转(依赖包 / 版本库等重目录)——
-          文件可以正常预览与查看大纲,但**不会**出现在文件名搜索、符号搜索与全文搜索结果中。
+          {t('preview.excludedNotice')}
         </div>
       )}
       <div class="preview-main" style={{ '--outline-width': `${outlineWidth}px` }}>
@@ -129,7 +129,7 @@ export function Preview() {
           <div
             class="preview-body"
             tabIndex={compare || hasFocusableView(state) ? -1 : 0}
-            aria-label="预览区"
+            aria-label={t('preview.bodyLabel')}
           >
             {compare ? (
               <CompareView target={compare} />
@@ -161,14 +161,14 @@ function hasFocusableView(state: LoadState): boolean {
 
 function PreviewBody({ state, path }: { state: LoadState; path: string[] }) {
   if (state.status === 'idle' || state.status === 'loading') {
-    return <div class="preview-placeholder">加载中…</div>
+    return <div class="preview-placeholder">{t('welcome.loading')}</div>
   }
   if (state.status === 'error') {
     return (
       <div class="preview-error">
-        读取 {state.name} 失败:{state.message}
+        {t('preview.readFailed', { name: state.name, message: state.message })}
         <br />
-        文件可能已被外部删除或移动,可刷新目录树后重试。
+        {t('preview.readFailedHint')}
       </div>
     )
   }
@@ -181,9 +181,9 @@ function PreviewBody({ state, path }: { state: LoadState; path: string[] }) {
     case 'text': {
       const notice = data.truncated && (
         <div class="preview-notice">
-          文件过大({formatSize(data.size)}),已截断展示前 {formatSize(TRUNCATE_BYTES)}
+          {t('preview.truncated', { size: formatSize(data.size), limit: formatSize(TRUNCATE_BYTES) })}
           <span class="preview-notice-intel">
-            ;该文件超过 5 MB,符号索引受限,大纲与跳转不覆盖此文件
+            {t('preview.truncatedIntel')}
           </span>
         </div>
       )
