@@ -726,6 +726,27 @@ try {
     return false
   }
 
+  // 只判断某行是否存在(不点击)。目录树是虚拟滚动的,目标行可能压根没渲染在视口里 ——
+  // 所以滚遍全树去找,而不是只看当前 DOM 就断定不存在(和 clickRow 同一口径)。
+  const findRow = async (label) => {
+    const seen = () =>
+      page.evaluate(
+        (lbl) => [...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent === lbl),
+        label,
+      )
+    if (await seen()) return true
+    const box = await page
+      .$eval('.tree', (el) => ({ h: el.scrollHeight, vh: el.clientHeight, top: el.scrollTop }))
+      .catch(() => null)
+    if (!box) return false
+    for (let top = 0; top < box.h; top += Math.max(100, box.vh * 0.8)) {
+      await page.$eval('.tree', (el, t) => { el.scrollTop = t }, top)
+      await new Promise((r) => setTimeout(r, 120))
+      if (await seen()) return true
+    }
+    return false
+  }
+
   // 按"出现某个具体符号"等待:不能只等 .outline-row 出现 ——
   // 切文件瞬间上一个文件的条目可能仍在 DOM 里,泛化的等待会命中旧内容。
   const outlineRows = () =>
@@ -4299,28 +4320,30 @@ try {
     check('虚拟滚动只渲染视口行', visible < 100, `${visible} rows in DOM`)
     await page.screenshot({ path: join(SHOTS, 'shot-5-bigdir.png') })
     await page.$eval('.tree', (el) => { el.scrollTop = 0 })
-    // 回到顶部后要等虚拟滚动把 bigdir 行重新渲染出来再点 —— 否则 clickRow 扫到的还是
-    // 滚到 20000 时的残留行,找不到 bigdir(慢机器上固定 sleep 不够,直接等行出现)。
+    // 折叠 bigdir。这里过去很脆:滚到 20000 后回顶,虚拟滚动重渲染有延迟,单次 clickRow + 固定
+    // 等待在慢机器上会失手;而"盲目重试点击"又会震荡(点了没反应就再点 → 反把它重新展开)。
+    // 改为读**实际展开态**(dir 行的 aria-expanded,Tree.tsx 出的)来驱动:只在 expanded=true 时
+    // 点一次折叠,读到 false 即停,读到 absent(还没渲染出来)就滚回顶再等。无猜测、无震荡。
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const st = await page.evaluate(() => {
+        const row = [...document.querySelectorAll('.tree-row')]
+          .find((r) => r.querySelector('.label')?.textContent === 'bigdir')
+        return row ? row.getAttribute('aria-expanded') : 'absent'
+      })
+      if (st === 'false') break
+      if (st === 'true') {
+        await clickRow('bigdir') // 折叠
+        await new Promise((r) => setTimeout(r, 400)) // 等 toggle 落定再复读,别在同一帧里连点
+      } else {
+        await page.$eval('.tree', (el) => { el.scrollTop = 0 })
+        await new Promise((r) => setTimeout(r, 300)) // 等虚拟滚动把 bigdir 行渲染回来
+      }
+    }
+    // 折叠后 1500 个 entry- 行要从虚拟滚动里退出,给足重渲染时间。
     await page.waitForFunction(
-      () => [...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent === 'bigdir'),
+      () => ![...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent?.startsWith('entry-')),
       { timeout: 8000 },
     )
-    // 折叠 bigdir:折叠后要重算 1500 项的扁平列表 + 虚拟滚动重渲染,单次点击 + 5s 在慢机器上
-    // 偶发不够。确认 entry- 确实消失,不够就再点一次;用"entry- 是否还在"做守卫 —— 已折叠
-    // 就不会再点(不会误把它重新展开)。
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const stillOpen = await page.evaluate(() =>
-        [...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent?.startsWith('entry-')))
-      if (!stillOpen) break
-      await clickRow('bigdir') // 折叠
-      try {
-        await page.waitForFunction(
-          () => ![...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent?.startsWith('entry-')),
-          { timeout: 5000 },
-        )
-        break
-      } catch { /* 重渲染慢,再确认一轮 */ }
-    }
     // 把 src 重新展开:下面"刷新后已展开目录保持"那条断言的前提就是 src 处于展开态,
     // 上面为了让 bigdir 进入渲染范围临时收起过它。
     if (!(await page.evaluate(() =>
@@ -4358,8 +4381,15 @@ try {
     const w = await fh.createWritable(); await w.write('new\n'); await w.close()
   })
   await page.click('button[title="刷新目录树"]')
-  await page.waitForFunction(() => [...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent === 'added-later.txt'), { timeout: 5000 })
-  check('手动刷新反映新增文件', true)
+  // added-later.txt 是根层文件,刷新后目录树重渲染需要时间,且它可能落在虚拟滚动视口之外
+  // (夹具变多时更容易撞上)——滚遍全树去找、给几轮重试,匹配断言真实意图"刷新确实收进了
+  // 新文件",而不是"它恰好落在当前视口里"。
+  let sawAdded = false
+  for (let i = 0; i < 6 && !sawAdded; i++) {
+    sawAdded = await findRow('added-later.txt')
+    if (!sawAdded) await new Promise((r) => setTimeout(r, 500))
+  }
+  check('手动刷新反映新增文件', sawAdded, sawAdded ? '' : '滚遍全树仍未见新文件')
   // 展开态按路径逐层异步恢复,等全部加载完成再断言
   await page.waitForFunction(
     () => {
