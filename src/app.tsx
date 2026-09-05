@@ -34,14 +34,14 @@ function IndexStatus() {
   if (st === 'idle') return null
   const text =
     st === 'building'
-      ? `索引构建中…已索引 ${indexedFiles.value} 个文件`
+      ? t('index.building', { n: indexedFiles.value })
       : st === 'done'
-        ? `索引已完成(${indexedFiles.value} 个文件 / ${totalSymbols.value} 个符号)`
+        ? t('index.done', { files: indexedFiles.value, symbols: totalSymbols.value })
         : st === 'partial'
-          ? `项目过大,符号索引仅部分完成(已索引 ${indexedFiles.value} 个文件)`
-          : '符号索引不可用'
+          ? t('index.partial', { n: indexedFiles.value })
+          : t('index.unavailable')
   return (
-    <span class={`intel-index intel-index-${st}`} title="符号索引状态">
+    <span class={`intel-index intel-index-${st}`} title={t('index.statusTitle')}>
       {text}
     </span>
   )
@@ -58,19 +58,19 @@ function TopBar() {
       {m === 'project' && <SearchBox />}
       {m !== 'welcome' && (
         <>
-          <button onClick={() => void openFolder()}>打开文件夹</button>
-          <button onClick={() => void openSingleFile()}>打开文件</button>
-          <button onClick={goWelcome} title="回到入口页">
-            首页
+          <button onClick={() => void openFolder()}>{t('welcome.openFolder')}</button>
+          <button onClick={() => void openSingleFile()}>{t('welcome.openFile')}</button>
+          <button onClick={goWelcome} title={t('topbar.homeTitle')}>
+            {t('topbar.home')}
           </button>
         </>
       )}
       {/* 3b.4:帮助入口的基线是**界面上可点的按钮**,不依赖任何自定义键位 */}
-      <button class="help-toggle" title="键盘操作" aria-label="键盘操作" onClick={openHelp}>
+      <button class="help-toggle" title={t('topbar.helpTitle')} aria-label={t('topbar.helpTitle')} onClick={openHelp}>
         ?
       </button>
-      <button class="theme-toggle" title="切换浅色/暗色主题" onClick={toggleTheme}>
-        {theme.value === 'light' ? '🌙 暗色' : '☀️ 浅色'}
+      <button class="theme-toggle" title={t('topbar.themeTitle')} onClick={toggleTheme}>
+        {theme.value === 'light' ? t('topbar.themeDark') : t('topbar.themeLight')}
       </button>
       {/* i18n 语言开关(样板):切换即时重渲染已接入 i18n 的面板(当前为入口页)。
           最终态见 add-english-ui-i18n 方案 —— 全量迁移后此开关切换整个界面语言。 */}
@@ -147,9 +147,9 @@ export function App() {
         {m === 'project' && activeProjectView === 'files' && (
           <>
             <aside class="sidebar" style={{ width: `${sidebarWidth}px` }}>
-              <nav class="project-view-tabs project-view-tabs-files" aria-label="项目视图">
-                <button type="button" class="active" aria-current="page" data-project-view="files" autoFocus>文件</button>
-                <button type="button" data-project-view="changes" onClick={() => switchProjectView('changes')}>变更</button>
+              <nav class="project-view-tabs project-view-tabs-files" aria-label={t('app.projectViewLabel')}>
+                <button type="button" class="active" aria-current="page" data-project-view="files" autoFocus>{t('app.tabFiles')}</button>
+                <button type="button" data-project-view="changes" onClick={() => switchProjectView('changes')}>{t('app.tabChanges')}</button>
               </nav>
               <Tree />
             </aside>
@@ -157,7 +157,7 @@ export function App() {
           </>
         )}
         {m === 'project' && activeProjectView === 'changes' && root ? (
-          <Suspense fallback={<section class="git-comparison"><div class="git-page-state" role="status">正在载入 Git 对比…</div></section>}>
+          <Suspense fallback={<section class="git-comparison"><div class="git-page-state" role="status">{t('app.loadingGit')}</div></section>}>
             <GitComparison root={root} />
           </Suspense>
         ) : (

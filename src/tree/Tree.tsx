@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { t } from '../i18n'
 import { rootHandle, selectedFile, selectFile } from '../state'
 import { startIndex } from '../search/searchStore'
 import { closeContentSearch } from '../search/contentStore'
@@ -44,13 +45,13 @@ function Row({
         style={{ paddingLeft: `${row.depth * 12 + 8}px` }}
         title={
           row.expanded
-            ? '收起被排除的目录'
-            : `已隐藏 ${row.count} 项(node_modules / .git 等重目录),点击展开;展开后可浏览,但它们不参与项目级搜索与跳转`
+            ? t('tree.collapseExcluded')
+            : t('tree.hiddenTitle', { count: row.count })
         }
         onClick={() => toggleHidden(row.parent)}
       >
         <span class="twisty">{row.expanded ? '▾' : '▸'}</span>
-        <span class="label">已隐藏 {row.count} 项</span>
+        <span class="label">{t('tree.hiddenLabel', { count: row.count })}</span>
       </div>
     )
   }
@@ -58,7 +59,7 @@ function Row({
     return (
       <div class="tree-row" style={{ paddingLeft: `${row.depth * 12 + 8}px` }}>
         <span class="twisty" />
-        <span class="label loading">加载中…</span>
+        <span class="label loading">{t('welcome.loading')}</span>
       </div>
     )
   }
@@ -77,7 +78,7 @@ function Row({
       aria-selected={isSelected}
       {...(node.kind === 'dir' ? { 'aria-expanded': node.expanded } : {})}
       style={{ paddingLeft: `${node.depth * 12 + 8}px` }}
-      title={node.error ? `读取失败:${node.error}` : node.path.join('/')}
+      title={node.error ? t('tree.readFailed', { error: node.error }) : node.path.join('/')}
       onClick={() => onClick(node)}
     >
       <span class="twisty">{node.kind === 'dir' ? (node.expanded ? '▾' : '▸') : ''}</span>
@@ -300,10 +301,10 @@ export function Tree() {
   return (
     <>
       <div class="sidebar-header">
-        <span>资源管理器</span>
+        <span>{t('tree.explorer')}</span>
         <span class="spacer" />
         <button
-          title="刷新目录树"
+          title={t('tree.refresh')}
           disabled={treeRefreshing.value}
           onClick={() => {
             // 刷新即推进代次:在途的引用扫描与全文搜索必须立即取消,
@@ -319,14 +320,14 @@ export function Tree() {
           {treeRefreshing.value ? '⟳' : '↻'}
         </button>
       </div>
-      {rootError && <div class="tree-status" style="color: var(--error)">读取目录失败:{rootError}</div>}
-      {rootLoading && <div class="tree-status">加载中…</div>}
+      {rootError && <div class="tree-status" style="color: var(--error)">{t('tree.readDirFailed', { error: rootError })}</div>}
+      {rootLoading && <div class="tree-status">{t('welcome.loading')}</div>}
       <div
         class={`tree${scrolling ? ' scrolling' : ''}`}
         ref={containerRef}
         role="tree"
         tabIndex={0}
-        aria-label="资源管理器目录树"
+        aria-label={t('tree.explorerTreeLabel')}
         aria-activedescendant={activePath ? rowId(activePath) : undefined}
         // 处理器挂在容器上:搜索框聚焦时按键根本不进树,
         // 用焦点归属天然分流,不写"判断焦点在不在别处"的防御逻辑

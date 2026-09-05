@@ -1,4 +1,5 @@
 import { signal } from '@preact/signals'
+import { t } from '../i18n'
 import { useOverlayKeyboard } from '../lib/useOverlayKeyboard'
 import { KEYS, display, isActive, type KeyId } from '../lib/keys'
 
@@ -94,15 +95,15 @@ export function KeyboardHelp() {
         class="help-panel"
         role="dialog"
         aria-modal="true"
-        aria-label="键盘操作"
+        aria-label={t('topbar.helpTitle')}
         ref={k.containerRef}
         tabIndex={-1}
         onKeyDown={onKeyDown}
         onClick={(e) => e.stopPropagation()}
       >
         <div class="help-header">
-          <span class="help-title">键盘操作</span>
-          <button class="help-close" title="关闭" onClick={() => k.close()}>
+          <span class="help-title">{t('topbar.helpTitle')}</span>
+          <button class="help-close" title={t('common.close')} onClick={() => k.close()}>
             ✕
           </button>
         </div>
@@ -112,10 +113,10 @@ export function KeyboardHelp() {
           if (rows.length === 0) return null
           return (
             <div class="help-group" key={group}>
-              <div class="help-group-title">{group}</div>
+              <div class="help-group-title">{t(`group.${group}`)}</div>
               {rows.map((id) => (
                 <div class="help-row" key={id}>
-                  <span class="help-row-label">{KEYS[id].label}</span>
+                  <span class="help-row-label">{t(`keys.${id}`)}</span>
                   <span class="help-row-key">{display(id)}</span>
                 </div>
               ))}
@@ -123,7 +124,7 @@ export function KeyboardHelp() {
           )
         })}
         <div class="help-note">
-          未列出的键位表示在当前平台尚未经真机核验,因此既不绑定也不提示;这些能力都另有界面入口。
+          {t('help.note')}
         </div>
       </div>
     </div>

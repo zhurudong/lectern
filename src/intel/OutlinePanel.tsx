@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'preact/hooks'
+import { t } from '../i18n'
 import { mode, selectedFile } from '../state'
 import { identifyByName, intelLevelByName, languageLabel } from '../lib/filetypes'
 import { activeFileParsing, activeFileSymbols, ensureFileSymbols, type SymbolHit } from './indexStore'
 import { navigateWithHistory } from './navStack'
 import { focusEditorWhenReady } from '../lib/focusEditor'
-import { KIND, KIND_BADGE, KIND_LABEL } from './symbols'
+import { KIND, KIND_BADGE } from './symbols'
+import { kindLabel } from './kindLabel'
 
 // 文件大纲(code-intelligence spec「文件大纲」):
 // 按文件内出现顺序列出结构,点击定位到行;切换文件同步更新、不残留上一个文件的条目;
@@ -122,8 +124,8 @@ export function OutlinePanel() {
   if (collapsed) {
     return (
       <div class="outline outline-collapsed">
-        <button class="outline-toggle" title="展开大纲" onClick={toggle}>
-          ‹ 大纲
+        <button class="outline-toggle" title={t('outline.expand')} onClick={toggle}>
+          {t('outline.collapsedLabel')}
         </button>
       </div>
     )
@@ -132,15 +134,15 @@ export function OutlinePanel() {
   return (
     <aside class="outline">
       <div class="outline-header">
-        <span class="outline-title">大纲</span>
-        <button class="outline-toggle" title="折叠大纲" onClick={toggle}>
+        <span class="outline-title">{t('outline.title')}</span>
+        <button class="outline-toggle" title={t('outline.collapse')} onClick={toggle}>
           ›
         </button>
       </div>
       <div
         class="outline-body"
         tabIndex={0}
-        aria-label="大纲"
+        aria-label={t('outline.title')}
         role="listbox"
         aria-activedescendant={activeKey ? `cv-ol-${activeKey}` : undefined}
         onKeyDown={(e) => onOutlineKeyDown(e as unknown as KeyboardEvent)}
@@ -150,7 +152,7 @@ export function OutlinePanel() {
       {/* 单文件模式的范围明示(spec「单文件模式下的代码理解」要求 MUST NOT 让用户靠试错推断) */}
       {mode.value === 'single' && (
         <div class="outline-single-note">
-          单文件模式:跳转仅限本文件内;<strong>查找引用与全局符号搜索需要打开所在文件夹</strong>。
+          {t('outline.singleNotePre')}<strong>{t('outline.singleNoteStrong')}</strong>
         </div>
       )}
     </aside>
@@ -167,33 +169,33 @@ function OutlineBody({
   activeKey?: string | null
 }) {
   if (state.status === 'empty' || !forPath) {
-    return <div class="outline-note">未打开文件</div>
+    return <div class="outline-note">{t('outline.notOpen')}</div>
   }
   // 状态还停留在上一个文件上(effect 尚未跑):按解析中呈现,绝不显示旧条目
   if (state.path !== forPath || state.status === 'loading') {
-    return <div class="outline-note">解析中…</div>
+    return <div class="outline-note">{t('outline.parsing')}</div>
   }
   if (state.status === 'unsupported') {
     return (
       <div class="outline-note">
-        {state.language} 暂不支持大纲
-        <div class="outline-note-sub">该语言不参与代码理解,语法高亮与预览不受影响。</div>
+        {t('outline.unsupported', { language: state.language })}
+        <div class="outline-note-sub">{t('outline.unsupportedSub')}</div>
       </div>
     )
   }
   if (state.skipped === 'too-large') {
     return (
       <div class="outline-note">
-        文件过大,符号未被索引
-        <div class="outline-note-sub">超过 5 MB 的文件不参与符号抽取,大纲与跳转不覆盖该文件。</div>
+        {t('outline.tooLarge')}
+        <div class="outline-note-sub">{t('outline.tooLargeSub')}</div>
       </div>
     )
   }
   if (state.skipped === 'error') {
-    return <div class="outline-note">该文件解析失败,无法生成大纲</div>
+    return <div class="outline-note">{t('outline.parseError')}</div>
   }
   if (state.symbols.length === 0) {
-    return <div class="outline-note">该文件未发现可列出的定义</div>
+    return <div class="outline-note">{t('outline.noDefs')}</div>
   }
   return (
     <>
@@ -208,7 +210,7 @@ function OutlineBody({
             aria-selected={activeKey === `${s.line}-${s.kind}-${s.name}`}
             class={`outline-row${activeKey === `${s.line}-${s.kind}-${s.name}` ? ' active' : ''}`}
             style={{ paddingLeft: `${8 + indent * 14}px` }}
-            title={`${KIND_LABEL[s.kind]}${s.container ? ` · ${s.container}` : ''} · 第 ${s.line} 行`}
+            title={`${kindLabel(s.kind)}${s.container ? ` · ${s.container}` : ''} · ${t('outline.lineN', { line: s.line })}`}
             onClick={() => void navigateWithHistory(s.path, s.line, undefined, { word: s.name })}
           >
             <span class={`outline-kind kind-${s.kind}`}>{KIND_BADGE[s.kind]}</span>
