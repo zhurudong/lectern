@@ -4183,12 +4183,28 @@ try {
     check('虚拟滚动只渲染视口行', visible < 100, `${visible} rows in DOM`)
     await page.screenshot({ path: join(SHOTS, 'shot-5-bigdir.png') })
     await page.$eval('.tree', (el) => { el.scrollTop = 0 })
-    await new Promise((r) => setTimeout(r, 400)) // 等虚拟滚动重渲染
-    await clickRow('bigdir') // 折叠
+    // 回到顶部后要等虚拟滚动把 bigdir 行重新渲染出来再点 —— 否则 clickRow 扫到的还是
+    // 滚到 20000 时的残留行,找不到 bigdir(慢机器上固定 sleep 不够,直接等行出现)。
     await page.waitForFunction(
-      () => ![...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent?.startsWith('entry-')),
-      { timeout: 5000 },
+      () => [...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent === 'bigdir'),
+      { timeout: 8000 },
     )
+    // 折叠 bigdir:折叠后要重算 1500 项的扁平列表 + 虚拟滚动重渲染,单次点击 + 5s 在慢机器上
+    // 偶发不够。确认 entry- 确实消失,不够就再点一次;用"entry- 是否还在"做守卫 —— 已折叠
+    // 就不会再点(不会误把它重新展开)。
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const stillOpen = await page.evaluate(() =>
+        [...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent?.startsWith('entry-')))
+      if (!stillOpen) break
+      await clickRow('bigdir') // 折叠
+      try {
+        await page.waitForFunction(
+          () => ![...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent?.startsWith('entry-')),
+          { timeout: 5000 },
+        )
+        break
+      } catch { /* 重渲染慢,再确认一轮 */ }
+    }
     // 把 src 重新展开:下面"刷新后已展开目录保持"那条断言的前提就是 src 处于展开态,
     // 上面为了让 bigdir 进入渲染范围临时收起过它。
     if (!(await page.evaluate(() =>

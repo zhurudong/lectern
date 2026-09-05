@@ -105,7 +105,13 @@ function checkSymbols() {
 
   for (const file of files) {
     const text = readFileSync(file, 'utf8')
+    // devFixture-*.js 是 E2E 的 git 仓夹具:dev-only —— `__CV_TEST_HOOK__` 令 prod `dist/` 把它
+    // tree-shake 掉(下面 checkDevFixtureNotShipped() 断言它绝不出现在发货产物里,故这条豁免
+    // 不可能盖住真泄漏);且它只往 OPFS(源私有沙盒)写、绝不碰用户真实文件。它的 createWritable
+    // 因此不违反"只读"这条**对发货产物**的承诺。仅对它豁免 read-only 一档 —— 零网络 / 权限仍照查。
+    const exemptReadOnly = /(^|\/)devFixture-[^/]*\.js$/.test(file.replace(/\\/g, '/'))
     for (const [invariant, patterns] of Object.entries(FORBIDDEN)) {
+      if (invariant === 'read-only' && exemptReadOnly) continue
       for (const pattern of patterns) {
         const match = new RegExp(pattern.source, 'g').exec(text)
         if (!match) continue
@@ -130,6 +136,20 @@ function checkManifest() {
   if (manifest.content_scripts) fail(`zero permissions: manifest declares content_scripts`)
   if (manifest.content_security_policy)
     fail(`zero permissions: manifest overrides the default content_security_policy`)
+}
+
+/**
+ * The read-only exemption for devFixture-*.js (see checkSymbols) is only sound
+ * because that chunk never reaches the shipped `dist/` — it is dev-only and
+ * tree-shaken out of a production build. Enforce that here: if this run is
+ * checking the production `dist/` and a devFixture chunk is present, the tree-shake
+ * failed and the exemption would be masking a real write path in what ships.
+ */
+function checkDevFixtureNotShipped() {
+  if (resolve(DIST) !== resolve(ROOT, 'dist')) return // 只对发货产物 `dist/` 收紧
+  const leaked = jsFiles(DIST).filter((f) => /(^|\/)devFixture-[^/]*\.js$/.test(f.replace(/\\/g, '/')))
+  for (const f of leaked)
+    fail(`dev fixture leaked into shipped build: ${show(f)} — it must be tree-shaken from prod \`dist/\``)
 }
 
 /**
@@ -188,6 +208,7 @@ if (!existsSync(DIST)) {
 const stale = warnIfStale()
 checkSymbols()
 checkManifest()
+checkDevFixtureNotShipped()
 
 if (failed) {
   console.error(`\nThe build breaks an invariant. See CONTRIBUTING.md, "The three invariants".`)
