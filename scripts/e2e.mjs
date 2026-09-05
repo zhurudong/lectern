@@ -5615,6 +5615,50 @@ try {
     )
   }
 
+  // ---- i18n 英文界面冒烟(add-english-ui-i18n)----
+  // 既有断言全部走默认中文(lang 默认 zh);这里单独验"切到英文后界面真的变英文",
+  // 覆盖切换即时重渲染 + 关键面板的英文文案。不逐条重写三百条断言(见方案 E2E 策略)。
+  {
+    // 顶栏语言开关:zh 时显示 "EN",点一下切到英文后显示 "中"
+    const before = await page.$eval('.lang-toggle', (b) => b.textContent?.trim())
+    await page.click('.lang-toggle')
+    await page.waitForFunction(() => document.querySelector('.lang-toggle')?.textContent?.trim() === '中', { timeout: 3000 })
+    const after = await page.$eval('.lang-toggle', (b) => b.textContent?.trim())
+    check('i18n:语言开关点击后即时切换(EN→中)', before === 'EN' && after === '中', `${before} → ${after}`)
+
+    // 顶栏按钮即时重渲染为英文
+    const topbarEn = await page.$$eval('.topbar button', (bs) => bs.map((b) => b.textContent?.trim()))
+    check(
+      'i18n:顶栏"打开文件夹/文件"重渲染为英文',
+      topbarEn.includes('Open Folder') && topbarEn.includes('Open File'),
+      topbarEn.filter(Boolean).join(' | '),
+    )
+
+    // <html lang> 同步(供 a11y / 截图诊断)
+    const htmlLang = await page.$eval('html', (el) => el.getAttribute('lang'))
+    check('i18n:<html lang> 切到 en', htmlLang === 'en', String(htmlLang))
+
+    // 帮助面板英文:标题、note、以及分组标题都翻译
+    await page.click('.help-toggle')
+    await page.waitForSelector('.help-panel', { timeout: 5000 })
+    const helpTitle = await page.$eval('.help-title', (el) => el.textContent?.trim())
+    const groupTitles = await page.$$eval('.help-group-title', (els) => els.map((e) => e.textContent?.trim()))
+    check('i18n:帮助面板标题英文', helpTitle === 'Keyboard shortcuts', String(helpTitle))
+    check(
+      'i18n:帮助面板分组标题英文(不残留中文)',
+      groupTitles.length > 0 && !groupTitles.some((g) => /[一-鿿]/.test(g ?? '')),
+      groupTitles.join(' / '),
+    )
+    await page.keyboard.press('Escape')
+    await new Promise((r) => setTimeout(r, 150))
+
+    // 缺键回退验证已隐含:任一英文面板若缺键会露出中文 —— 上面的"不残留中文"即守住这条。
+    // 切回中文,保持后续(零网络 / 控制台)断言与套件其余部分一致的语言环境。
+    await page.click('.lang-toggle')
+    await page.waitForFunction(() => document.querySelector('.lang-toggle')?.textContent?.trim() === 'EN', { timeout: 3000 })
+    check('i18n:可切回中文', true)
+  }
+
   // ---- 零网络请求 ----
   check('零 http(s) 网络请求', httpRequests.length === 0, httpRequests.slice(0, 5).join(' | ') || '无')
   // ---- 控制台错误 ----

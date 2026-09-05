@@ -1,6 +1,7 @@
 import { t } from '../i18n'
 import { mode } from '../state'
-import { identifyByName, intelLevelByName, isApproximateHighlight, languageLabel } from '../lib/filetypes'
+import { identifyByName, intelLevelByName, isApproximateHighlight } from '../lib/filetypes'
+import { langLabel } from './kindLabel'
 import { indexState, indexedFiles } from './indexStore'
 
 // 预览区能力标识(code-intelligence spec「代码理解的支持范围与能力明示」):
@@ -43,7 +44,7 @@ export function IntelBadge({ fileName }: { fileName: string }) {
 
   return (
     <span class="intel-badge">
-      <span class="intel-lang">{languageLabel(langId)}</span>
+      <span class="intel-lang">{langLabel(langId)}</span>
       <span class={`intel-cap intel-cap-${capability.cls}`} title={capability.title}>
         {capability.text}
       </span>

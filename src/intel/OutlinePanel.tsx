@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'preact/hooks'
 import { t } from '../i18n'
 import { mode, selectedFile } from '../state'
-import { identifyByName, intelLevelByName, languageLabel } from '../lib/filetypes'
+import { identifyByName, intelLevelByName } from '../lib/filetypes'
 import { activeFileParsing, activeFileSymbols, ensureFileSymbols, type SymbolHit } from './indexStore'
 import { navigateWithHistory } from './navStack'
 import { focusEditorWhenReady } from '../lib/focusEditor'
 import { KIND, KIND_BADGE } from './symbols'
-import { kindLabel } from './kindLabel'
+import { kindLabel, langLabel } from './kindLabel'
 
 // 文件大纲(code-intelligence spec「文件大纲」):
 // 按文件内出现顺序列出结构,点击定位到行;切换文件同步更新、不残留上一个文件的条目;
@@ -94,7 +94,7 @@ export function OutlinePanel() {
     const level = intelLevelByName(sel.name)
     const langId = identifyByName(sel.name)?.language
     if (level === 'none' || !langId) {
-      setState({ status: 'unsupported', path, language: languageLabel(langId) })
+      setState({ status: 'unsupported', path, language: langLabel(langId) })
       activeFileSymbols.value = []
       activeFileParsing.value = false
       return

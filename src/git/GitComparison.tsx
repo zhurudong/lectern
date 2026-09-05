@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { t } from '../i18n'
 import { switchProjectView } from '../lib/projectViewFocus'
 import type { PublicGitError, RepoUnavailableReason } from './errors'
 import type { GitRefsSnapshot } from './refs'
@@ -21,7 +22,7 @@ interface GitComparisonProps {
 type PickerSide = 'base' | 'target'
 
 const STATUS_ORDER = ['M', 'A', 'D'] as const
-const STATUS_LABEL = { M: '已修改', A: '已新增', D: '已删除' } as const
+const statusLabel = (status: typeof STATUS_ORDER[number]): string => t(`git.status${status}`)
 
 function immutableFor(ref: GitRefsSnapshot['refs'][number]): ImmutableEndpoint {
   return {
@@ -32,23 +33,29 @@ function immutableFor(ref: GitRefsSnapshot['refs'][number]): ImmutableEndpoint {
 }
 
 function unavailableText(reason: RepoUnavailableReason): string {
-  const labels: Record<RepoUnavailableReason, string> = {
-    'not-a-git-repository': '当前目录不是可读取的 Git 仓库',
-    'malformed-gitdir': '.git 指针格式无效',
-    'gitdir-outside-authorized-root': 'Git 对象库位于已授权目录之外',
-    'repository-unreadable': '无法读取本地 Git 元数据',
-    'unsupported-object-format': '暂不支持 SHA-256 Git 仓库',
-    'external-alternates': 'Git 对象依赖授权目录之外的 alternates',
-    'bare-repository': '当前版本不支持 bare repository',
+  const keys: Record<RepoUnavailableReason, string> = {
+    'not-a-git-repository': 'git.unavail.notRepo',
+    'malformed-gitdir': 'git.unavail.malformed',
+    'gitdir-outside-authorized-root': 'git.unavail.outside',
+    'repository-unreadable': 'git.unavail.unreadable',
+    'unsupported-object-format': 'git.unavail.format',
+    'external-alternates': 'git.unavail.alternates',
+    'bare-repository': 'git.unavail.bare',
   }
-  return labels[reason]
+  return t(keys[reason])
 }
 
 function errorText(error: PublicGitError | unknown): string {
   if (typeof error === 'object' && error != null && 'message' in error && typeof error.message === 'string') {
     return error.message
   }
-  return 'Git 比较失败'
+  return t('git.errGeneric')
+}
+
+// worker 产生的 PublicGitError 带 code(+ 可选 reason),在**主线程显示处**按其翻译 ——
+// worker 拿不到 lang 信号,故不能就地翻译(见 i18n/index.ts 的 worker 边界说明)。
+function gitErrorText(error: PublicGitError): string {
+  return error.reason ? t(`git.err.reason.${error.reason}`) : t(`git.err.${error.code}`)
 }
 
 function endpointSha(endpoint: ImmutableEndpoint | TargetEndpoint): string {
@@ -63,9 +70,9 @@ function endpointButtonLabel(endpoint: ImmutableEndpoint | TargetEndpoint): stri
 
 function FileViewTabs() {
   return (
-    <nav class="project-view-tabs" aria-label="项目视图">
-      <button type="button" data-project-view="files" onClick={() => switchProjectView('files')}>文件</button>
-      <button type="button" class="active" aria-current="page" data-project-view="changes" autoFocus>变更</button>
+    <nav class="project-view-tabs" aria-label={t('app.projectViewLabel')}>
+      <button type="button" data-project-view="files" onClick={() => switchProjectView('files')}>{t('app.tabFiles')}</button>
+      <button type="button" class="active" aria-current="page" data-project-view="changes" autoFocus>{t('app.tabChanges')}</button>
     </nav>
   )
 }
@@ -83,43 +90,43 @@ function FileFacts({
   target: TargetEndpoint
   compareState: GitCompareState
 }) {
-  if (!file) return <aside class="git-facts"><div class="git-facts-empty">选择文件后显示事实元数据</div></aside>
+  if (!file) return <aside class="git-facts"><div class="git-facts-empty">{t('git.factsEmpty')}</div></aside>
   const oldMode = file.old?.source === 'git' ? file.old.mode : '—'
-  const newMode = file.new?.source === 'git' ? file.new.mode : file.new?.source === 'worktree' ? '不可观测' : '—'
+  const newMode = file.new?.source === 'git' ? file.new.mode : file.new?.source === 'worktree' ? t('git.modeUnobservable') : '—'
   const confidence = compareState.kind === 'ready' ? compareState.confidence : null
   return (
-    <aside class="git-facts" aria-label="文件事实">
-      <header><span>文件事实</span><span class={`git-status-badge git-status-${file.status}`}>{file.status}</span></header>
+    <aside class="git-facts" aria-label={t('git.factsLabel')}>
+      <header><span>{t('git.factsLabel')}</span><span class={`git-status-badge git-status-${file.status}`}>{file.status}</span></header>
       <div class="git-fact-path">{file.path}</div>
       <dl>
-        <div><dt>状态</dt><dd>{STATUS_LABEL[file.status]}</dd></div>
-        <div><dt>基准</dt><dd>{base.label}<small>{endpointSha(base)}</small></dd></div>
-        <div><dt>目标</dt><dd>{target.label}<small>{endpointSha(target)}</small></dd></div>
+        <div><dt>{t('git.factStatus')}</dt><dd>{statusLabel(file.status)}</dd></div>
+        <div><dt>{t('git.factBase')}</dt><dd>{base.label}<small>{endpointSha(base)}</small></dd></div>
+        <div><dt>{t('git.factTarget')}</dt><dd>{target.label}<small>{endpointSha(target)}</small></dd></div>
       </dl>
       <section>
-        <h3>对象</h3>
+        <h3>{t('git.factObjects')}</h3>
         <dl>
-          <div><dt>旧 OID</dt><dd class="mono">{file.old?.oid.slice(0, 12) ?? '—'}</dd></div>
-          <div><dt>新 OID</dt><dd class="mono">{file.new?.oid.slice(0, 12) ?? '—'}</dd></div>
-          <div><dt>旧模式</dt><dd class="mono">{oldMode}</dd></div>
-          <div><dt>新模式</dt><dd class="mono">{newMode}</dd></div>
-          {pair && <div><dt>内容大小</dt><dd>{pair.old.size ?? 0} → {pair.new.size ?? 0} B</dd></div>}
+          <div><dt>{t('git.factOldOid')}</dt><dd class="mono">{file.old?.oid.slice(0, 12) ?? '—'}</dd></div>
+          <div><dt>{t('git.factNewOid')}</dt><dd class="mono">{file.new?.oid.slice(0, 12) ?? '—'}</dd></div>
+          <div><dt>{t('git.factOldMode')}</dt><dd class="mono">{oldMode}</dd></div>
+          <div><dt>{t('git.factNewMode')}</dt><dd class="mono">{newMode}</dd></div>
+          {pair && <div><dt>{t('git.factSize')}</dt><dd>{pair.old.size ?? 0} → {pair.new.size ?? 0} B</dd></div>}
         </dl>
       </section>
       <section>
-        <h3>可信度</h3>
+        <h3>{t('git.factConfidence')}</h3>
         {confidence?.kind === 'exact' ? (
-          <p class="git-fact-ok"><span aria-hidden="true">●</span> Git 历史快照，精确</p>
+          <p class="git-fact-ok"><span aria-hidden="true">●</span> {t('git.confExact')}</p>
         ) : (
           <>
-            <p class="git-fact-limited"><span aria-hidden="true">◐</span> 工作区读取有边界</p>
-            <p class="git-fact-note">浏览器无法观察权限位和 symlink；不读取授权外的 global excludes。</p>
+            <p class="git-fact-limited"><span aria-hidden="true">◐</span> {t('git.confLimited')}</p>
+            <p class="git-fact-note">{t('git.confNote')}</p>
           </>
         )}
       </section>
       <section class="git-readonly-note">
         <span aria-hidden="true">⌁</span>
-        <div><strong>只读比较</strong><p>不执行 fetch、checkout 或任何写入。</p></div>
+        <div><strong>{t('git.readonlyTitle')}</strong><p>{t('git.readonlyNote')}</p></div>
       </section>
     </aside>
   )
@@ -160,11 +167,11 @@ export function GitComparison({ root }: GitComparisonProps) {
       setRefs(snapshot)
       const fallback = snapshot.defaultBase ?? snapshot.groups.local[0] ?? snapshot.refs[0]
       if (!fallback) {
-        setState({ kind: 'error', error: { code: 'invalid-ref', message: '仓库中没有可比较的本地引用' } })
+        setState({ kind: 'error', error: { code: 'invalid-ref', message: t('git.err.invalid-ref') } })
         return
       }
       setBase(immutableFor(fallback))
-      setTarget({ kind: 'worktree', label: '当前工作区', headOid: snapshot.head.oid })
+      setTarget({ kind: 'worktree', label: t('git.worktree'), headOid: snapshot.head.oid })
     }).catch((error) => {
       if (alive && !(error instanceof DOMException && error.name === 'AbortError')) {
         setState({ kind: 'error', error: { code: 'repository-unreadable', message: errorText(error) } })
@@ -248,11 +255,11 @@ export function GitComparison({ root }: GitComparisonProps) {
       <section class="git-comparison git-comparison-state">
         <FileViewTabs />
         {state.kind === 'unavailable' ? (
-          <div class="git-page-state" role="alert"><span aria-hidden="true">◇</span><h2>Git 对比不可用</h2><p>{unavailableText(state.reason)}</p></div>
+          <div class="git-page-state" role="alert"><span aria-hidden="true">◇</span><h2>{t('git.pageUnavailTitle')}</h2><p>{unavailableText(state.reason)}</p></div>
         ) : state.kind === 'error' ? (
-          <div class="git-page-state" role="alert"><span aria-hidden="true">!</span><h2>无法建立 Git 对比</h2><p>{state.error.message}</p></div>
+          <div class="git-page-state" role="alert"><span aria-hidden="true">!</span><h2>{t('git.pageErrorTitle')}</h2><p>{gitErrorText(state.error)}</p></div>
         ) : (
-          <div class="git-page-state" role="status"><span class="git-loading-mark" aria-hidden="true">◌</span><h2>正在读取本地 Git 数据</h2><p>只读取已授权目录，不发起网络请求。</p></div>
+          <div class="git-page-state" role="status"><span class="git-loading-mark" aria-hidden="true">◌</span><h2>{t('git.pageLoadingTitle')}</h2><p>{t('git.pageLoadingNote')}</p></div>
         )}
       </section>
     )
@@ -271,7 +278,7 @@ export function GitComparison({ root }: GitComparisonProps) {
       <header class="git-commandbar">
         <FileViewTabs />
         <div class="git-endpoint-controls">
-          <span class="git-control-label">基准</span>
+          <span class="git-control-label">{t('git.factBase')}</span>
           <div class="git-ref-anchor">
             <button
               type="button"
@@ -288,12 +295,12 @@ export function GitComparison({ root }: GitComparisonProps) {
           <button
             type="button"
             class="git-swap"
-            aria-label="交换基准与目标"
+            aria-label={t('git.swapLabel')}
             disabled={swapDisabled}
-            title={swapDisabled ? '当前工作区只能作为目标，不能交换' : '交换基准与目标'}
+            title={swapDisabled ? t('git.swapDisabled') : t('git.swapLabel')}
             onClick={swap}
           >⇄</button>
-          <span class="git-control-label">目标</span>
+          <span class="git-control-label">{t('git.factTarget')}</span>
           <div class="git-ref-anchor">
             <button
               type="button"
@@ -309,29 +316,29 @@ export function GitComparison({ root }: GitComparisonProps) {
           </div>
         </div>
         <label class="git-mode-select">
-          <span>比较模式</span>
+          <span>{t('git.mode')}</span>
           <select value={compareMode} onChange={(event) => setCompareMode((event.currentTarget as HTMLSelectElement).value as CompareMode)}>
-            <option value="review">审查改动</option>
-            <option value="direct">直接比较</option>
+            <option value="review">{t('git.modeReview')}</option>
+            <option value="direct">{t('git.modeDirect')}</option>
           </select>
         </label>
       </header>
       <div class="git-live-status" aria-live="polite">
-        {state.kind === 'loading' ? '正在计算差异…' : state.kind === 'ready' ? `共 ${state.files.length} 个变更文件` : state.kind === 'error' ? state.error.message : ''}
+        {state.kind === 'loading' ? t('git.computing') : state.kind === 'ready' ? t('git.changedCount', { n: state.files.length }) : state.kind === 'error' ? gitErrorText(state.error) : ''}
       </div>
       <div class="git-workspace">
-        <aside class="git-change-nav" aria-label="变更文件">
-          <header><span>变更</span><strong>{state.kind === 'ready' ? state.files.length : '—'}</strong></header>
-          {state.kind === 'loading' && <div class="git-nav-state" role="status">正在比较本地快照…</div>}
-          {state.kind === 'error' && <div class="git-nav-state git-nav-error" role="alert">{state.error.message}</div>}
+        <aside class="git-change-nav" aria-label={t('git.changedFilesLabel')}>
+          <header><span>{t('app.tabChanges')}</span><strong>{state.kind === 'ready' ? state.files.length : '—'}</strong></header>
+          {state.kind === 'loading' && <div class="git-nav-state" role="status">{t('git.comparing')}</div>}
+          {state.kind === 'error' && <div class="git-nav-state git-nav-error" role="alert">{gitErrorText(state.error)}</div>}
           {state.kind === 'unavailable' && <div class="git-nav-state git-nav-error" role="alert">{unavailableText(state.reason)}</div>}
-          {state.kind === 'ready' && state.files.length === 0 && <div class="git-nav-state"><span aria-hidden="true">✓</span><strong>没有变化</strong><p>所选快照内容一致。</p></div>}
+          {state.kind === 'ready' && state.files.length === 0 && <div class="git-nav-state"><span aria-hidden="true">✓</span><strong>{t('git.noChangesTitle')}</strong><p>{t('git.noChangesNote')}</p></div>}
           {state.kind === 'ready' && STATUS_ORDER.map((status) => {
             const files = grouped[status]
             if (!files.length) return null
             return (
-              <section class="git-change-group" aria-label={STATUS_LABEL[status]} key={status}>
-                <div class="git-change-group-title"><span>{STATUS_LABEL[status]}</span><span>{files.length}</span></div>
+              <section class="git-change-group" aria-label={statusLabel(status)} key={status}>
+                <div class="git-change-group-title"><span>{statusLabel(status)}</span><span>{files.length}</span></div>
                 {files.map((file) => {
                   const segments = file.path.split('/')
                   const name = segments.pop()
@@ -357,12 +364,12 @@ export function GitComparison({ root }: GitComparisonProps) {
           <header class="git-file-header">
             <div>
               <span class={`git-status-letter git-status-${selectedFile?.status ?? 'M'}`}>{selectedFile?.status ?? '—'}</span>
-              <strong>{selectedFile?.path ?? '未选择文件'}</strong>
+              <strong>{selectedFile?.path ?? t('git.noFileSelected')}</strong>
             </div>
             <span class="git-compare-caption">{base.label} → {target.label}</span>
           </header>
           {selectedFile ? <UnifiedDiff file={selectedFile} pair={pair} loading={pairLoading} error={pairError} /> : (
-            <div class="git-diff-state">{state.kind === 'ready' && state.files.length === 0 ? '所选快照没有内容变化' : '从左侧选择一个变更文件'}</div>
+            <div class="git-diff-state">{state.kind === 'ready' && state.files.length === 0 ? t('git.noContentChange') : t('git.pickFile')}</div>
           )}
         </main>
         <FileFacts file={selectedFile} pair={pair} base={base} target={target} compareState={state} />

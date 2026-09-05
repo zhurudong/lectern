@@ -1,4 +1,5 @@
 import { t } from '../i18n'
+import { languageLabel } from '../lib/filetypes'
 import { KIND, type KindId } from './symbols'
 
 // 符号种类的**本地化标签**(主线程专用)。symbols.ts 与 Worker 共享、不引 i18n/Preact,
@@ -23,4 +24,10 @@ const KIND_KEY: Record<KindId, string> = {
 
 export function kindLabel(kind: KindId): string {
   return t(KIND_KEY[kind])
+}
+
+// 语言展示名(主线程):filetypes.ts 与 Worker 共享、不引 i18n,所以"纯文本"这一档的
+// 本地化放在这一层 —— 具名语言(Rust/PHP/…)本就是专名,两种语言下相同,直接透传。
+export function langLabel(language?: string): string {
+  return language ? languageLabel(language) : t('lang.plaintext')
 }
