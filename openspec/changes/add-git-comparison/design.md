@@ -31,6 +31,10 @@ Lectern 是 Preact + Signals + CodeMirror 6 的 Chrome MV3 扩展。项目目录
 
 这样做的关键不是少写状态，而是隔离两种语义：文件导航描述“我在项目哪里”，Git 对比描述“两个快照有什么不同”。把比较端点塞进现有 `selectedFile` 会让搜索、跳转和大纲误以为 diff 是一个真实文件。
 
+两种项目视图共用项目壳层中的 `useResizable` 侧栏宽度、拖拽边界和持久化 key。Git 变更导航不能再自带固定列宽，否则视图切换必然发生几何跳动，也让“变更”侧栏失去用户控制。
+
+第一次进入“变更”后，文件阅读区与 Git 对比区都保留挂载，只通过隐藏态切换可见性。这样恢复的是同一个 CodeMirror、滚动位置和 worker 会话，而不是把 UI 字段复制进第二套缓存再尝试重建；项目根变化或离开项目模式时再销毁隐藏会话。
+
 ### D2 — 只锁定分支选择交互，整体对比视觉设独立门禁
 
 分支选择交互第 2 稿只锁定以下内容：
@@ -136,6 +140,10 @@ Merge base 使用 commit parent 图计算真正的“最佳共同祖先”，不
 
 文件 manifest 只传路径、状态、mode/OID/size 等元数据；blob 按选择懒加载，避免把整个 diff 的所有文件内容送进主线程。Git worker 独立 chunk，主界面首屏不加载 Git 解析器。
 
+worker 生命周期属于以项目根为 key 的 `GitComparison` 实例，而不是 `projectView` 可见状态。临时切到“文件”不会 dispose worker，也不会触发新的 probe/compare；项目根变化或组件真正卸载才释放它。
+
+刷新本地状态必须是显式动作。“重新比较”只递增比较 generation，保留用户已选端点和模式并复用既有竞态防护；视图切换本身不具有刷新语义。这样用户能在“保留审查现场”和“读取磁盘最新状态”之间做明确选择。
+
 ### D9 — 文本差异用 `@codemirror/merge`，但关闭它的写入心智
 
 采用已在 `add-file-compare` spike 中实测的 `@codemirror/merge@6.12.2`：接入后的 `viewer` min+gzip 增量约 7.8 KB，且与现有 CodeMirror 状态/主题栈复用。这里使用 unified 形态，因为 Git 对比具有明确的 base → target 方向。
@@ -182,6 +190,7 @@ OPFS 无法证明真实系统目录对 `.git` 的可达性，也无法复现授�
 - [部分 clone、alternates、SHA-256、worktree gitdir 等仓库形态不可读] → 识别并给具体原因；不联网补对象，不把缺失显示为空差异。
 - [ignore 规则与系统 Git 的 global excludes 不完全一致] → 精确执行仓库内规则，明确不读取授权外全局配置，测试以隔离 global config 的 Git oracle 对拍。
 - [新增 Git worker 增加包体积] → Git 代码独立 lazy chunk；记录主 chunk、Git chunk、总 zip 的 min+gzip 增量；任何依赖必须继续通过零网络/只读符号检查。
+- [保活隐藏的 Git 对比会话会占用一份 worker 与 diff DOM] → 仅缓存当前项目的一份会话；项目根变化或离开项目模式立即释放，不做多项目后台缓存。
 
 ## Migration Plan
 

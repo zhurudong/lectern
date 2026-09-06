@@ -1,4 +1,4 @@
-import { useEffect } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { lazy, Suspense } from 'preact/compat'
 import { mode, projectView, rootHandle, rootName, goWelcome } from './state'
 import { theme, toggleTheme } from './theme'
@@ -15,7 +15,6 @@ import { Welcome } from './welcome/Welcome'
 import { KeyboardHelp, openHelp } from './help/KeyboardHelp'
 import { Tree } from './tree/Tree'
 import { Preview } from './preview/Preview'
-import { startGitWorker, stopGitWorker } from './git/workerClient'
 import { switchProjectView } from './lib/projectViewFocus'
 
 const GitComparison = lazy(() => import('./git/GitComparison').then((module) => ({ default: module.GitComparison })))
@@ -85,6 +84,7 @@ export function App() {
   const m = mode.value
   const activeProjectView = projectView.value
   const root = rootHandle.value
+  const [gitSessionRoot, setGitSessionRoot] = useState<FileSystemDirectoryHandle | null>(null)
 
   // 项目进入/离开时同步文件名索引生命周期,并清空导航栈与引用面板(任务 9.6)
   useEffect(() => {
@@ -95,15 +95,19 @@ export function App() {
     else stopIndex()
   }, [root])
 
-  // Git parsing is a separate, lazy worker path. Merely opening a project keeps
-  // the normal file reader unchanged; entering/leaving changes owns its worker.
+  // Git remains lazy, but once opened its component/worker belong to the current
+  // project session rather than the currently visible tab. Hiding it preserves
+  // endpoints, the selected diff and CodeMirror's exact reading position.
   useEffect(() => {
-    if (m !== 'project' || activeProjectView !== 'changes' || !root) {
-      stopGitWorker()
+    if (m !== 'project' || !root) {
+      setGitSessionRoot(null)
       return
     }
-    startGitWorker()
-    return stopGitWorker
+    if (activeProjectView === 'changes') {
+      setGitSessionRoot(root)
+      return
+    }
+    setGitSessionRoot((current) => current === root ? current : null)
   }, [m, activeProjectView, root])
 
   // The project-view tab that was clicked is unmounted during the switch.
@@ -138,6 +142,9 @@ export function App() {
     defaultWidth: 280,
     grow: 'right',
   })
+  const keepGitSession = m === 'project'
+    && root != null
+    && (activeProjectView === 'changes' || gitSessionRoot === root)
 
   return (
     <div class="layout">
@@ -149,19 +156,39 @@ export function App() {
             <aside class="sidebar" style={{ width: `${sidebarWidth}px` }}>
               <nav class="project-view-tabs project-view-tabs-files" aria-label={t('app.projectViewLabel')}>
                 <button type="button" class="active" aria-current="page" data-project-view="files" autoFocus>{t('app.tabFiles')}</button>
-                <button type="button" data-project-view="changes" onClick={() => switchProjectView('changes')}>{t('app.tabChanges')}</button>
+                <button
+                  type="button"
+                  data-project-view="changes"
+                  onClick={() => {
+                    if (root) setGitSessionRoot(root)
+                    switchProjectView('changes')
+                  }}
+                >{t('app.tabChanges')}</button>
               </nav>
               <Tree />
             </aside>
             <div class="resizer" onMouseDown={(e) => onResizeStart(e as unknown as MouseEvent)} />
           </>
         )}
-        {m === 'project' && activeProjectView === 'changes' && root ? (
-          <Suspense fallback={<section class="git-comparison"><div class="git-page-state" role="status">{t('app.loadingGit')}</div></section>}>
-            <GitComparison root={root} />
-          </Suspense>
+        {m === 'project' ? (
+          <section class="preview" hidden={activeProjectView === 'changes'}><Preview /></section>
         ) : (
           <section class="preview">{m === 'welcome' ? <Welcome /> : <Preview />}</section>
+        )}
+        {keepGitSession && root && (
+          <div
+            class="git-project-view"
+            hidden={activeProjectView !== 'changes'}
+            key={root}
+          >
+            <Suspense fallback={<section class="git-comparison"><div class="git-page-state" role="status">{t('app.loadingGit')}</div></section>}>
+              <GitComparison
+                root={root}
+                sidebarWidth={sidebarWidth}
+                onSidebarResizeStart={onResizeStart}
+              />
+            </Suspense>
+          </div>
         )}
       </div>
     </div>
