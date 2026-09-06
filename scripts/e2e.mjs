@@ -104,6 +104,14 @@ try {
   check('MV3 service worker 已注册', !!swTarget, swTarget?.url() ?? '未观测到(可能已休眠)')
 
   const page = await browser.newPage()
+  // 语言锁(add-english-ui-i18n):套件绝大多数断言走中文文案。0.3.4 起 DETECT_BROWSER_LANG=true
+  // 会让非 zh 浏览器默认英文,而 CI 浏览器 locale 多为 en —— 若不锁,整套中文断言会被英文界面
+  // 打红。initialLang() 先读 localStorage['cv-lang'],存了就无视浏览器语言探测,故在**每次文档
+  // 装载前**写死 zh。这不是掩盖问题:英文由文末专门的冒烟 + DETECT 用例覆盖。
+  const lockLangZh = (p) => p.evaluateOnNewDocument(() => {
+    try { localStorage.setItem('cv-lang', 'zh') } catch { /* 隐私模式等,忽略 */ }
+  })
+  await lockLangZh(page)
   const httpRequests = []
   const consoleErrors = []
   page.on('request', (r) => {
@@ -4839,6 +4847,7 @@ try {
   // 既不绑定也不提示;能力全部由界面入口保证。这一条可自动化,不属于真机清单。
   {
     const winPage = await browser.newPage()
+    await lockLangZh(winPage)
     await winPage.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
     )
@@ -4867,6 +4876,7 @@ try {
   // 用独立页面跑:必须是 activePath 尚为 null 的全新组件实例,而且不能扰动主页面的状态。
   {
     const racePage = await browser.newPage()
+    await lockLangZh(racePage)
     await racePage.goto(`chrome-extension://${extId}/viewer.html`, { waitUntil: 'load' })
     await racePage.waitForSelector('.welcome', { timeout: 10000 })
     // 在页面内埋观察者:`.tree` 一出现就立刻聚焦 —— 此刻 loadChildren 还没 resolve,
@@ -5657,6 +5667,39 @@ try {
     await page.click('.lang-toggle')
     await page.waitForFunction(() => document.querySelector('.lang-toggle')?.textContent?.trim() === 'EN', { timeout: 3000 })
     check('i18n:可切回中文', true)
+  }
+
+  // ---- i18n 浏览器语言探测(DETECT_BROWSER_LANG，0.3.4 起启用）----
+  // 用两张独立页面验证默认语言裁定:未显式选过语言时,非 zh-* 浏览器默认英文、zh-* 默认中文。
+  // 每页各自覆盖 navigator.language 且不写 cv-lang（故走探测分支,不受主页 zh 锁影响）。
+  {
+    const probeDefault = async (navLang) => {
+      const p = await browser.newPage()
+      await p.evaluateOnNewDocument((lang) => {
+        try { localStorage.removeItem('cv-lang') } catch { /* ignore */ }
+        Object.defineProperty(navigator, 'language', { get: () => lang, configurable: true })
+        Object.defineProperty(navigator, 'languages', { get: () => [lang], configurable: true })
+      }, navLang)
+      await p.goto(`chrome-extension://${extId}/viewer.html`, { waitUntil: 'load' })
+      await p.waitForSelector('.welcome', { timeout: 10000 })
+      // 入口页主按钮文案:英文 "Open Folder" / 中文 "打开文件夹"
+      const txt = await p.$$eval('.welcome button', (bs) => bs.map((b) => b.textContent?.trim()))
+      const htmlLang = await p.$eval('html', (el) => el.getAttribute('lang'))
+      await p.close()
+      return { txt, htmlLang }
+    }
+    const en = await probeDefault('en-US')
+    check(
+      'i18n:非中文浏览器默认英文(DETECT）',
+      en.txt.includes('Open Folder') && en.htmlLang === 'en',
+      `${en.htmlLang} · ${en.txt.filter(Boolean).join(' | ')}`,
+    )
+    const zh = await probeDefault('zh-CN')
+    check(
+      'i18n:中文浏览器仍默认中文(DETECT）',
+      zh.txt.includes('打开文件夹') && zh.htmlLang === 'zh-CN',
+      `${zh.htmlLang} · ${zh.txt.filter(Boolean).join(' | ')}`,
+    )
   }
 
   // ---- 零网络请求 ----
