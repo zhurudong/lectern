@@ -17,12 +17,12 @@ const LANG_KEY = 'cv-lang'
 
 /**
  * 默认语言的裁定点(**唯一一处**)。
- * 迁移期:默认中文,浏览器语言探测已实现但先不接管默认 —— 因为目前只有样板面板翻了英文,
- * 若此刻就让非中文浏览器默认英文,会得到"英文入口页 + 中文其余"的割裂体验。
- * 待英文覆盖达标后,把 `DETECT_BROWSER_LANG` 置 true 即可让非 `zh-*` 浏览器默认英文
- * (回退链保证过程平滑)。这条注释就是给 PM 的开关说明。
+ * 0.3.4 起置 true:全量英文覆盖已达标(308 键中英对齐、E2E 英文冒烟 + 缺键回退把守),
+ * 于是让非 `zh-*` 浏览器默认英文,触达更大的用户群体;`zh-*` 浏览器仍默认中文。
+ * 用户显式选过的语言(localStorage['cv-lang'])永远优先于此探测。
+ * 回退链(当前语言 → 中文 → key)保证即便某处漏翻也不会空白。
  */
-const DETECT_BROWSER_LANG = false
+const DETECT_BROWSER_LANG = true
 
 function initialLang(): Lang {
   const stored = localStorage.getItem(LANG_KEY)
