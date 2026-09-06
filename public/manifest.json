@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Lectern",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "零网络、只读的本地代码阅读器:目录树、语法高亮、大纲、跳转定义、查找引用与全项目搜索,全部在本地完成。",
   "homepage_url": "https://github.com/zhurudong/lectern",
   "minimum_chrome_version": "122",

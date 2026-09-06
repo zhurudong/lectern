@@ -13,10 +13,12 @@ import type {
 } from './protocol'
 import { RefPicker } from './RefPicker'
 import { UnifiedDiff } from './UnifiedDiff'
-import { startGitWorker, type GitWorkerClient } from './workerClient'
+import { GitWorkerClient } from './workerClient'
 
 interface GitComparisonProps {
   root: FileSystemDirectoryHandle
+  sidebarWidth: number
+  onSidebarResizeStart: (event: MouseEvent) => void
 }
 
 type PickerSide = 'base' | 'target'
@@ -70,7 +72,7 @@ function endpointButtonLabel(endpoint: ImmutableEndpoint | TargetEndpoint): stri
 
 function FileViewTabs() {
   return (
-    <nav class="project-view-tabs" aria-label={t('app.projectViewLabel')}>
+    <nav class="project-view-tabs git-project-view-tabs" aria-label={t('app.projectViewLabel')}>
       <button type="button" data-project-view="files" onClick={() => switchProjectView('files')}>{t('app.tabFiles')}</button>
       <button type="button" class="active" aria-current="page" data-project-view="changes" autoFocus>{t('app.tabChanges')}</button>
     </nav>
@@ -132,8 +134,8 @@ function FileFacts({
   )
 }
 
-export function GitComparison({ root }: GitComparisonProps) {
-  const clientRef = useRef<GitWorkerClient>(startGitWorker())
+export function GitComparison({ root, sidebarWidth, onSidebarResizeStart }: GitComparisonProps) {
+  const [client] = useState(() => new GitWorkerClient())
   const baseButtonRef = useRef<HTMLButtonElement>(null)
   const targetButtonRef = useRef<HTMLButtonElement>(null)
   const requestSeq = useRef(0)
@@ -148,6 +150,9 @@ export function GitComparison({ root }: GitComparisonProps) {
   const [pairLoading, setPairLoading] = useState(false)
   const [pairError, setPairError] = useState<string>()
   const [picker, setPicker] = useState<PickerSide | null>(null)
+  const [refreshSeq, setRefreshSeq] = useState(0)
+
+  useEffect(() => () => client.dispose(), [client])
 
   useEffect(() => {
     if (!refs || !base || !target || document.activeElement !== document.body) return
@@ -157,7 +162,7 @@ export function GitComparison({ root }: GitComparisonProps) {
   useEffect(() => {
     let alive = true
     setState({ kind: 'loading' })
-    void clientRef.current.probe(root).then((payload) => {
+    void client.probe(root).then((payload) => {
       if (!alive || payload.type !== 'probe-result') return
       if (payload.state.kind === 'unavailable') {
         setState(payload.state)
@@ -178,7 +183,7 @@ export function GitComparison({ root }: GitComparisonProps) {
       }
     })
     return () => { alive = false }
-  }, [root])
+  }, [client, root])
 
   useEffect(() => {
     if (!base || !target) return
@@ -194,7 +199,7 @@ export function GitComparison({ root }: GitComparisonProps) {
       document.documentElement.dataset.gitCompareStartedAt = performance.now().toFixed(1)
       document.documentElement.dataset.gitCompareRequestedTarget = target.label
     }
-    void clientRef.current.compare(root, {
+    void client.compare(root, {
       mode: compareMode,
       base,
       target,
@@ -212,7 +217,7 @@ export function GitComparison({ root }: GitComparisonProps) {
         setState({ kind: 'error', error: { code: 'repository-unreadable', message: errorText(error) } })
       }
     })
-  }, [root, base, target, compareMode])
+  }, [client, root, base, target, compareMode, refreshSeq])
 
   const selectedFile = state.kind === 'ready'
     ? state.files.find((file) => file.path === selectedPath) ?? null
@@ -227,7 +232,7 @@ export function GitComparison({ root }: GitComparisonProps) {
       return
     }
     setPairLoading(true)
-    void clientRef.current.loadFilePair(selectedFile.path).then((payload) => {
+    void client.loadFilePair(selectedFile.path).then((payload) => {
       if (!alive || payload.type !== 'file-pair-result') return
       setPair(payload.pair)
       setPairLoading(false)
@@ -237,7 +242,7 @@ export function GitComparison({ root }: GitComparisonProps) {
       setPairLoading(false)
     })
     return () => { alive = false }
-  }, [selectedFile])
+  }, [client, selectedFile])
 
   const grouped = useMemo(() => {
     const files = state.kind === 'ready' ? [...state.files].sort((left, right) => left.path.localeCompare(right.path)) : []
@@ -252,8 +257,8 @@ export function GitComparison({ root }: GitComparisonProps) {
 
   if (!refs || !base || !target) {
     return (
-      <section class="git-comparison git-comparison-state">
-        <FileViewTabs />
+      <section class="git-comparison git-comparison-state" style={`--git-sidebar-width: ${sidebarWidth}px`}>
+        <header class="git-commandbar"><FileViewTabs /></header>
         {state.kind === 'unavailable' ? (
           <div class="git-page-state" role="alert"><span aria-hidden="true">◇</span><h2>{t('git.pageUnavailTitle')}</h2><p>{unavailableText(state.reason)}</p></div>
         ) : state.kind === 'error' ? (
@@ -274,7 +279,7 @@ export function GitComparison({ root }: GitComparisonProps) {
   }
 
   return (
-    <section class="git-comparison">
+    <section class="git-comparison" style={`--git-sidebar-width: ${sidebarWidth}px`}>
       <header class="git-commandbar">
         <FileViewTabs />
         <div class="git-endpoint-controls">
@@ -290,7 +295,7 @@ export function GitComparison({ root }: GitComparisonProps) {
             >
               <span>{endpointButtonLabel(base)}</span><span aria-hidden="true">⌄</span>
             </button>
-            {picker === 'base' && <RefPicker side="base" refs={refs} client={clientRef.current} selected={base} onSelect={(value) => setBase(value as ImmutableEndpoint)} onClose={closePicker} />}
+            {picker === 'base' && <RefPicker side="base" refs={refs} client={client} selected={base} onSelect={(value) => setBase(value as ImmutableEndpoint)} onClose={closePicker} />}
           </div>
           <button
             type="button"
@@ -312,7 +317,7 @@ export function GitComparison({ root }: GitComparisonProps) {
             >
               <span>{endpointButtonLabel(target)}</span><span aria-hidden="true">⌄</span>
             </button>
-            {picker === 'target' && <RefPicker side="target" refs={refs} client={clientRef.current} selected={target} onSelect={(value) => setTarget(value as TargetEndpoint)} onClose={closePicker} />}
+            {picker === 'target' && <RefPicker side="target" refs={refs} client={client} selected={target} onSelect={(value) => setTarget(value as TargetEndpoint)} onClose={closePicker} />}
           </div>
         </div>
         <label class="git-mode-select">
@@ -322,6 +327,13 @@ export function GitComparison({ root }: GitComparisonProps) {
             <option value="direct">{t('git.modeDirect')}</option>
           </select>
         </label>
+        <button
+          type="button"
+          class="git-refresh"
+          title={t('git.refreshTitle')}
+          disabled={state.kind === 'loading'}
+          onClick={() => setRefreshSeq((value) => value + 1)}
+        ><span aria-hidden="true">↻</span> {t('git.refresh')}</button>
       </header>
       <div class="git-live-status" aria-live="polite">
         {state.kind === 'loading' ? t('git.computing') : state.kind === 'ready' ? t('git.changedCount', { n: state.files.length }) : state.kind === 'error' ? gitErrorText(state.error) : ''}
@@ -360,6 +372,13 @@ export function GitComparison({ root }: GitComparisonProps) {
             )
           })}
         </aside>
+        <div
+          class="resizer git-change-resizer"
+          role="separator"
+          aria-label={t('git.resizeChanges')}
+          aria-orientation="vertical"
+          onMouseDown={(event) => onSidebarResizeStart(event as unknown as MouseEvent)}
+        />
         <main class="git-diff-pane">
           <header class="git-file-header">
             <div>

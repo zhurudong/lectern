@@ -15,6 +15,8 @@ function pass(name, detail = '') {
 const diffSource = await readFile(join(PROJECT, 'src/git/UnifiedDiff.tsx'), 'utf8')
 const pickerSource = await readFile(join(PROJECT, 'src/git/RefPicker.tsx'), 'utf8')
 const comparisonSource = await readFile(join(PROJECT, 'src/git/GitComparison.tsx'), 'utf8')
+const appSource = await readFile(join(PROJECT, 'src/app.tsx'), 'utf8')
+const stylesSource = await readFile(join(PROJECT, 'src/styles.css'), 'utf8')
 const fixtureSource = await readFile(join(PROJECT, 'src/git/devFixture.ts'), 'utf8')
 const workerSource = await readFile(join(PROJECT, 'src/git/gitWorker.ts'), 'utf8')
 // 0.3.4 起 UI 文案迁入 i18n 表(src/i18n/messages.ts);面向用户的措辞契约改为
@@ -93,3 +95,24 @@ assert(/debugDelayMs/.test(workerSource), 'Slow-worker E2E hook is missing from 
 assert(/__CV_TEST_HOOK__\s*&&\s*request\.request\.debugDelayMs/.test(workerSource), 'Slow-worker hook is not development-gated')
 assert(/git-slow-initial/.test(comparisonSource), 'Git UI does not expose the deterministic stale-generation fixture')
 pass('hostile repository, worktree and stale-generation E2E fixtures remain available')
+
+assert(/sidebarWidth=\{sidebarWidth\}/.test(appSource), 'Git comparison does not receive the shared project sidebar width')
+assert(/onSidebarResizeStart=\{onResizeStart\}/.test(appSource), 'Git comparison does not receive the shared project resize handler')
+assert(/--git-sidebar-width/.test(comparisonSource), 'Git comparison does not expose the shared width to its layout')
+assert(/class="resizer git-change-resizer"/.test(comparisonSource), 'Git change navigation has no drag resizer')
+assert(/grid-template-columns:\s*min\(var\(--git-sidebar-width, 280px\), 60%\) 5px/.test(stylesSource), 'Git change navigation does not use the shared sidebar width')
+assert(!/grid-template-columns:\s*(?:220|205|182)px/.test(stylesSource), 'Git layout still contains a second hard-coded sidebar width')
+pass('file and change views share one persisted, resizable sidebar geometry')
+
+assert(/gitSessionRoot === root/.test(appSource), 'Git session is not retained for the current project root')
+assert(/hidden=\{activeProjectView !== 'changes'\}/.test(appSource), 'Git view is unmounted instead of hidden during a view switch')
+assert(/class="preview" hidden=\{activeProjectView === 'changes'\}/.test(appSource), 'File preview is unmounted instead of hidden during a view switch')
+assert(!/stopGitWorker/.test(appSource), 'App still stops the Git worker when project-view visibility changes')
+assert(/useEffect\(\(\) => \(\) => client\.dispose\(\), \[client\]\)/.test(comparisonSource), 'Git worker is not disposed with its project-bound component')
+assert(/key=\{root\}/.test(appSource), 'Git component is not reset at a project-root boundary')
+pass('project view toggles preserve one Git component and project boundaries dispose it')
+
+assert(/const \[refreshSeq, setRefreshSeq\] = useState\(0\)/.test(comparisonSource), 'Explicit compare generation is missing')
+assert(/\[client, root, base, target, compareMode, refreshSeq\]/.test(comparisonSource), 'Explicit compare generation does not trigger comparison')
+assert(/git\.refresh/.test(comparisonSource) && /['"]git\.refresh['"]:\s*'重新比较'/.test(messagesSource), 'Explicit recompare action is missing from the localized UI')
+pass('explicit recompare retains endpoints and mode while intentionally rebuilding results')

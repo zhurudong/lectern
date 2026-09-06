@@ -87,17 +87,3 @@ export class GitWorkerClient {
     this.pending.clear()
   }
 }
-
-let client: GitWorkerClient | null = null
-
-/** Start the Git worker controller only when the project enters the changes view. */
-export function startGitWorker(): GitWorkerClient {
-  client ??= new GitWorkerClient()
-  return client
-}
-
-/** Termination is cleanup-free because the worker owns no locks or writes. */
-export function stopGitWorker(): void {
-  client?.dispose()
-  client = null
-}
