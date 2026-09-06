@@ -20,7 +20,7 @@ export interface KeyDef {
   /** 原生键的展示文本(仅当 key 为 null 时使用) */
   readonly nativeDisplay?: string
   /** 归类,供帮助面板分组 */
-  readonly group: '面板' | '代码区' | '目录树' | '大纲' | '搜索'
+  readonly group: '面板' | '代码区' | '目录树' | '大纲' | '搜索' | '变更'
   /**
    * 是否属于"需真机核验才提示"的补充键位。
    * 原生键(Tab / 方向键)不需要核验 —— 它们不是我们绑的。
@@ -61,6 +61,8 @@ export const KEYS = {
   fileSearch: { label: '文件名搜索', key: 'Mod-k', group: '搜索', needsVerification: true },
   symbolSearch: { label: '符号搜索', key: 'Mod-Shift-o', group: '搜索', needsVerification: true },
   contentSearch: { label: '全文搜索', key: 'Mod-Shift-f', group: '搜索', needsVerification: true },
+  previousHunk: { label: '上一处差异', key: 'Alt-ArrowUp', group: '变更', needsVerification: false },
+  nextHunk: { label: '下一处差异', key: 'Alt-ArrowDown', group: '变更', needsVerification: false },
 } as const satisfies Record<string, KeyDef>
 
 export type KeyId = keyof typeof KEYS

@@ -5,6 +5,9 @@ import { signal } from '@preact/signals'
 /** 应用模式:欢迎页 / 项目浏览(有目录树) / 单文件预览(无目录树) */
 export type AppMode = 'welcome' | 'project' | 'single'
 
+/** Project-local view state. Git comparison is not a second app mode. */
+export type ProjectView = 'files' | 'changes'
+
 /** 当前选中待预览的文件 */
 export interface SelectedFile {
   handle: FileSystemFileHandle
@@ -56,6 +59,7 @@ export function gotoLine(line: number, caret?: { word?: string; col?: number }):
 }
 
 export const mode = signal<AppMode>('welcome')
+export const projectView = signal<ProjectView>('files')
 export const rootHandle = signal<FileSystemDirectoryHandle | null>(null)
 export const rootName = signal('')
 export const selectedFile = signal<SelectedFile | null>(null)
@@ -99,6 +103,7 @@ export function enterProject(handle: FileSystemDirectoryHandle) {
   rootHandle.value = handle
   rootName.value = handle.name
   selectedFile.value = null
+  projectView.value = 'files'
   mode.value = 'project'
 }
 
@@ -106,6 +111,7 @@ export function enterProject(handle: FileSystemDirectoryHandle) {
 export function enterSingleFile(handle: FileSystemFileHandle) {
   rootHandle.value = null
   rootName.value = ''
+  projectView.value = 'files'
   mode.value = 'single'
   selectFile(handle, [handle.name])
 }
@@ -115,6 +121,12 @@ export function goWelcome() {
   rootHandle.value = null
   rootName.value = ''
   selectedFile.value = null
+  projectView.value = 'files'
   targetLine.value = null
   mode.value = 'welcome'
+}
+
+export function setProjectView(view: ProjectView): void {
+  if (mode.value !== 'project') return
+  projectView.value = view
 }

@@ -90,6 +90,15 @@ declared language) with a toggle back to source; relative images resolve
 through the directory handle, in-project relative links open in the viewer,
 HTML is sanitized with DOMPurify, and remote images are never loaded.
 
+**Compare local Git snapshots** from the project-only *变更* view. The base or
+target can be a local branch, a remote-tracking branch, a tag, or a full or
+uniquely abbreviated commit SHA; the current worktree is available as the
+target. Remote-tracking branches are exactly the refs already stored in
+`.git`—the UI labels them *本地快照* (local snapshot), and Lectern never fetches.
+*审查改动* compares the merge base with the target; *直接比较* compares the two
+selected endpoints directly. Changed files are grouped as added, modified, or
+deleted and open in a read-only unified diff with a factual metadata panel.
+
 **Understand**, offline, with no language server and no index on disk:
 
 - **Outline** of the current file — types, functions, methods, fields,
@@ -186,7 +195,11 @@ The interface is in Chinese; the labels below are given as you will see them.
    on that screen and reconnect with one click.
 2. **Read** — click a file in the tree. The outline of the current file is on
    the right (*大纲*); clicking an entry jumps to that line.
-3. **Jump to a definition** — **hold `⌘` (macOS) or `Ctrl`** and the
+3. **Compare Git snapshots** — switch from *文件* to *变更*. Choose the base,
+   target and *审查改动* / *直接比较* mode. The anchored picker groups the current
+   worktree, local branches, remote-tracking local snapshots, tags and Commit
+   SHA input. `⌥↑` / `⌥↓` move between diff hunks.
+4. **Jump to a definition** — **hold `⌘` (macOS) or `Ctrl`** and the
    identifiers you can jump to become underlined; click one to go there. Right
    click gives the same thing as a menu, plus **find references** (*查找引用*),
    grouped by file.
@@ -196,12 +209,12 @@ The interface is in Chinese; the labels below are given as you will see them.
    <sub>A two-file sample, so the underline is easy to see. You never have to
    guess whether a symbol is resolvable: hold the key and the ones that are
    will say so.</sub>
-4. **Come back** — the arrows at the top-left of the preview walk back and
+5. **Come back** — the arrows at the top-left of the preview walk back and
    forward through the jumps you made.
-5. **Search three ways** — the box at the top switches between *文件名*
+6. **Search three ways** — the box at the top switches between *文件名*
    (filename, `⌘K` / `Ctrl+K`), *符号* (symbols across the project) and *全文*
    (full text, streamed in as it scans). They do not interfere with each other.
-6. **Use the keyboard** — `Tab` / `Shift+Tab` move focus between the tree, the
+7. **Use the keyboard** — `Tab` / `Shift+Tab` move focus between the tree, the
    code and the outline. In the tree, arrows move, `→`/`←` expand and collapse
    and `Enter` opens the file. In the code, arrows move the cursor, **`⌘↩`
    jumps to the definition** and **`⌘⇧↩` finds references**; `⌥←` walks back.
@@ -218,7 +231,7 @@ The interface is in Chinese; the labels below are given as you will see them.
    last line of the panel is the boundary: combinations that are not listed are
    not bound on this platform, because they were not verified on real hardware
    there.</sub>
-7. **Refresh after editing elsewhere** — the ↻ button above the tree re-reads
+8. **Refresh after editing elsewhere** — the ↻ button above the tree re-reads
    the directory; clicking a file always re-reads it from disk. Nothing is
    watched automatically, because the API provides no change events.
 
@@ -261,6 +274,15 @@ These are boundaries, not IOUs — the tool is not going to grow into these.
 - **No file watching.** The File System Access API provides no change events.
   Refresh the tree, or click the file again, to re-read from disk.
 - **Read-only.** No editing, no saving.
+- **Git comparison is local and read-only.** No fetch, pull, checkout, index,
+  staging, commit, merge, or Git write occurs. Remote-tracking refs are local
+  snapshots, not live remote state.
+- **Git repository shapes are deliberately bounded.** SHA-1, non-bare
+  repositories whose `.git` object database stays inside the authorized root
+  are supported. Bare repositories, SHA-256 object format, and authorization-
+  external `gitdir` / alternates report an explicit unsupported reason. The
+  browser cannot observe worktree executable bits or symlinks exactly, and the
+  UI says so instead of claiming a complete comparison.
 - **Protected directories cannot be picked.** Chrome refuses to grant some
   directories (system directories, the root of Downloads); choose a subdirectory.
 - **The index is in memory only.** It is rebuilt when a project is reopened
