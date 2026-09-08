@@ -81,9 +81,15 @@ list reads as a promise that it works.
 ```bash
 npm ci
 npm run build       # type-check + production build into dist/
+npm run check       # the same checks run by CI and before a release
 npm run dev         # watch build
 npm run typecheck
 ```
+
+Before pushing, run `npm run build && npm run check`. The check covers extension
+invariants, language-coverage agreement and its parser regressions, repository
+portability, accidental test mutations, documentation vocabulary, release notes,
+and the Git reader tests. Repository text checks include new, non-ignored files.
 
 Load the extension: `chrome://extensions` → enable Developer mode → **Load
 unpacked** → select `dist/`. Chrome 122+ is required.
@@ -102,7 +108,7 @@ it through `grep`/`head` buffers the output and makes a healthy run look hung.
 ## Adding language coverage
 
 `docs/language-support.md` describes what each coverage tier means and what a
-new language has to supply. Two things are easy to get wrong:
+new language has to supply. Keep these constraints in mind:
 
 - coverage claims are per-capability (highlighting, outline, go-to-definition,
   references), and a language can legitimately land in different tiers for
@@ -110,6 +116,8 @@ new language has to supply. Two things are easy to get wrong:
 - every coverage list must be updated together — the README (both languages),
   `docs/language-support.md` and the spec. `node scripts/check-language-coverage.mjs`
   reconciles all of them against the implementation and fails if any disagrees;
+- in the file-preview spec, each highlighting bullet lists languages in its first
+  sentence; explanations after the Chinese full stop (`。`) are not list entries;
 - a grammar that works on synthetic samples routinely mis-collects on real code.
   Test against a real open-source repository in that language before claiming a
   tier, and say what you tested against.
