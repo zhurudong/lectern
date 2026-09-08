@@ -12,7 +12,7 @@
   "homepage": "https://github.com/zhurudong/lectern",
   "scripts": {
     "dev": "vite build --watch",
-    "check": "node scripts/check-invariants.mjs && node scripts/check-language-coverage.mjs && npm run check:git",
+    "check": "node scripts/check-invariants.mjs && node scripts/check-language-coverage.mjs && node --test scripts/check-language-coverage.test.mjs && node scripts/check-repository.mjs && node scripts/check-role-vocabulary.mjs && npm run check:git",
     "check:git": "npm run check:git-fixture && npm run check:git-access && npm run check:git-loose && npm run check:git-pack && npm run check:git-refs && npm run check:git-graph && npm run check:git-worktree && npm run check:git-service && npm run check:git-ui-contracts",
     "check:git-fixture": "node scripts/check-git-fixture.mjs",
     "check:git-access": "node scripts/check-git-access.mjs",
