@@ -99,6 +99,9 @@ It is a long run (several hundred assertions, roughly ten minutes) and it drives
 a visible Chrome window. Redirect its output to a file and read the file — piping
 it through `grep`/`head` buffers the output and makes a healthy run look hung.
 
+To check file and directory drag-and-drop with real local fixtures and a temporary
+production build, run `node scripts/e2e-drop.mjs`.
+
 ## Adding language coverage
 
 `docs/language-support.md` describes what each coverage tier means and what a

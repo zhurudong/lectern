@@ -79,6 +79,9 @@ node scripts/e2e.mjs
 文件再读文件** —— 用 `grep`/`head` 接管道会因缓冲一行不吐，健康的运行看起来和卡死
 一模一样。
 
+拖放打开的专项回归运行 `node scripts/e2e-drop.mjs`，使用真实本地文件和目录，
+生产构建与浏览器配置均放在临时目录中。
+
 ## 增加语言覆盖
 
 [`docs/language-support.md`](docs/language-support.md) 写明了每一档的含义，以及新增

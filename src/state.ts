@@ -66,6 +66,14 @@ export const selectedFile = signal<SelectedFile | null>(null)
 
 let selectNonce = 0
 
+let workspaceOpenRequest = 0
+
+/** 每次打开请求使旧请求失效,避免较慢的拖放或 picker 覆盖后续操作。 */
+export function beginWorkspaceOpen(): () => boolean {
+  const request = ++workspaceOpenRequest
+  return () => request === workspaceOpenRequest
+}
+
 /** 选中一个文件用于预览;每次调用都会触发重新读取(不缓存) */
 export function selectFile(
   handle: FileSystemFileHandle,
@@ -100,6 +108,7 @@ export function navigateTo(
 
 /** 进入项目浏览模式 */
 export function enterProject(handle: FileSystemDirectoryHandle) {
+  beginWorkspaceOpen()
   rootHandle.value = handle
   rootName.value = handle.name
   selectedFile.value = null
@@ -109,6 +118,7 @@ export function enterProject(handle: FileSystemDirectoryHandle) {
 
 /** 进入单文件模式 */
 export function enterSingleFile(handle: FileSystemFileHandle) {
+  beginWorkspaceOpen()
   rootHandle.value = null
   rootName.value = ''
   projectView.value = 'files'
@@ -118,6 +128,7 @@ export function enterSingleFile(handle: FileSystemFileHandle) {
 
 /** 回到欢迎页 */
 export function goWelcome() {
+  beginWorkspaceOpen()
   rootHandle.value = null
   rootName.value = ''
   selectedFile.value = null

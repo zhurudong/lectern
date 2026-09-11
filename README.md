@@ -59,7 +59,8 @@ built for.
 
 ## What it does
 
-**Open** a directory or a single file through the File System Access API.
+**Open** a directory or a single file through the File System Access API, or
+drag one directory or file anywhere onto the viewer page.
 Recent projects are remembered (handles in IndexedDB) and reconnect after a
 browser restart.
 
