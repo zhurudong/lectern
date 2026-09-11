@@ -233,6 +233,51 @@ button {
   height: 100%;
 }
 
+.file-drop-overlay {
+  position: fixed;
+  inset: 12px;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  color: var(--fg);
+  pointer-events: none;
+}
+
+.file-drop-overlay > div {
+  padding: 20px 28px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 18px;
+}
+
+.file-drop-error {
+  position: fixed;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: calc(100% - 32px);
+  padding: 12px 16px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--error);
+  border-radius: 6px;
+  color: var(--fg);
+}
+
+.file-drop-error button {
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-dim);
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -363,7 +408,13 @@ button {
 .welcome .actions {
   display: flex;
   gap: 12px;
+  margin-bottom: 12px;
+}
+
+.welcome .drop-hint {
   margin-bottom: 24px;
+  color: var(--fg-dim);
+  font-size: 12px;
 }
 
 .welcome .actions button {

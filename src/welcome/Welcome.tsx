@@ -48,6 +48,7 @@ export function Welcome() {
           打开文件
         </button>
       </div>
+      <div class="drop-hint">也可将一个文件或文件夹拖到页面任意位置打开</div>
       <div class="recent">
         <h2>最近项目</h2>
         {recent === null ? (

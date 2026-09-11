@@ -11,6 +11,7 @@ import { clearNavStack } from './intel/navStack'
 import { closeReferences } from './intel/references'
 import { closeContentSearch } from './search/contentStore'
 import { Welcome } from './welcome/Welcome'
+import { FileDrop } from './welcome/FileDrop'
 import { KeyboardHelp, openHelp } from './help/KeyboardHelp'
 import { Tree } from './tree/Tree'
 import { Preview } from './preview/Preview'
@@ -142,6 +143,7 @@ export function App() {
 
   return (
     <div class="layout">
+      <FileDrop />
       <TopBar />
       <KeyboardHelp />
       <div class="main">

@@ -16,6 +16,10 @@ interface FileSystemDirectoryHandle {
   keys(): AsyncIterableIterator<string>
 }
 
+interface DataTransferItem {
+  getAsFileSystemHandle(): Promise<FileSystemDirectoryHandle | FileSystemFileHandle | null>
+}
+
 interface DirectoryPickerOptions {
   id?: string
   mode?: 'read' | 'readwrite'
