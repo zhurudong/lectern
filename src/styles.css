@@ -1258,6 +1258,7 @@ button {
 .kind-12 { color: var(--tok-meta); }              /* 宏 */
 .kind-14 { color: var(--tok-heading); }           /* Markdown 标题 */
 .kind-15 { color: var(--fg-faint); }              /* C/C++ 函数原型(声明) */
+.kind-16 { color: var(--tok-keyword); }           /* SQL 对象与语句 */
 
 /* —— 预览区能力标识 —— */
 .intel-badge {

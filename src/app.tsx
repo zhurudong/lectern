@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useState } from 'preact/hooks'
 import { lazy, Suspense } from 'preact/compat'
-import { mode, projectView, rootHandle, rootName, goWelcome } from './state'
+import { mode, projectView, rootHandle, rootName, goWelcome, selectedFile } from './state'
 import { theme, toggleTheme } from './theme'
 import { openFolder, openSingleFile } from './lib/access'
 import { useResizable } from './lib/useResizable'
@@ -16,8 +16,14 @@ import { KeyboardHelp, openHelp } from './help/KeyboardHelp'
 import { Tree } from './tree/Tree'
 import { Preview } from './preview/Preview'
 import { switchProjectView } from './lib/projectViewFocus'
+import { LocalFileSettings, openLocalFileSettings } from './local-files/Settings'
+import { localFileEntry, LocalFileEntry, syncLocalFileSelection } from './local-files/LocalFileEntry'
 
 const GitComparison = lazy(() => import('./git/GitComparison').then((module) => ({ default: module.GitComparison })))
+
+const AiTerminalEntry = __AI_TERMINAL__
+  ? lazy(() => import('./ai/AiTerminal').then((module) => ({ default: module.AiTerminalEntry })))
+  : null
 
 const SIDEBAR_KEY = 'cv-sidebar-width'
 const SIDEBAR_MIN = 180
@@ -54,6 +60,7 @@ function TopBar() {
       {m === 'project' && <span class="project-name">{rootName.value}</span>}
       {m === 'project' && <IndexStatus />}
       <span class="spacer" />
+      {__AI_TERMINAL__ && AiTerminalEntry && <Suspense fallback={null}><AiTerminalEntry /></Suspense>}
       {m === 'project' && <SearchBox />}
       {m !== 'welcome' && (
         <>
@@ -65,6 +72,7 @@ function TopBar() {
         </>
       )}
       {/* 3b.4:帮助入口的基线是**界面上可点的按钮**,不依赖任何自定义键位 */}
+      <button onClick={openLocalFileSettings}>自动打开</button>
       <button class="help-toggle" title="键盘操作" aria-label="键盘操作" onClick={openHelp}>
         ?
       </button>
@@ -79,6 +87,8 @@ export function App() {
   const m = mode.value
   const activeProjectView = projectView.value
   const root = rootHandle.value
+  const selected = selectedFile.value
+  useLayoutEffect(() => syncLocalFileSelection(m, selected), [m, selected])
   const [gitSessionRoot, setGitSessionRoot] = useState<FileSystemDirectoryHandle | null>(null)
 
   // 项目进入/离开时同步文件名索引生命周期,并清空导航栈与引用面板(任务 9.6)
@@ -146,6 +156,7 @@ export function App() {
       <FileDrop />
       <TopBar />
       <KeyboardHelp />
+      <LocalFileSettings />
       <div class="main">
         {m === 'project' && activeProjectView === 'files' && (
           <>
@@ -169,7 +180,7 @@ export function App() {
         {m === 'project' ? (
           <section class="preview" hidden={activeProjectView === 'changes'}><Preview /></section>
         ) : (
-          <section class="preview">{m === 'welcome' ? <Welcome /> : <Preview />}</section>
+          <section class="preview">{m === 'welcome' ? localFileEntry.value ? <LocalFileEntry /> : <Welcome /> : <Preview />}</section>
         )}
         {keepGitSession && root && (
           <div

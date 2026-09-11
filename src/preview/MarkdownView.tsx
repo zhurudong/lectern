@@ -74,6 +74,20 @@ export function MarkdownView({ text, path }: { text: string; path: string[] }) {
   )
 
   const onClick = async (e: MouseEvent) => {
+    // 自动打开地址放在片段内，页内链接只滚动内容；不能覆盖文件来源，
+    // 否则刷新会丢失文件，恶意片段还可能把来源换成另一个本地地址。
+    const anchor = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]')
+    if (anchor && location.hash.startsWith('#file=')) {
+      e.preventDefault()
+      const fragment = anchor.getAttribute('href')!.slice(1)
+      let id = fragment
+      try { id = decodeURIComponent(fragment) } catch { /* 使用原始 ID */ }
+      const body = bodyRef.current
+      const destination = [...body?.querySelectorAll<HTMLElement>('[id]') ?? []].find((node) => node.id === id)
+      if (destination) destination.scrollIntoView({ block: 'start' })
+      else if (!id) body?.scrollIntoView({ block: 'start' })
+      return
+    }
     const target = (e.target as HTMLElement).closest('a[data-cv-path]')
     if (!target || !root) return
     e.preventDefault()

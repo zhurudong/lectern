@@ -3,7 +3,7 @@
   "version": "0.3.1",
   "private": true,
   "type": "module",
-  "description": "Lectern — a zero-network, read-only local code reader (Chrome MV3 extension)",
+  "description": "Lectern — a read-only local code reader with configurable file URL opening (Chrome MV3 extension)",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -12,7 +12,10 @@
   "homepage": "https://github.com/zhurudong/lectern",
   "scripts": {
     "dev": "vite build --watch",
-    "check": "node scripts/check-invariants.mjs && node scripts/check-language-coverage.mjs && npm run check:git",
+    "check": "node scripts/check-invariants.mjs && node scripts/check-language-coverage.mjs && npm run check:local-files && npm run check:sql && npm run check:git",
+    "check:local-files": "node scripts/check-local-files.mjs",
+    "test:local-files": "node scripts/e2e-local-files.mjs",
+    "check:sql": "node scripts/check-sql-outline.mjs",
     "check:git": "npm run check:git-fixture && npm run check:git-access && npm run check:git-loose && npm run check:git-pack && npm run check:git-refs && npm run check:git-graph && npm run check:git-worktree && npm run check:git-service && npm run check:git-ui-contracts",
     "check:git-fixture": "node scripts/check-git-fixture.mjs",
     "check:git-access": "node scripts/check-git-access.mjs",
@@ -24,7 +27,10 @@
     "check:git-service": "node scripts/check-git-service.mjs",
     "check:git-ui-contracts": "node scripts/check-git-ui-contracts.mjs",
     "build": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:ai": "tsc --noEmit && vite build --mode ai",
+    "check:ai": "npm run build:ai && AI_TERMINAL=1 DIST=dist-ai node scripts/check-invariants.mjs && npm run check:ai-negative && npm --prefix lectern-agent test && node scripts/e2e-ai.mjs",
+    "check:ai-negative": "node scripts/check-ai-negative.mjs"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.2",
@@ -52,6 +58,8 @@
     "@lezer/javascript": "^1.5.4",
     "@lezer/python": "^1.1.19",
     "@preact/signals": "^1.2.3",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "dompurify": "^3.1.5",
     "ignore": "^7.0.8",
     "markdown-it": "^14.1.0",

@@ -2,9 +2,10 @@ import { signal } from '@preact/signals'
 import { generation, nextGeneration } from '../lib/generation'
 import { intelLevelByName, identifyByName } from '../lib/filetypes'
 import { isInExcludedRelPath } from '../lib/excluded'
+import { readSourceFile, type FileSource } from '../lib/fileSource'
 import { WorkerPool, extractOne } from './pool'
 import type { FileSymbols, WorkerTask } from './symbolWorker'
-import { KIND, type KindId, type RawSymbol } from './symbols'
+import { isOutlineOnlyKind, type KindId, type RawSymbol } from './symbols'
 
 // 项目符号索引(code-intelligence spec「全项目符号索引」)。
 //
@@ -134,8 +135,8 @@ function appendSymbols(fileIdx: number, symbols: RawSymbol[]): number {
     symContainer[at] = s.container
     symLevel[at] = s.level ?? 0
     list.push(at)
-    // Markdown 标题不进 byLowerName:仅大纲,不参与跳转与引用(spec 要求)
-    if (s.kind !== KIND.heading) {
+    // 仅大纲条目不进定义与符号搜索索引,项目与单文件模式共用同一判定。
+    if (!isOutlineOnlyKind(s.kind)) {
       const key = s.name.toLowerCase()
       const bucket = byLowerName.get(key)
       if (bucket) bucket.push(at)
@@ -366,14 +367,14 @@ export function fileFingerprint(path: string): { size: number; lastModified: num
  */
 export async function ensureFileSymbols(
   path: string,
-  handle: FileSystemFileHandle,
+  handle: FileSource,
   langId: string,
 ): Promise<{ symbols: SymbolHit[]; skipped?: 'too-large' | 'error' }> {
   const cached = fileSymbols(path)
   const fp = fileFingerprint(path)
   if (cached && fp) {
     try {
-      const file = await handle.getFile()
+      const file = await readSourceFile(handle)
       if (file.size === fp.size && file.lastModified === fp.lastModified) {
         // 降级原因必须一并返回,否则大纲会把"文件过大未索引"错显成"未发现定义"
         return { symbols: cached, skipped: fileSkipReason(path) }

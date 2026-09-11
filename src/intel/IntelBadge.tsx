@@ -30,7 +30,12 @@ export function IntelBadge({ fileName }: { fileName: string }) {
     level === 'full'
       ? { text: '可跳转', cls: 'full', title: '该语言支持大纲、跳转到定义与查找引用(基于名称与语法树的启发式匹配,不做类型推断)' }
       : level === 'outline-only'
-        ? { text: '仅大纲', cls: 'outline', title: 'Markdown 仅提供标题大纲,不支持跳转与查找引用' }
+        ? {
+            text: '仅大纲', cls: 'outline',
+            title: langId === 'sql'
+              ? 'SQL 提供常见对象定义与顶层语句大纲,可定位到文件内对应行;不支持定义跳转、查找引用与全局符号搜索'
+              : 'Markdown 仅提供标题大纲,不支持定义跳转、查找引用与全局符号搜索',
+          }
         : isApproximateHighlight(langId)
           ? {
               // 第三档:高亮本身就是近似的,必须说清楚,不能让用户以为是专用高亮

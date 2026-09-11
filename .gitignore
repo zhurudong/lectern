@@ -4,6 +4,7 @@ node_modules/
 # build output
 dist/
 dist-dev/
+dist-local-e2e/
 
 # release artifacts (published via GitHub Releases, not committed)
 *.zip
@@ -27,3 +28,7 @@ scripts/*.png
 # 一次性测量装置（发布验收用，不随产品发布）
 scripts/.matrix*.mjs
 scripts/.diag*.mjs
+verify-0.3.2-tmp.mjs
+
+# opt-in AI extension build
+dist-ai/

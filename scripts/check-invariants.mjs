@@ -36,6 +36,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createHash } from 'node:crypto'
 
 // Deliberately NOT imported from scripts/paths.mjs, even though seven other
 // scripts share that helper. This file must be readable on its own: a skeptic
@@ -48,15 +49,19 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 // DIST is overridable so the check can be pointed at a copy — used by the
 // negative test that proves this script can actually fail (see below).
 const DIST = resolve(ROOT, process.env.DIST ?? 'dist')
+const AI = process.env.AI_TERMINAL === '1'
+const PURE_CSP = "script-src 'self'; object-src 'self'; connect-src 'self' file:"
+const AI_CSP = PURE_CSP + ' ws://127.0.0.1:*'
+// Explicitly audited transport; copied unchanged by Vite. Updating the reader
+// requires reviewing the code and the negative controls before changing this pin.
+const LOCAL_READER_SHA256 = '0ce9b285704b2570ff4f155bc78b1756021d6c2a00575b322487dfc71cbdec83'
 
 /** Paths outside the repo print in full; inside, they print relative. */
 const show = (p) => (p.startsWith(ROOT) ? relative(ROOT, p) : p)
 
 /**
- * A Chrome extension cannot reach the network without one of these, and the
- * File System Access API cannot write a file without `createWritable()`.
- * Their absence is not a promise about behavior — it is the absence of the
- * capability, which is what a static check can actually establish.
+ * Transport references outside the exact local reader (and opt-in loopback
+ * constructor) fail. Filesystem writes are forbidden in every shipped script.
  */
 const FORBIDDEN = {
   'zero network': [
@@ -103,9 +108,27 @@ function checkSymbols() {
   const files = jsFiles(DIST)
   if (files.length === 0) fail(`no .js files under ${show(DIST)} — did the build produce anything?`)
 
+  let transports = 0
+  let localReaders = 0
   for (const file of files) {
-    const text = readFileSync(file, 'utf8')
+    let text = readFileSync(file, 'utf8')
+    const localReader = relative(DIST, file) === 'local-file-reader.js'
+    if (localReader) {
+      localReaders++
+      if (createHash('sha256').update(text).digest('hex') !== LOCAL_READER_SHA256)
+        fail('local-file-reader.js differs from the audited local-only transport')
+    }
+    if (AI) {
+      // Only the single audited numeric-port constructor can be removed before
+      // the unchanged forbidden-symbol scan. Extra sockets/URLs still fail.
+      text = text.replace(/new WebSocket\(`ws:\/\/127\.0\.0\.1:\$\{[a-zA-Z_$][\w$]*\.port\}`\)/g, () => {
+        transports++
+        return 'LECTERN_LOOPBACK_TRANSPORT'
+      })
+      if (/wss?:\/\//i.test(text)) fail(`AI transport: unexpected socket URL in ${show(file)}`)
+    }
     for (const [invariant, patterns] of Object.entries(FORBIDDEN)) {
+      if (localReader && invariant === 'zero network') continue
       for (const pattern of patterns) {
         const match = new RegExp(pattern.source, 'g').exec(text)
         if (!match) continue
@@ -117,6 +140,8 @@ function checkSymbols() {
       }
     }
   }
+  if (AI && transports !== 1) fail(`AI transport: expected exactly one loopback constructor, got ${transports}`)
+  if (localReaders !== 1) fail('expected exactly one audited local-file-reader.js')
 }
 
 function checkManifest() {
@@ -125,11 +150,17 @@ function checkManifest() {
 
   const manifest = JSON.parse(readFileSync(path, 'utf8'))
   const permissions = manifest.permissions ?? []
-  if (permissions.length) fail(`zero permissions: manifest declares ${JSON.stringify(permissions)}`)
-  if (manifest.host_permissions) fail(`zero permissions: manifest declares host_permissions`)
-  if (manifest.content_scripts) fail(`zero permissions: manifest declares content_scripts`)
-  if (manifest.content_security_policy)
-    fail(`zero permissions: manifest overrides the default content_security_policy`)
+  if (JSON.stringify([...permissions].sort()) !== JSON.stringify(['declarativeNetRequestWithHostAccess', 'storage']))
+    fail(`unexpected permissions: ${JSON.stringify(permissions)}`)
+  if (JSON.stringify(manifest.host_permissions) !== JSON.stringify(['file:///*']))
+    fail('host_permissions must contain only file:///*')
+  for (const key of ['content_scripts', 'optional_permissions', 'optional_host_permissions', 'externally_connectable', 'sandbox', 'declarative_net_request']) {
+    if (manifest[key] !== undefined) fail(`unexpected manifest capability: ${key}`)
+  }
+  if (JSON.stringify(manifest.web_accessible_resources) !== JSON.stringify([{ resources: ['viewer.html'], matches: ['file:///*'] }]))
+    fail('only viewer.html may be exposed to file URLs')
+  if (JSON.stringify(manifest.content_security_policy) !== JSON.stringify({ extension_pages: AI ? AI_CSP : PURE_CSP }))
+    fail(`CSP must exactly restrict connections to self/file${AI ? '/loopback' : ''}`)
 }
 
 /**
@@ -172,12 +203,13 @@ function warnIfStale() {
 
 // Printing the list first is part of the promise the documentation makes:
 // "it prints the exact symbols it looks for". Do not remove it as debug noise.
-console.log(`Checking ${show(DIST)} for:`)
+console.log(`Checking ${show(DIST)} (${AI ? 'opt-in AI: one loopback transport' : 'pure'}) for:`)
 for (const [invariant, patterns] of Object.entries(FORBIDDEN)) {
   console.log(`  ${invariant.padEnd(13)} ${patterns.map((p) => p.source).join('  ')}`)
 }
-console.log(`  permissions   manifest.permissions must be empty; no host_permissions,`)
-console.log(`                no content_scripts, no content_security_policy override`)
+console.log('  local reader  exactly one unchanged, SHA-256 pinned local-only reader')
+console.log('  permissions   exactly storage + declarativeNetRequestWithHostAccess; only file:///*')
+console.log(`                no content scripts; exact ${AI ? 'self/file/loopback' : 'self/file'} CSP`)
 console.log()
 
 if (!existsSync(DIST)) {
@@ -194,9 +226,9 @@ if (failed) {
   process.exit(1)
 }
 
-console.log(
-  stale
-    ? 'OK*  no network symbols, no filesystem write symbols, no permissions — ' +
-        '*in a build that predates the current sources; rebuild and re-run before quoting this.'
-    : 'OK  no network symbols, no filesystem write symbols, no permissions.',
-)
+const conclusion = AI
+  ? 'audited local reader + exactly one loopback transport, exact permissions/CSP, no filesystem write symbols'
+  : 'audited local reader only, exact local permissions/CSP, no filesystem write symbols'
+console.log(stale
+  ? `OK*  ${conclusion} — *in a build that predates the current sources; rebuild and re-run before quoting this.`
+  : `OK  ${conclusion}.`)

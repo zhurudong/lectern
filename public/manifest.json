@@ -24,5 +24,12 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": []
+  "permissions": ["storage", "declarativeNetRequestWithHostAccess"],
+  "host_permissions": ["file:///*"],
+  "web_accessible_resources": [
+    { "resources": ["viewer.html"], "matches": ["file:///*"] }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' file:"
+  }
 }

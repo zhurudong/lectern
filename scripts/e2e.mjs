@@ -1854,6 +1854,16 @@ try {
       )
       .catch(() => {})
     const kinds = await distinctTokenClasses()
+    // chase-dockerfile-highlight-flake 1.1(同一取证扩到 CSS 家族——2026-09-02 曾在 theme.sass
+    // 单点假红,前后 scss/less 均正常,疑非环境噪声):未达门槛时同一瞬间取齐语法树状态。
+    if (kinds < 3) {
+      const snap = await page.evaluate(() => window.__cvCodeState?.() ?? null)
+      console.log(`  [同瞬快照·${file}] ` + JSON.stringify(snap))
+      if (snap) {
+        const verdict = snap.treeAvailable ? '假说B(语法已加载但 span 不足,疑产品侧)' : '假说A(语法树尚未跑到文末,疑断言太早)'
+        console.log(`  [判读·${file}] ${verdict}`)
+      }
+    }
     check(`${file} 使用专用高亮(产生多种高亮类,非整片纯文本)`, kinds >= 3, `${kinds} 种高亮类`)
   }
 
@@ -1917,6 +1927,16 @@ try {
     const kinds = await distinctTokenClasses()
     const shown = await page.$eval('.intel-lang', (el) => el.textContent)
     const cap = await page.$eval('.intel-cap', (el) => el.textContent)
+    // chase-dockerfile-highlight-flake 1.1:未达门槛时,同一瞬间取齐"语法树是否已跑到
+    // 文末"与 span 计数 —— 分开取会得出互相矛盾的结论。判读规则(1.2)紧接着写死在下面。
+    if (kinds < 3) {
+      const snap = await page.evaluate(() => window.__cvCodeState?.() ?? null)
+      console.log(`  [同瞬快照·${file}] ` + JSON.stringify(snap))
+      if (snap) {
+        const verdict = snap.treeAvailable ? '假说B(语法已加载但 span 不足,疑产品侧)' : '假说A(语法树尚未跑到文末,疑断言太早)'
+        console.log(`  [判读·${file}] ${verdict}`)
+      }
+    }
     check(
       `${file}:识别为 ${label} + 专用高亮生效 + 归"仅高亮"档`,
       shown === label && kinds >= 3 && cap === '仅高亮',

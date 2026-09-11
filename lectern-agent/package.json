@@ -1,0 +1,29 @@
+{
+  "name": "lectern-agent",
+  "version": "0.1.0",
+  "description": "Opt-in loopback PTY companion for Lectern",
+  "type": "module",
+  "license": "Apache-2.0",
+  "bin": {
+    "lectern-agent": "cli.mjs"
+  },
+  "files": [
+    "cli.mjs",
+    "server.mjs",
+    "README.md",
+    "install.mjs",
+    "LICENSE",
+    "THIRD-PARTY-NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test.mjs",
+    "postinstall": "node install.mjs"
+  },
+  "dependencies": {
+    "node-pty": "1.1.0",
+    "ws": "^8.18.0"
+  }
+}
