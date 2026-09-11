@@ -1,0 +1,12 @@
+.ai-backdrop { position: fixed; inset: 0; z-index: 1000; background: #0007; display: flex; align-items: center; justify-content: center; }
+.ai-panel { width: min(1100px, 94vw); height: 86vh; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--bg, #202124); color: var(--fg, #ddd); border: 1px solid #777; border-radius: 8px; overflow: auto; text-align: left; }
+.ai-heading { display: flex; justify-content: space-between; align-items: center; }
+.ai-disclosure { margin: 0; padding: 10px; background: #795500; color: #fff; white-space: normal; }
+.ai-panel p { white-space: normal; line-height: 1.5; }
+.ai-panel form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.ai-panel label { display: flex; flex-direction: column; gap: 4px; }
+.ai-panel input { width: 210px; }
+.ai-panel input[name=port] { width: 85px; }
+.ai-terminal-host { flex: 1; min-height: 160px; overflow: hidden; background: #000; padding: 4px; }
+.ai-terminal-host .xterm { height: 100%; }
+.ai-status { white-space: normal; }

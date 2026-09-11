@@ -18,8 +18,8 @@ git push origin v0.3.1
 流水线随后会：
 
 1. 从干净检出构建（`npm ci && npm run build`）；
-2. 跑 `npm run check` —— **过不了零网络 / 只读 / 权限 / 语言覆盖门禁的构建，
-   永不发布**；
+2. 跑 `npm run check` —— **过不了无远程传输 / 只读 / 权限与 CSP / 本地读取审计 /
+   语言覆盖门禁的构建，永不发布**；
 3. tag 必须同时匹配 `manifest.json`、`package.json` 与 lockfile，打错 tag 或只改了一半
    版本号的发布都出不去；
 4. 从同一份 `dist/` 产出两份归档：手动安装用的 `lectern-<version>.zip`，以及
@@ -37,6 +37,10 @@ git push origin v0.3.1
   zip 的元数据（条目顺序、时间戳、压缩参数）本来就会因机器而异。要验证产物，**从 tag
   重新构建并比对内容**，并在自己的构建上跑那两条不变量检查。
 - **不改已发布 Release 的 assets。** 要改就发一个新的补丁版本。
+- **本地读取例外必须可审计。** 标准包只允许 `storage`、
+  `declarativeNetRequestWithHostAccess` 与 `file:///*` 主机权限。门禁检查精确 CSP、
+  可访问资源和 `local-file-reader.js` 固定摘要；其余产物仍禁止传输 API，全部产物仍
+  禁止写入 API。读取模块有变更时，发布前必须完成审计与非本地地址负向检查。
 
 ## Chrome 应用商店
 
@@ -46,8 +50,17 @@ git push origin v0.3.1
    或重新压缩**；
 2. 把这个文件原样上传到既有 listing。它的 `manifest.json` 位于归档根目录，手动安装包
    不是这个结构；
-3. 上线后下载公开 CRX，与 tag 对应的 `dist/` 比较扩展载荷。商店签名时会加入
+3. 提交审核前，依据 [README.zh-CN.md](README.zh-CN.md) 和
+   [语言支持矩阵](docs/language-support.md) 同步商店描述与更新说明，并按本次发布的
+   源码重新核对能力数量和限制；
+4. 上线后下载公开 CRX，与 tag 对应的 `dist/` 比较扩展载荷。商店签名时会加入
    `_metadata/` 与 `update_url`，这些差异正常；应用文件不同则不正常。
+
+- [ ] **下次更新商店时补充：**72 种可预览后缀（45 种代码、2 种 Markdown、6 种图片、
+  19 种纯文本，不含按完整文件名识别的文件），28 类语言／语法，以及 9 类、23 种后缀的
+  大纲支持：Python、Java、C、C++、Go、JavaScript/JSX、TypeScript/TSX、Markdown、
+  SQL。明确 Rust（`.rs`）仅支持预览与语法高亮，不支持大纲、定义跳转、查找引用或
+  符号搜索。写入商店文案前重新核对这些数量。
 
 两种归档是有意分开的：`lectern-<version>.zip` 外包 `lectern/` 目录，优化手动解压安装；
 商店包则要求扩展文件位于归档根。二者来自同一份干净 CI 构建，但不再假装两种包装格式

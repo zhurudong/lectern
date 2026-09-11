@@ -13,7 +13,7 @@ a pull request an agent produced overnight. Lectern opens a folder from your
 machine and gives you the part of an IDE that *reading* actually needs — file
 tree, syntax highlighting, outline, go to definition, find references,
 project-wide search — without installing an IDE, without uploading anything,
-and without making a single network request.
+and without contacting remote servers.
 
 ![Lectern reading its own source: file tree on the left, a read-only syntax-highlighted preview in the middle, the file's symbol outline on the right](docs/images/hero-light.png)
 
@@ -26,22 +26,22 @@ The usual answers to "I need to read this code" are *install something* or
 locked-down work laptop, a customer's machine, an audit where the source may
 not leave the room, a review of a repository you do not own and do not want to
 paste anywhere. Lectern is neither — it is a browser extension that reads a
-directory you explicitly hand it, and that is the whole of what it can do.
+directory you explicitly hand it, or a local file URL after you enable Chrome's
+file URL access setting.
 
 Two properties define it, and they only work as a pair:
 
-- **Zero network.** No telemetry, no update checks, no remote fonts, no CDN,
-  no analytics. `manifest.json` declares an empty `permissions` array and no
-  `host_permissions`. Everything is bundled.
+- **No remote traffic.** No telemetry, no update checks, no remote fonts, no
+  CDN, no analytics. Everything is bundled. Local file opening uses only
+  `file:///*` host access; no HTTP(S) hosts are permitted.
 - **Read-only.** It never writes to the directory you open — not a lock file,
   not an index cache, not a marker. All state lives in browser storage inside
   your own Chrome profile.
 
-Open a hole in either one and both collapse into "trust us". If you cannot let
-your code touch the network, you are not evaluating a promise not to misbehave —
-you are evaluating whether the tool is *capable* of misbehaving. That is why
-the invariants are enforced in CI and why the checks below are part of the
-README rather than an appendix.
+These claims need an inspectable boundary. The local URL reader is audited
+separately, and CI checks its exact content, the extension's permissions and
+CSP, and forbidden transfer and write APIs in the rest of the package. The
+checks below are part of the README so you can examine that boundary yourself.
 
 ### When Lectern is the wrong tool
 
@@ -63,6 +63,11 @@ built for.
 drag one directory or file anywhere onto the viewer page.
 Recent projects are remembered (handles in IndexedDB) and reconnect after a
 browser restart.
+
+**Open local files automatically** in the same tab when a `file://` URL has a
+selected extension, such as `.md`, `.sql` or `.java`. The *自动打开* settings
+control the switch and extension list; Chrome's file URL access setting must
+be enabled once. This opens a single file, without access to its parent folder.
 
 **Navigate** a tree that loads lazily and scrolls virtually — comfortable at
 around 10,000 files — with directories first and natural-order names. The heavy
@@ -121,19 +126,43 @@ expansion, and no promise of compiler-grade accuracy.
 
 ## Language coverage
 
-| Tier | Languages |
-| --- | --- |
-| **Navigable** (highlight + outline + definitions + references + symbol search) | Python, Java, C, C++, Go, JavaScript (incl. JSX), TypeScript (incl. TSX) |
-| **Outline only** | Markdown (heading hierarchy) |
-| **Highlight only** | JSON, YAML, TOML, SQL, XML, HTML, CSS, SCSS, Sass, Less, Shell, Rust, Ruby, Kotlin, C#, Groovy, Dockerfile, CMake |
-| **Approximate highlight** (marked as such in the UI) | Vue, Svelte |
+Lectern covers **28 language/syntax categories**: 26 with dedicated highlighting
+and 2 with approximate highlighting. JSX counts with JavaScript, and TSX with
+TypeScript.
 
-Everything else — including Makefiles, deliberately — is shown as plain text
-with line numbers. Common types that are **not** covered today include Swift,
+| Tier | Categories | Languages |
+| --- | --- | --- |
+| **Navigable** (highlight + outline + definitions + references + symbol search) | 7 | Python, Java, C, C++, Go, JavaScript (incl. JSX), TypeScript (incl. TSX) |
+| **Outline only** | 2 | Markdown (heading hierarchy), SQL (common object definitions and top-level queries/data operations) |
+| **Highlight only** | 17 | JSON, YAML, TOML, XML, HTML, CSS, SCSS, Sass, Less, Shell, Rust, Ruby, Kotlin, C#, Groovy, Dockerfile, CMake |
+| **Approximate highlight** (marked as such in the UI) | 2 | Vue, Svelte |
+
+**File outlines cover 9 categories and 23 file extensions**: the 7 navigable
+languages above (20 extensions), plus Markdown (`.md`, `.markdown`) and SQL
+(`.sql`). Code outlines list symbols such as types, functions and methods;
+Markdown outlines list headings. Click an entry to jump to its line.
+
+**Rust (`.rs`) supports preview and dedicated syntax highlighting.** It does
+not provide outlines, go to definition, find references or project-wide symbol
+search.
+
+By file extension, the preview registry contains **72 distinct extensions**:
+45 code, 2 Markdown, 6 image (`.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`)
+and 19 plain-text extensions. Whole-name matches such as `Dockerfile`,
+`CMakeLists.txt` and `Makefile` are handled separately and do not add to that
+count. Binary-file placeholders are not counted as previews.
+
+SQL outlines use heuristics to identify common statements, including table,
+view and stored procedure definitions and top-level `SELECT` / `INSERT`
+statements. Click an entry to locate it in the current file. SQL does not
+participate in definition lookup, references or project-wide symbol search;
+the outline does not provide complete SQL dialect parsing.
+
+Other source-code and configuration types, including Makefiles, are shown as
+plain text with line numbers. Common types that are **not** covered today include Swift,
 Dart, Lua, Scala, R, Perl, PowerShell, Protobuf, PHP, GraphQL and Terraform/HCL;
 **that list is illustrative, not exhaustive — absence from it does not mean a
-type is covered.** The tiers above are the coverage list: what is in them is
-covered, everything else is plain text. Full detail, per file extension, is in
+type is covered.** The tiers above define language support. Full detail, per file extension, is in
 [`docs/language-support.md`](docs/language-support.md).
 
 ## Install
@@ -234,11 +263,42 @@ The interface is in Chinese; the labels below are given as you will see them.
    there.</sub>
 8. **Refresh after editing elsewhere** — the ↻ button above the tree re-reads
    the directory; clicking a file always re-reads it from disk. Nothing is
-   watched automatically, because the API provides no change events.
+   watched automatically, because the API provides no change events. For an
+   automatically opened local file, refresh the browser tab to read it again.
 
 On macOS there are two extra shortcuts, verified on real hardware: `⌘⇧O` for
 symbol search and `⌘⇧F` for full-text search. They are deliberately not bound
 on Windows and Linux — see [Boundaries](#boundaries).
+
+### Automatically open local files
+
+1. Open *自动打开* in the viewer's top toolbar. Follow its extension-details
+   link, then enable **Allow access to file URLs** in Chrome. You can also find
+   it at `chrome://extensions` → Lectern → **Details**. Opening files or folders
+   through the normal picker does not require this setting.
+2. Choose the extensions to handle and save. The switch starts enabled, with
+   code, Markdown and plain-text extensions selected. HTML and images start
+   unselected. You can select all, clear the list, restore defaults, or disable
+   automatic opening entirely; saved changes apply to subsequent navigation.
+3. Open a matching local file in Chrome. Lectern replaces that file view in the
+   same tab. Refresh the tab after an external edit to read the file again.
+
+Matching ignores case and supports encoded names, spaces and non-ASCII names.
+The candidates come from the preview format list, excluding unsupported
+binaries. This handles suffixes only: extensionless names such as `Dockerfile`
+still work through the picker but are not automatic-opening rules. HTTP(S)
+links, directories, embedded frames and page resources are not handled, and
+the feature does not change the operating system's default application.
+
+If access is missing or revoked, a file is gone, or a read fails, the viewer
+provides an explanation and recovery actions. Automatic URL reads are limited
+to **64 MiB**; choose a larger file through *打开文件* instead. The usual preview
+limit still applies: text above **5 MiB** displays only its first **1 MiB**.
+
+Single-file mode supports its existing outline and applicable jumps within
+the file. Cross-file navigation, references, project search and Markdown
+relative images or links require opening the containing folder; automatic
+opening does not grant a directory handle.
 
 ## Checking the two promises yourself
 
@@ -247,24 +307,26 @@ npm ci && npm run build
 node scripts/check-invariants.mjs
 ```
 
-That script is short, has no dependencies, and is meant to be read before it is
-trusted. It prints the exact symbols it looks for, then fails if any of them
-appear in the built bundle: network APIs (`fetch`, `XMLHttpRequest`,
-`WebSocket`, …), filesystem write APIs, or a non-empty permission list in the
-manifest. The symbol list lives in that one file — this README deliberately
-does not keep a second copy of it, because two copies drift and both look
-green while they do.
+Read the script before trusting it. It checks the built package against exact
+permission and CSP allowlists, rejects filesystem write APIs everywhere, and
+rejects transfer APIs outside the one audited `local-file-reader.js` module.
+That module is checked against a fixed digest; changes to its contents require
+review and a corresponding audit update. Negative checks cover HTTP(S), remote
+file hosts and malformed input. The script owns the forbidden-symbol list.
 
-Why those symbols settle it: a Chrome extension cannot reach the network
-without one of the network APIs, and the File System Access API cannot write a
-file without `createWritable()`. Absent symbols are not a promise about
-behavior; they are an absence of the capability. Every read in the extension goes through
-`handle.getFile()`.
+The standard build declares only `storage` and
+`declarativeNetRequestWithHostAccess`, with `file:///*` as its only host
+permission. Only `viewer.html` is exposed as a web-accessible resource, and
+only to `file:///*`. Its CSP is `script-src 'self'; object-src 'self';
+connect-src 'self' file:`. Native picker reads use `handle.getFile()`; the URL
+reader validates local addresses, rejects redirects and limits the read size.
+Rendered file content must not become an arbitrary local-file reading entry.
 
 The same script runs on every push and pull request in
 [CI](.github/workflows/ci.yml), so a change that breaks either invariant fails
 the build. In the browser you can also keep DevTools → Network open on the
-viewer page for a whole session and watch it stay empty.
+viewer page: extension resources and local `file://` reads are expected;
+outbound HTTP(S) requests are not.
 
 ## Boundaries
 
@@ -273,7 +335,8 @@ These are boundaries, not IOUs — the tool is not going to grow into these.
 - **UTF-8 only.** GBK, Latin-1 and other encodings render as garbage; there is
   no encoding detection.
 - **No file watching.** The File System Access API provides no change events.
-  Refresh the tree, or click the file again, to re-read from disk.
+  Refresh the tree, or click the file again, to re-read from disk. Refresh the
+  browser tab for an automatically opened local file.
 - **Read-only.** No editing, no saving.
 - **Git comparison is local and read-only.** No fetch, pull, checkout, index,
   staging, commit, merge, or Git write occurs. Remote-tracking refs are local
@@ -287,11 +350,12 @@ These are boundaries, not IOUs — the tool is not going to grow into these.
 - **Protected directories cannot be picked.** Chrome refuses to grant some
   directories (system directories, the root of Downloads); choose a subdirectory.
 - **The index is in memory only.** It is rebuilt when a project is reopened
-  (seconds at ~10,000 files). Files above 5 MB are excluded from symbol
+  (seconds at ~10,000 files). Files above 5 MiB are excluded from symbol
   extraction, and the index is capped at 400,000 symbols — when the cap is hit
   the UI says so rather than pretending to be complete.
-- **Large files are truncated.** Text above 5 MB loads its first 1 MB, and says
-  it did.
+- **Large files are truncated.** Text above 5 MiB displays its first 1 MiB and
+  says it did. Automatic URL reads stop at 64 MiB; larger files can be opened
+  through the picker with the same text-preview limit.
 - **Chrome only.** Firefox and Safari differ in File System Access support.
 - **Keyboard shortcuts on Windows and Linux are deliberately not bound.** The
   candidate combinations collide with browser-level shortcuts there and could

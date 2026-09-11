@@ -29,6 +29,9 @@ jobs:
       - name: Language coverage reconciliation
         run: node scripts/check-language-coverage.mjs
 
+      - name: SQL outline regression
+        run: npm run check:sql
+
       # Machine-local paths are both a privacy leak (they carry a username and a
       # home directory layout) and a portability bug (nobody else can run the
       # script). Checked as a property of the whole repository rather than as a

@@ -6,7 +6,7 @@
 browser.** This document is the privacy policy referenced by the Chrome Web
 Store listing.
 
-Last updated: 2026-08-20.
+Last updated: 2026-09-11.
 
 ## What is collected
 
@@ -20,16 +20,35 @@ communications, location, web history, and user activity.
 
 ## What leaves your computer
 
-Nothing. The extension makes no network requests at runtime. It declares no
-`host_permissions`, no `permissions` at all, and no content scripts, so it
-cannot reach any website or any other tab. Every asset it needs — the editor,
-the language grammars, the fonts — is bundled in the extension package.
+Nothing. The standard extension does not contact remote services or transmit
+file contents or paths. Every asset it needs — the editor, the language
+grammars, the fonts — is bundled in the extension package. Local `file://`
+reads stay on your machine.
+
+It declares `storage` for saved automatic-opening preferences and
+`declarativeNetRequestWithHostAccess` to redirect matching local file
+navigations into the viewer. Its only host permission is `file:///*`; it has
+no HTTP(S) host permissions or content scripts. Only `viewer.html` is exposed
+as a web-accessible resource, and only to `file:///*`.
 
 ## What it can read, and how you grant it
 
-You choose a folder or a file through Chrome's own file picker. The extension
-receives a handle to exactly what you picked, and can read it. It cannot see
-anything you did not pick.
+Through Chrome's own file picker, you choose a folder or a file and the
+extension receives a handle to that selection. This path does not require
+Chrome's file URL access setting.
+
+Alternatively, enable **Allow access to file URLs** in Lectern's Chrome
+extension details to let it read local file addresses directly. This Chrome
+setting grants local URL access beyond the individual items selected through
+the picker. The viewer's *自动打开* settings control which file extensions
+automatically open in the current tab; they do not narrow the underlying
+Chrome grant. HTTP(S), remote file hosts, directories and page subresources
+are not handled. Turn off Chrome's setting to revoke URL access.
+
+Automatic opening reads one file, up to 64 MiB, into memory and reads it again
+when you refresh the tab. It does not obtain a parent directory handle, index
+neighboring files or resolve Markdown relative resources. Larger files can be
+selected manually; text previews above 5 MiB display their first 1 MiB.
 
 It **never writes**. Writing a file through the File System Access API requires
 `createWritable()`, which does not appear anywhere in this extension's source
@@ -42,12 +61,19 @@ Inside your own Chrome profile, on your machine:
 - **IndexedDB** — handles for recent projects, so you can reconnect after a
   restart, and the display name and path shown for them;
 - **`localStorage`** — interface preferences: theme, sidebar width, panel
-  collapse state.
+  collapse state;
+- **`chrome.storage.local`** — the automatic-opening switch and selected file
+  extensions. These preferences are not synced to a remote account.
 
-None of it is transmitted anywhere. Removing the extension, or clearing the
-extension's site data in Chrome, removes all of it. Your project files are
-never copied into this storage — only the handles Chrome gives out and your UI
-preferences.
+Chrome also stores the extension's redirect rules locally. They describe the
+selected suffixes, not a history of files opened. An automatically opened
+file's local address is part of its viewer tab URL and can be retained by
+Chrome's own history or session restoration; Lectern does not upload it.
+
+Lectern does not transmit any of it. Removing the extension removes its stored
+handles, preferences and rules; Chrome's browsing history is managed
+separately. Your project files are never copied into extension storage — it
+contains only the handles Chrome gives out, preferences and redirect rules.
 
 ## Third parties
 
@@ -65,8 +91,11 @@ npm ci && npm run build
 node scripts/check-invariants.mjs
 ```
 
-The same checks run on every commit in CI, and a release that fails them is
-never published.
+The checks enforce exact permissions and CSP, a fixed digest for the sole
+audited local URL reader, rejection of non-local addresses, and forbidden
+transfer APIs in the remaining package. File write APIs remain forbidden
+throughout. The same checks run on every commit in CI, and a release that
+fails them is never published.
 
 ## Contact
 

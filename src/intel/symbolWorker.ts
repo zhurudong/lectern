@@ -1,5 +1,6 @@
 import { extractSymbols, occurrencesOutsideCommentsAndStrings } from './extract'
 import { identifyByName, looksBinary } from '../lib/filetypes'
+import { readSourceFile, type FileSource } from '../lib/fileSource'
 import type { RawSymbol } from './symbols'
 
 // 符号抽取 Worker(design.md D2):主线程只派发与查询,解析与遍历全部在这里完成。
@@ -12,7 +13,7 @@ const SNIFF_BYTES = 8192
 
 export interface WorkerTask {
   path: string
-  handle: FileSystemFileHandle
+  handle: FileSource
   langId: string
 }
 
@@ -95,8 +96,8 @@ function trimIncompleteUtf8(bytes: Uint8Array): Uint8Array {
   return bytes
 }
 
-async function readText(handle: FileSystemFileHandle): Promise<{ text: string; size: number; lastModified: number } | null> {
-  const file = await handle.getFile()
+async function readText(handle: FileSource): Promise<{ text: string; size: number; lastModified: number } | null> {
+  const file = await readSourceFile(handle)
   if (file.size > SIZE_LIMIT) return null
   const bytes = new Uint8Array(await file.arrayBuffer())
   return { text: decoder.decode(trimIncompleteUtf8(bytes)), size: file.size, lastModified: file.lastModified }
@@ -179,7 +180,7 @@ async function handleGrep(req: GrepRequest): Promise<void> {
       // 图片与已知二进制类型直接跳过,不读盘
       if (info?.channel === 'image' || info?.channel === 'binary') continue
 
-      const file = await task.handle.getFile()
+      const file = await readSourceFile(task.handle)
       const partial = file.size > SIZE_LIMIT
       const blob = partial ? file.slice(0, TRUNCATE_BYTES) : file
       const bytes = new Uint8Array(await blob.arrayBuffer())
@@ -235,7 +236,7 @@ self.onmessage = async (e: MessageEvent<ExtractRequest | ReferencesRequest | Gre
 
   for (const task of tasks) {
     try {
-      const file = await task.handle.getFile()
+      const file = await readSourceFile(task.handle)
       if (file.size > SIZE_LIMIT) {
         // 超大文件不参与符号索引,但仍要上报以便 UI 明示覆盖受限
         out.push({ path: task.path, size: file.size, lastModified: file.lastModified, symbols: [], skipped: 'too-large' })

@@ -18,8 +18,9 @@ git push origin v0.3.1
 The workflow then:
 
 1. builds from a clean checkout (`npm ci && npm run build`);
-2. runs `npm run check` — **a build that fails the zero-network, read-only,
-   permission or language-coverage gates is never published**;
+2. runs `npm run check` — **a build that fails the no-remote-transfer,
+   read-only, permission/CSP, local-reader audit or language-coverage gates is
+   never published**;
 3. fails unless the tag matches `manifest.json`, `package.json` and the lockfile,
    so a mistagged or partially bumped release cannot ship;
 4. produces two archives from that same `dist/`: `lectern-<version>.zip` for
@@ -44,6 +45,12 @@ The workflow then:
   rebuild from the tag and compare the *contents*, and the invariant checks are
   there to be run on their own build.
 - **Do not edit a published release's assets.** Cut a new patch version.
+- **Keep the local-read exception auditable.** The standard package permits
+  only `storage`, `declarativeNetRequestWithHostAccess` and `file:///*` host
+  access. The gate checks its exact CSP and web-accessible resources, and a
+  fixed digest for `local-file-reader.js`; transfer APIs remain forbidden in
+  the rest of the package and write APIs throughout. Reader changes require
+  audit and negative checks for non-local addresses before release.
 
 ## Chrome Web Store
 
@@ -55,10 +62,21 @@ store's own review flow).
 2. Upload that exact file to the existing store listing. It has
    `manifest.json` at the archive root, which the manual-install archive does
    not.
-3. After publication, download the public CRX and compare its extension payload
+3. Before submitting for review, sync the store description and update notes
+   with [README.md](README.md) and the [language support matrix](docs/language-support.md).
+   Recheck capability counts and limitations against the source for this release.
+4. After publication, download the public CRX and compare its extension payload
    with the tagged `dist/`. The store adds `_metadata/` and `update_url` while
    signing the CRX; those additions are expected, application-file differences
    are not.
+
+- [ ] **Next store update:** include 72 preview extensions (45 code, 2 Markdown,
+  6 image, 19 plain text; filename-only matches excluded), 28 language/syntax
+  categories, and outlines for 9 categories / 23 extensions: Python, Java, C,
+  C++, Go, JavaScript/JSX, TypeScript/TSX, Markdown and SQL. State that Rust
+  (`.rs`) supports preview and syntax highlighting only, without outlines,
+  definition jumps, reference search or symbol search. Recheck these figures
+  before using them in the listing.
 
 This split is deliberate: `lectern-<version>.zip` optimizes the manual unzip
 experience by wrapping files in `lectern/`, while the store upload requires the

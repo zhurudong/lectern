@@ -1,17 +1,31 @@
 import { defineConfig } from 'vite'
 import preact from '@preact/preset-vite'
 import { fileURLToPath } from 'node:url'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 
 // 两个入口:查看器整页应用(viewer.html)与 MV3 service worker(background)。
 // background 必须输出为稳定文件名,manifest.json 按名引用。
 export default defineConfig(({ mode }) => ({
-  plugins: [preact()],
+  plugins: [preact(), ...(mode === 'ai' ? [{
+    name: 'lectern-ai-manifest',
+    writeBundle(options) {
+      const path = resolve(options.dir!, 'manifest.json')
+      const manifest = JSON.parse(readFileSync(path, 'utf8'))
+      manifest.name = 'Lectern AI (opt-in spike)'
+      manifest.description = '只读代码阅读器 + 本地 AI 终端; agent 可按用户权限修改文件。'
+      manifest.content_security_policy = {
+        extension_pages: "script-src 'self'; object-src 'self'; connect-src 'self' file: ws://127.0.0.1:*",
+      }
+      writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n')
+    },
+  }] : [])],
   // E2E 测试钩子(window.__cv)仅在 development mode 构建时编译进产物
-  define: { __CV_TEST_HOOK__: mode === 'development' },
+  define: { __CV_TEST_HOOK__: mode === 'development', __AI_TERMINAL__: mode === 'ai' },
   build: {
-    outDir: 'dist',
+    outDir: mode === 'ai' ? 'dist-ai' : 'dist',
     emptyOutDir: true,
     target: 'es2022',
     // 关掉 modulePreload 的 polyfill。

@@ -82,8 +82,15 @@ OPFS fixture passes.
 
 ## Invariants
 
+- Rebuild from current source and run `npm run check`. The current gate checks
+  exact permissions and CSP, the fixed digest of the audited
+  `local-file-reader.js`, forbidden transfer APIs in the remaining package and
+  forbidden write APIs throughout. The zero-symbol/empty-permission result
+  recorded above describes the 2026-09-04 build, before local URL opening.
 - Keep DevTools Network open for the entire flow: there must be no HTTP(S)
-  request.
+  request. Bundled extension resources and authorized local `file://` reads
+  are allowed. Git comparison still reads through the chosen directory handle;
+  enabling file URL access must not broaden its repository boundary.
 - No accept/reject/revert controls may appear in any diff.
 - Typing, pasting, dragging and IME composition must not change diff content.
 - Closing the ref picker with Escape returns focus to its opening selector.
