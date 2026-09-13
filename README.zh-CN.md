@@ -107,11 +107,11 @@ JSX 归入 JavaScript，TSX 归入 TypeScript。
 | **仅高亮** | 16 | JSON、YAML、TOML、XML、HTML、CSS、SCSS、Sass、Less、Shell、Ruby、Kotlin、C#、Groovy、Dockerfile、CMake |
 | **近似高亮**（界面上明示） | 2 | Vue、Svelte |
 
-**文件大纲覆盖 9 类语言／格式，共 23 种文件后缀**：上表的 7 类可跳转语言
-（20 种后缀），加上 Markdown（`.md`、`.markdown`）和 SQL（`.sql`）。
+**文件大纲覆盖 11 类语言／格式，共 29 种文件后缀**：上表的 9 类可跳转语言
+（26 种后缀），加上 Markdown（`.md`、`.markdown`）和 SQL（`.sql`）。
 代码大纲展示类型、函数、方法等符号，Markdown 大纲展示标题层级；点击条目即可定位到行。
 
-**Rust（`.rs`）支持预览与专用语法高亮**，不支持大纲、定义跳转、查找引用或全项目符号搜索。
+**Rust（`.rs`）与 PHP 支持专用高亮、大纲、定义跳转、查找引用和全项目符号搜索**，与上表的可跳转档一致。
 
 按文件后缀统计，预览注册表共包含 **72 种后缀**：45 种代码、2 种 Markdown、
 6 种图片（`.png`、`.jpg`、`.jpeg`、`.gif`、`.svg`、`.webp`）、19 种纯文本。
