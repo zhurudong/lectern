@@ -35,7 +35,7 @@ export function useResizable({ storageKey, min, max, defaultWidth, grow }: Resiz
   const onResizeStart = (e: MouseEvent) => {
     e.preventDefault()
     const startX = e.clientX
-    const startW = width
+    const startW = clamp(width)
     const dir = grow === 'right' ? 1 : -1
     const widthAt = (ev: MouseEvent) => clamp(startW + dir * (ev.clientX - startX))
     const onMove = (ev: MouseEvent) => setWidth(widthAt(ev))
@@ -49,5 +49,5 @@ export function useResizable({ storageKey, min, max, defaultWidth, grow }: Resiz
     window.addEventListener('mouseup', onUp)
   }
 
-  return { width, onResizeStart }
+  return { width: clamp(width), onResizeStart }
 }

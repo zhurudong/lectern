@@ -29,7 +29,7 @@
 
 高亮能力 SHALL 分为以下**两档**(本要求只管高亮;**文件的代码理解能力是另一个维度**,由代码理解的能力标识负责明示,二者 MUST NOT 混为一档):
 
-- **专用高亮**:Python、Java、C、C++、Go、JavaScript、TypeScript(含 JSX/TSX)、Rust、PHP、Markdown、JSON、HTML、CSS、SCSS、Sass、Less、SQL、YAML、XML、Shell、Ruby、Kotlin、C#、Groovy(含 `.gradle`)、TOML、Dockerfile、CMake。其中 Rust、PHP 使用官方 Lezer 语法(与其余可跳转语言同一条语法树通道),而非借用相近语言的近似高亮。
+- **专用高亮**:Python、Java、C、C++、Go、JavaScript、TypeScript(含 JSX/TSX)、Rust、PHP、Markdown、JSON、HTML、CSS、SCSS、Sass、Less、SQL、YAML、XML、Shell、Ruby、Kotlin、C#、Groovy(含 `.gradle`)、TOML、Dockerfile、CMake
 - **近似高亮**(借用相近语言的高亮通道,准确性不保证):Vue、Svelte(借用 HTML 高亮,`<script>` / `<style>` 块可高亮,模板指令如 `v-if` / `{#if}` 不保证准确)。
 
 查看器 SHALL 让用户在预览时知道以下两件事,**至于界面用哪些词来表达、共有几个标签,由实现决定,本要求 MUST NOT 被理解为对展示文案的枚举**:
@@ -363,4 +363,3 @@ Markdown 文件 SHALL 默认以富文本渲染(标题、列表、表格、链接
 
 - **WHEN** 用户选定的对比目标在读取时已不存在
 - **THEN** 对比视图说明该文件已读不到及其原因,当前文件的普通预览照常可用
-

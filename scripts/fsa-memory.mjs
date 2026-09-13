@@ -52,4 +52,3 @@ export function memoryDirectoryFromSnapshot(snapshot, name = 'root') {
   }
   return root
 }
-

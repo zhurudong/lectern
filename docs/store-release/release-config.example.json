@@ -1,0 +1,13 @@
+{
+  "candidateVersion": "0.4.0",
+  "companionVersion": "0.2.1",
+  "observedStoreId": "ahmcjpgaejjfgiihipkjlhmepcnkbddm",
+  "storeIdConfirmed": false,
+  "highestUploadedVersion": null,
+  "downloadUrl": null,
+  "privacyUrl": null,
+  "companionPackages": [],
+  "cleanInstallVerified": false,
+  "companionDistribution": "unsigned",
+  "plannedDownloadUrl": "https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1"
+}

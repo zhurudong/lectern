@@ -8,6 +8,7 @@ import {
   Decoration,
   type DecorationSet,
 } from '@codemirror/view'
+import { syntaxTreeAvailable, syntaxParserRunning } from '@codemirror/language'
 import { theme } from '../theme'
 import { t } from '../i18n'
 import { targetLine, viewportLine, caretLine } from '../state'
@@ -95,6 +96,26 @@ export function CodeView({ text, language, fileName }: { text: string; language?
   const currentTheme = theme.value
   const target = targetLine.value
   const [notice, setNotice] = useState<string | null>(null)
+
+  // 临时诊断(chase-dockerfile-highlight-flake 1.1):同一瞬间取齐"正文是否已出现 /
+  // 高亮类计数 / 语法树解析是否已跑到文末" —— 三者分开取会得出互相矛盾的结论。
+  // `syntaxTreeAvailable` 是 legacy-modes(StreamLanguage)与 Lezer 语言共用的判据:
+  // CM6 的解析是增量、可能延后到 idle 时机完成的,树未跑到文末就等于"还没上色"。
+  if (__CV_TEST_HOOK__) {
+    ;(window as unknown as { __cvCodeState?: () => unknown }).__cvCodeState = () => {
+      const view = viewRef.current
+      if (!view) return null
+      const spans = [...view.contentDOM.querySelectorAll('.cm-line span')]
+      return {
+        language,
+        hasText: view.state.doc.length > 0,
+        spanCount: spans.length,
+        distinctSpanClasses: new Set(spans.map((s) => s.className).filter(Boolean)).size,
+        treeAvailable: syntaxTreeAvailable(view.state, view.state.doc.length),
+        parserRunning: syntaxParserRunning(view),
+      }
+    }
+  }
 
   useEffect(() => {
     const host = hostRef.current

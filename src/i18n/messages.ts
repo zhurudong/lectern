@@ -1,12 +1,11 @@
+import { releaseZh, releaseEn } from './releaseMessages'
 import type { Lang } from './index'
 
 // 翻译表:key → 文案,按语言分组。key 命名空间化(`面板.用途`)。
 //
-// 各面板通过统一翻译表提供中英文文案,支持即时切换、占位符插值与缺键回退。
-//
-// 约定:
-// - 占位符用 `{name}`,由 `t(key, { name })` 替换。
-// - 英文缺某个 key 时,`t()` 回退到中文原文。
+// 所有面板通过统一翻译表提供中英文文案，支持即时切换。
+// 占位符使用 `{name}`，由 `t(key, { name })` 替换；发布检查要求两种语言的键与占位符一致。
+// 缺键时沿用 `t()` 的中文回退行为。
 
 type Dict = Record<string, string>
 
@@ -739,4 +738,4 @@ const en: Dict = {
   'lang.plaintext': 'Plain text',
 }
 
-export const messages: Record<Lang, Dict> = { zh, en }
+export const messages: Record<Lang, Dict> = { zh: { ...zh, ...releaseZh }, en: { ...en, ...releaseEn } }

@@ -116,3 +116,14 @@ assert(/const \[refreshSeq, setRefreshSeq\] = useState\(0\)/.test(comparisonSour
 assert(/\[client, root, base, target, compareMode, refreshSeq\]/.test(comparisonSource), 'Explicit compare generation does not trigger comparison')
 assert(/git\.refresh/.test(comparisonSource) && /['"]git\.refresh['"]:\s*'重新比较'/.test(messagesSource), 'Explicit recompare action is missing from the localized UI')
 pass('explicit recompare retains endpoints and mode while intentionally rebuilding results')
+// AI is a separate, opt-in build, never a Git comparison action.
+function assertAiBoundary(source) {
+  assert(/const AiTerminalEntry = __AI_TERMINAL__/.test(source), 'AI import must be build-gated')
+  assert(/__AI_TERMINAL__ && AiTerminalEntry &&/.test(source), 'AI entry must be build-gated')
+}
+assertAiBoundary(appSource)
+let aiNegativeFailed = false
+try { assertAiBoundary(appSource.replaceAll('__AI_TERMINAL__', 'true')) }
+catch { aiNegativeFailed = true }
+assert(aiNegativeFailed, 'AI build-gate negative control did not fail')
+pass('AI terminal import and entry are opt-in, with a negative control')

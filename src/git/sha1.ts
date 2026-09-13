@@ -124,4 +124,3 @@ export function gitObjectOid(type: 'commit' | 'tree' | 'blob' | 'tag', body: Uin
   const header = new TextEncoder().encode(`${type} ${body.byteLength}\0`)
   return new Sha1().update(header).update(body).hex()
 }
-

@@ -95,4 +95,3 @@ export async function readLooseObject(git: ReadOnlyFsa, oid: string): Promise<Gi
   }
   return parseInflated(oid, await inflateBounded(compressed))
 }
-

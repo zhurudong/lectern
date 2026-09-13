@@ -1,0 +1,11 @@
+{
+  "extensionName": {
+    "message": "Lectern — 代码阅读器"
+  },
+  "extensionDescription": {
+    "message": "本地代码阅读器：语法高亮、大纲、定义与引用、项目搜索、文件和 Git 差异对比。"
+  },
+  "openTitle": {
+    "message": "打开 Lectern"
+  }
+}

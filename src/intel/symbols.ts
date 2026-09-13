@@ -17,9 +17,15 @@ export const KIND = {
   heading: 14,
   /** C/C++ 的函数原型:与"有函数体的定义"区分种类(头文件常常只有原型) */
   declaration: 15,
+  /** SQL 对象与语句:只用于文件内大纲,不作为定义候选 */
+  sql: 16,
 } as const
 
 export type KindId = (typeof KIND)[keyof typeof KIND]
+
+export function isOutlineOnlyKind(kind: KindId): boolean {
+  return kind === KIND.heading || kind === KIND.sql
+}
 
 /** 大纲/搜索结果里的种类标识(短徽标) */
 export const KIND_BADGE: Record<KindId, string> = {
@@ -38,6 +44,7 @@ export const KIND_BADGE: Record<KindId, string> = {
   [KIND.ctor]: '⊕',
   [KIND.heading]: 'H',
   [KIND.declaration]: 'd',
+  [KIND.sql]: 'Q',
 }
 
 export const KIND_LABEL: Record<KindId, string> = {
@@ -56,6 +63,7 @@ export const KIND_LABEL: Record<KindId, string> = {
   [KIND.ctor]: '构造函数',
   [KIND.heading]: '标题',
   [KIND.declaration]: '声明',
+  [KIND.sql]: 'SQL 语句',
 }
 
 /** 抽取结果的单条符号(Worker 回传形状) */

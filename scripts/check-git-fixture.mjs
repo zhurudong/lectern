@@ -23,4 +23,3 @@ if (!paths.has('src/app.ts')) fail('snapshot omitted worktree content')
 if (!process.exitCode) {
   console.log(`PASS  deterministic Git oracle fixture (${files.length} files, ${first.slice(0, 8)} → ${second.slice(0, 8)})`)
 }
-

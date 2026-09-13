@@ -22,6 +22,8 @@ jobs:
 
       # A release that cannot pass the invariant and coverage gates must not be published.
       - run: npm run check
+      - run: npm run build:ai
+      - run: npm run check:release
 
       - name: Check the tag matches every package version
         run: |
@@ -58,10 +60,13 @@ jobs:
             exit 1
           fi
 
+          # The AI candidate is distinct; its public release still requires verified companion distribution and install checks.
+          (cd dist-ai && zip -qr "../lectern-${version}-ai-candidate.zip" .)
+          sha256sum "lectern-${version}-ai-candidate.zip" > "lectern-${version}-ai-candidate.zip.sha256"
           sha256sum "${manual}" > "${manual}.sha256"
           sha256sum "${store}" > "${store}.sha256"
 
-      - name: Publish
+      - name: Publish draft for review
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -71,10 +76,12 @@ jobs:
             echo "::error::Missing version-specific release notes: ${notes}"
             exit 1
           fi
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$GITHUB_REF_NAME" --draft \
             "lectern-${version}.zip" \
             "lectern-${version}.zip.sha256" \
             "lectern-${version}-web-store.zip" \
             "lectern-${version}-web-store.zip.sha256" \
+            "lectern-${version}-ai-candidate.zip" \
+            "lectern-${version}-ai-candidate.zip.sha256" \
             --title "$GITHUB_REF_NAME" \
             --notes-file "${notes}"

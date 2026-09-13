@@ -134,6 +134,7 @@ function parseImplementation() {
   languagesInUse.add('xml')
 
   const full = new Set(ids(block('const INTEL_FULL', '([', '])')))
+  const outline = new Set(ids(block('const INTEL_OUTLINE_ONLY', '([', '])')))
   const approximate = new Set(ids(block('const APPROXIMATE', '([', '])')))
 
   const label = new Map(
@@ -148,10 +149,10 @@ function parseImplementation() {
   const display = (id) => label.get(dialects[id] ?? id)
 
   const navigable = set([...full].map(display))
-  const outlineOnly = set(['Markdown'])
+  const outlineOnly = set([...outline].map(display))
   const highlightOnly = set(
     [...languagesInUse]
-      .filter((id) => !full.has(id) && !approximate.has(id) && id !== 'markdown')
+      .filter((id) => !full.has(id) && !approximate.has(id) && !outline.has(id))
       .map(display),
   )
   const approximateNames = set([...approximate].map(display))

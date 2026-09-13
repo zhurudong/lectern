@@ -108,6 +108,11 @@ const TEXT_EXT = new Set([
   'license', 'authors', 'changelog',
 ])
 
+/** 后缀配置和预览共用注册表；二进制占位提示不算可预览。 */
+export function previewExtensions(): string[] {
+  return [...new Set([...Object.keys(CODE_EXT), ...IMAGE_EXT, ...TEXT_EXT, 'md', 'markdown'])].sort()
+}
+
 function extOf(name: string): string {
   const idx = name.lastIndexOf('.')
   if (idx <= 0 || idx === name.length - 1) return ''
@@ -159,7 +164,7 @@ export function languageFromShebang(text: string): string | undefined {
 
 // —— 代码理解(code-intelligence spec)的语言支持范围标注 ——
 // full        = 参与符号抽取,支持大纲 / 跳转 / 查找引用 / 符号搜索
-// outline-only= 仅提供大纲(Markdown 标题层级),不参与跳转与引用
+// outline-only= 仅提供文件内大纲,不参与定义跳转、引用与全局符号搜索
 // none        = 不参与代码理解(语法高亮与预览不受影响)
 export type IntelLevel = 'full' | 'outline-only' | 'none'
 
@@ -169,6 +174,8 @@ const INTEL_FULL = new Set([
   'javascript', 'jsx', 'typescript', 'tsx',
   'rust', 'php',
 ])
+
+const INTEL_OUTLINE_ONLY = new Set(['markdown', 'sql'])
 
 /**
  * 高亮为**近似**的语言:Vue / Svelte 单文件组件走 html 通道 ——
@@ -184,7 +191,7 @@ export function isApproximateHighlight(language?: string): boolean {
 export function intelLevel(language?: string): IntelLevel {
   if (!language) return 'none'
   if (INTEL_FULL.has(language)) return 'full'
-  if (language === 'markdown') return 'outline-only'
+  if (INTEL_OUTLINE_ONLY.has(language)) return 'outline-only'
   return 'none'
 }
 
