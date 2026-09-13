@@ -41,3 +41,7 @@ npm run check:store-identity
 ```
 
 准备脚本先计算公钥对应的 Chrome ID 并与已确认条目核对，然后只在 `release-artifacts/store-test-<version>/extension/` 副本中增加 manifest.key。连接检查使用独立 Chrome 配置及校验过的安装包原始内容，验证正式 ID 的真实握手和开发 ID 的拒绝；不替换系统 companion、不启动 CLI，不把此结果计作干净安装。该架构的报告保存在同目录的 `connection-check.json`。这些命令不操作 Chrome Web Store。
+
+用户通过系统安装器安装后，可执行 `npm run check:store-identity -- --installed`：核对安装文件与发布包一致，让隔离 Chrome 直接发现系统注册，并运行只读写固定测试文字的 PTY 探针，验证输入输出、行列调整及正常退出。唯一的临时项目关联会在结束时删除，不调用 AI 服务。结果存入 `installed-connection-check.json`，不代替真实目录选择或 AI CLI 验收。
+
+执行 `npm run test:store-manual` 会打开此仓库候选包的独立验收窗口，复用正式公钥及系统 companion。测试目录为 `release-artifacts/store-test-<version>/sample-project/`。在窗口中打开该目录，点击 AI 终端并在系统选择器再选同一目录，然后完成真实 CLI 操作。Chrome 测试配置单独保存在 `manual-chrome-profile/`，不操作已有浏览器或商店后台；关闭此验收浏览器会结束启动脚本。

@@ -38,6 +38,7 @@
     "prepare:store": "node scripts/prepare-store-kit.mjs",
     "prepare:store-test": "node scripts/prepare-store-test.mjs",
     "check:store-identity": "node scripts/e2e-store-identity.mjs",
+    "test:store-manual": "node scripts/manual-store-test.mjs",
     "shots:store": "node scripts/shot-release-kit.mjs",
     "build:public-pages": "node scripts/build-public-pages.mjs",
     "prepare:agent-release": "node scripts/native/prepare-github.mjs"
