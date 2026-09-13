@@ -1,9 +1,9 @@
 {
   "name": "lectern-extension",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "Lectern \u2014 a read-only local code reader with configurable file URL opening (Chrome MV3 extension)",
+  "description": "Lectern — a read-only local code reader with configurable file URL opening (Chrome MV3 extension)",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -12,7 +12,7 @@
   "homepage": "https://github.com/zhurudong/lectern",
   "scripts": {
     "dev": "vite build --watch",
-    "check": "node scripts/check-invariants.mjs && node scripts/check-language-coverage.mjs && npm run check:local-files && npm run check:sql && npm run check:git",
+    "check": "node scripts/check-invariants.mjs && node scripts/check-language-coverage.mjs && npm run check:local-files && npm run check:sql && npm run check:git && npm run check:i18n",
     "check:local-files": "node scripts/check-local-files.mjs",
     "test:local-files": "node scripts/e2e-local-files.mjs",
     "check:sql": "node scripts/check-sql-outline.mjs",
@@ -32,7 +32,9 @@
     "check:ai": "npm run build:ai && AI_TERMINAL=1 DIST=dist-ai node scripts/check-invariants.mjs && npm run check:ai-negative && npm --prefix lectern-agent test && node scripts/e2e-ai.mjs",
     "check:ai-negative": "node scripts/check-ai-negative.mjs",
     "setup:ai": "npm run build:ai && node scripts/native/register-dev.mjs",
-    "package:companion": "node scripts/native/build.mjs"
+    "package:companion": "node scripts/native/build.mjs",
+    "check:i18n": "node scripts/check-i18n-release.mjs",
+    "check:release": "node scripts/check-release.mjs"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.2",
@@ -43,7 +45,9 @@
     "@codemirror/lang-javascript": "^6.2.2",
     "@codemirror/lang-json": "^6.0.1",
     "@codemirror/lang-markdown": "^6.2.5",
+    "@codemirror/lang-php": "^6.0.2",
     "@codemirror/lang-python": "^6.1.6",
+    "@codemirror/lang-rust": "^6.0.2",
     "@codemirror/lang-sql": "^6.7.0",
     "@codemirror/lang-xml": "^6.1.0",
     "@codemirror/lang-yaml": "^6.1.1",
@@ -58,7 +62,9 @@
     "@lezer/highlight": "^1.2.0",
     "@lezer/java": "^1.1.3",
     "@lezer/javascript": "^1.5.4",
+    "@lezer/php": "^1.0.6",
     "@lezer/python": "^1.1.19",
+    "@lezer/rust": "^1.0.2",
     "@preact/signals": "^1.2.3",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
@@ -73,6 +79,6 @@
     "@types/markdown-it": "^14.1.1",
     "puppeteer-core": "^25.7.0",
     "typescript": "^5.4.5",
-    "vite": "^5.2.0"
+    "vite": "^6.4.3"
   }
 }

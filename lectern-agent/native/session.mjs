@@ -2,7 +2,7 @@ import { accessSync, constants, statSync } from 'node:fs'
 import { dirname, isAbsolute, join } from 'node:path'
 import { homedir } from 'node:os'
 export const PROTOCOL = 1
-export const VERSION = '0.2.0'
+export const VERSION = '0.2.1'
 export function executable(command, envPath = process.env.PATH ?? '') {
   if (typeof command !== 'string' || !command || command.length > 4096 || command.includes('\0')) return null
   const paths = isAbsolute(command) ? [command] : command.includes('/') ? []
@@ -30,7 +30,7 @@ export function nativeSession({ origin, preferences, chooseProject, spawn, send,
         try { if (!cwd || !statSync(cwd).isDirectory()) cwd = null } catch { cwd = null }
         if (!cwd || m.reselect) {
           send({ type: 'waiting', message: '请在系统选择器中选择与当前阅读项目相同的目录。' })
-          cwd = await chooseProject(m.name, abort.signal)
+          cwd = await chooseProject(m.name, abort.signal, m.locale === 'en' ? 'en' : 'zh')
           if (closed) return
           if (!cwd) return error('cancelled', '已取消目录选择。点击重新连接可再次选择。')
           cwd = preferences.bind(origin, m.id, cwd)

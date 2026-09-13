@@ -12,7 +12,7 @@ There is no bounty.
 
 ## What counts as a vulnerability here
 
-This extension has an unusually small attack surface, and two of its properties
+The standard reader has an unusually small attack surface, and two of its properties
 are load-bearing. Anything that breaks either of them is a security bug, not a
 feature request:
 
@@ -79,3 +79,9 @@ output of `npm run build` — it is not obfuscated or minified beyond what Vite
 does by default. In Chrome you can also open DevTools → Network on the viewer
 page: local `file://` reads and bundled extension resources are expected;
 outbound HTTP(S) requests are not.
+
+## Optional native terminal boundary
+
+The AI build additionally requests nativeMessaging for com.lectern.agent. Chrome and the companion enforce the exact packaged extension origin. The host uses bounded stdio frames, negotiates protocol 1 and starts at most one PTY per connection after project association. No localhost server is shipped in the native installer.
+
+The reader remains read-only; the selected CLI runs with user permissions and can modify files or contact model services. The standard reader's no-remote-traffic/read-only promises do not apply to that CLI. Host origin bypasses, protocol parsing faults, unintended process execution, cross-project association errors and unsafe installer/update behavior are in scope. Third-party CLI vulnerabilities should also be reported to that project. See the privacy policy for local storage and deletion.

@@ -9,6 +9,7 @@ export class MemoryFileHandle {
     return { name: this.name, size: blob.size, lastModified: 0, slice: (...args) => blob.slice(...args) }
   }
 }
+
 export class MemoryDirectoryHandle {
   kind = 'directory'
   constructor(name) {

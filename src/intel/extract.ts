@@ -4,6 +4,8 @@ import { parser as javaParser } from '@lezer/java'
 import { parser as cppParser } from '@lezer/cpp'
 import { parser as goParser } from '@lezer/go'
 import { parser as jsParser } from '@lezer/javascript'
+import { parser as rustParser } from '@lezer/rust'
+import { parser as phpParser } from '@lezer/php'
 import { KIND, type KindId, type RawSymbol } from './symbols'
 import { extractSqlOutline } from './extractSql'
 
@@ -21,7 +23,7 @@ const TS_DIALECT = jsParser.configure({ dialect: 'ts' })
 const TSX_DIALECT = jsParser.configure({ dialect: 'ts jsx' })
 const JSX_DIALECT = jsParser.configure({ dialect: 'jsx' })
 
-type Lang = 'python' | 'java' | 'cpp' | 'go' | 'js'
+type Lang = 'python' | 'java' | 'cpp' | 'go' | 'js' | 'rust' | 'php'
 
 function parserFor(langId: string): { parser: typeof pythonParser; lang: Lang } | null {
   switch (langId) {
@@ -34,6 +36,8 @@ function parserFor(langId: string): { parser: typeof pythonParser; lang: Lang } 
     case 'jsx': return { parser: JSX_DIALECT, lang: 'js' }
     case 'typescript': return { parser: TS_DIALECT, lang: 'js' }
     case 'tsx': return { parser: TSX_DIALECT, lang: 'js' }
+    case 'rust': return { parser: rustParser, lang: 'rust' }
+    case 'php': return { parser: phpParser, lang: 'php' }
     default: return null
   }
 }
@@ -268,6 +272,103 @@ function classifyJs(node: SyntaxNode, nodeText: string): KindId | null {
   return null
 }
 
+// Rust:官方 @lezer/rust 语法。定义位靠"直接父节点白名单",与其它语言同一原则 ——
+// 局部变量走 `BoundIdentifier < LetDeclaration`,形参走 `BoundIdentifier < Parameter`,
+// 二者都不在白名单里,自然排除;impl 的目标类型、返回类型、字段类型都是引用位,不收。
+function classifyRust(node: SyntaxNode): KindId | null {
+  const p = node.parent
+  if (!p) return null
+  if (node.name === 'TypeIdentifier') {
+    // 类型名位:仅当它是所在声明的**名字**(第一个 TypeIdentifier),排除类型标注/impl 目标
+    switch (p.name) {
+      case 'StructItem':
+      case 'UnionItem':
+        return isFirstChildOfType(p, node, 'TypeIdentifier') ? KIND.struct : null
+      case 'EnumItem':
+        return isFirstChildOfType(p, node, 'TypeIdentifier') ? KIND.enum : null
+      case 'TraitItem':
+        return isFirstChildOfType(p, node, 'TypeIdentifier') ? KIND.interface : null
+      case 'TypeItem':
+        return isFirstChildOfType(p, node, 'TypeIdentifier') ? KIND.type : null
+      default:
+        // ImplItem(impl 目标)、ConstItem/StaticItem/FunctionItem(类型标注/返回类型)、
+        // FieldDeclaration/Parameter(字段/形参类型):全部是引用位,排除
+        return null
+    }
+  }
+  if (node.name === 'BoundIdentifier') {
+    switch (p.name) {
+      case 'ConstItem':
+      case 'StaticItem':
+        return KIND.constant
+      case 'ModItem':
+        return KIND.namespace
+      case 'FunctionItem': {
+        if (!isFirstChildOfType(p, node, 'BoundIdentifier')) return null
+        // impl / trait 体内的函数是方法;mod 体内与顶层是自由函数
+        const owner = p.parent?.name === 'DeclarationList' ? p.parent.parent : null
+        return owner?.name === 'ImplItem' || owner?.name === 'TraitItem' ? KIND.method : KIND.func
+      }
+      default:
+        // Parameter(形参)、LetDeclaration(局部变量)、UseDeclaration(导入):排除
+        return null
+    }
+  }
+  if (node.name === 'FieldIdentifier') {
+    // 结构体字段定义;FieldInitializer(`Point { x: .. }`)里的同名是使用位,排除
+    return p.name === 'FieldDeclaration' ? KIND.field : null
+  }
+  if (node.name === 'Identifier') {
+    if (p.name === 'EnumVariant') return KIND.constant
+    if (p.name === 'MacroDefinition') return KIND.macro
+    return null
+  }
+  return null
+}
+
+// PHP:官方 @lezer/php 语法。名字节点是 `Name`,变量是 `VariableName`。
+// 类名/方法名/函数名/常量名都在 Name 上,字段($x)在 VariableName 上;
+// 形参(`VariableName < Parameter`)、局部赋值(`VariableName < AssignmentExpression`)、
+// 成员访问(`$this->x` 的 `Name < MemberExpression`)都是使用/局部位,排除。
+function classifyPhp(node: SyntaxNode): KindId | null {
+  const p = node.parent
+  if (!p) return null
+  if (node.name === 'Name') {
+    switch (p.name) {
+      case 'NamespaceDefinition':
+        return KIND.namespace
+      case 'ClassDeclaration':
+        return isFirstChildOfType(p, node, 'Name') ? KIND.class : null
+      case 'InterfaceDeclaration':
+        return isFirstChildOfType(p, node, 'Name') ? KIND.interface : null
+      case 'TraitDeclaration':
+        // trait 是可复用的方法集合,更接近类而非接口 —— 归为类
+        return isFirstChildOfType(p, node, 'Name') ? KIND.class : null
+      case 'EnumDeclaration':
+        return isFirstChildOfType(p, node, 'Name') ? KIND.enum : null
+      case 'MethodDeclaration':
+        return isFirstChildOfType(p, node, 'Name') ? KIND.method : null
+      case 'FunctionDefinition':
+        return isFirstChildOfType(p, node, 'Name') ? KIND.func : null
+      case 'EnumCase':
+        return KIND.constant
+      case 'VariableDeclarator':
+        // const 声明(顶层或类内)的名字在 `Name < VariableDeclarator < ConstDeclaration`
+        return p.parent?.name === 'ConstDeclaration' ? KIND.constant : null
+      default:
+        // ClassInterfaceClause(implements)、NamedType(类型标注)、MemberExpression:排除
+        return null
+    }
+  }
+  if (node.name === 'VariableName') {
+    // 类属性:`VariableName < VariableDeclarator < PropertyDeclaration`
+    if (p.name === 'VariableDeclarator' && p.parent?.name === 'PropertyDeclaration') return KIND.field
+    // 形参、局部赋值、return、成员访问:排除
+    return null
+  }
+  return null
+}
+
 // —— 容器名解析:定位符号所属的类 / 结构体 / 命名空间 / 外层函数 ——
 
 const CONTAINER_NAME_CHILD: Record<Lang, Record<string, string>> = {
@@ -297,6 +398,24 @@ const CONTAINER_NAME_CHILD: Record<Lang, Record<string, string>> = {
     EnumDeclaration: 'TypeDefinition',
     MethodDeclaration: 'PropertyDefinition',
     FunctionDeclaration: 'VariableDefinition',
+  },
+  rust: {
+    StructItem: 'TypeIdentifier',
+    UnionItem: 'TypeIdentifier',
+    EnumItem: 'TypeIdentifier',
+    TraitItem: 'TypeIdentifier',
+    ImplItem: 'TypeIdentifier', // impl 块内的方法/字段以目标类型为容器
+    ModItem: 'BoundIdentifier',
+    FunctionItem: 'BoundIdentifier',
+  },
+  php: {
+    ClassDeclaration: 'Name',
+    InterfaceDeclaration: 'Name',
+    TraitDeclaration: 'Name',
+    EnumDeclaration: 'Name',
+    MethodDeclaration: 'Name',
+    FunctionDefinition: 'Name',
+    NamespaceDefinition: 'Name',
   },
 }
 
@@ -404,7 +523,9 @@ export function extractSymbols(text: string, langId: string): RawSymbol[] {
       name !== 'VariableName' && name !== 'Definition' && name !== 'DefName' &&
       name !== 'FieldName' && name !== 'TypeIdentifier' && name !== 'FieldIdentifier' &&
       name !== 'Identifier' && name !== 'ScopedIdentifier' &&
-      name !== 'VariableDefinition' && name !== 'PropertyDefinition' && name !== 'TypeDefinition'
+      name !== 'VariableDefinition' && name !== 'PropertyDefinition' && name !== 'TypeDefinition' &&
+      // Rust 的名字位:BoundIdentifier;PHP 的名字位:Name
+      name !== 'BoundIdentifier' && name !== 'Name'
     ) continue
 
     const node = cursor.node
@@ -418,6 +539,8 @@ export function extractSymbols(text: string, langId: string): RawSymbol[] {
       case 'go': kind = classifyGo(node); break
       case 'cpp': kind = classifyCpp(node, text); break
       case 'js': kind = classifyJs(node, nodeText); break
+      case 'rust': kind = classifyRust(node); break
+      case 'php': kind = classifyPhp(node); break
     }
     if (kind == null) continue
 

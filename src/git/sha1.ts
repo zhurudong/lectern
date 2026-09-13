@@ -3,6 +3,7 @@ const BLOCK_BYTES = 64
 function rotateLeft(value: number, bits: number): number {
   return ((value << bits) | (value >>> (32 - bits))) >>> 0
 }
+
 /** Incremental SHA-1 for Git object identity, never for security decisions. */
 export class Sha1 {
   private h0 = 0x67452301

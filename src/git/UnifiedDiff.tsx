@@ -2,6 +2,7 @@ import { EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { getChunks, goToNextChunk, goToPreviousChunk, unifiedMergeView } from '@codemirror/merge'
 import { useEffect, useRef, useState } from 'preact/hooks'
+import { t } from '../i18n'
 import { identifyByName, looksBinary } from '../lib/filetypes'
 import { KEYS, display } from '../lib/keys'
 import { appTheme } from '../preview/cmTheme'
@@ -26,9 +27,9 @@ function textFor(side: LoadedFileSide): string {
 
 function metadataReason(side: LoadedFileSide): string | null {
   if (side.kind === 'content' || side.reason === 'absent') return null
-  if (side.reason === 'gitlink') return 'Git 子模块指针仅展示元数据'
-  if (side.reason === 'over-5-mb') return '文件超过 5 MB 文本差异上限'
-  return '当前内容不可读取'
+  if (side.reason === 'gitlink') return t('udiff.gitlink')
+  if (side.reason === 'over-5-mb') return t('udiff.over5mb')
+  return t('udiff.unreadable')
 }
 
 function metadataOnly(file: ChangedFile, pair: LoadedFilePair): string | null {
@@ -36,12 +37,12 @@ function metadataOnly(file: ChangedFile, pair: LoadedFilePair): string | null {
   if (sideReason) return sideReason
   const oldKind = file.old?.objectKind
   const newKind = file.new?.objectKind === 'regular-observed' ? 'regular' : file.new?.objectKind
-  if (oldKind && newKind && oldKind !== newKind) return `对象类型变化：${oldKind} → ${newKind}`
+  if (oldKind && newKind && oldKind !== newKind) return t('udiff.typeChange', { old: oldKind, new: newKind })
   if (file.old && file.new && file.old.source === 'git' && file.new.source === 'git' && file.old.oid === file.new.oid && file.old.mode !== file.new.mode) {
-    return `仅文件模式变化：${file.old.mode} → ${file.new.mode}`
+    return t('udiff.modeChange', { old: file.old.mode, new: file.new.mode })
   }
   if ((content(pair.old) && looksBinary(pair.old.bytes.subarray(0, 8192))) ||
-      (content(pair.new) && looksBinary(pair.new.bytes.subarray(0, 8192)))) return '二进制内容不生成文本差异'
+      (content(pair.new) && looksBinary(pair.new.bytes.subarray(0, 8192)))) return t('udiff.binary')
   return null
 }
 
@@ -135,18 +136,18 @@ export function UnifiedDiff({ file, pair, loading, error }: UnifiedDiffProps) {
     view.focus()
   }
 
-  if (loading) return <div class="git-diff-state" role="status">正在读取文件差异…</div>
+  if (loading) return <div class="git-diff-state" role="status">{t('udiff.loading')}</div>
   if (error) return <div class="git-diff-state git-diff-state-error" role="alert">{error}</div>
-  if (!pair) return <div class="git-diff-state">选择一个变更文件查看差异</div>
+  if (!pair) return <div class="git-diff-state">{t('udiff.pickFile')}</div>
   if (reason) {
     return (
       <div class="git-metadata-view" data-diff-kind="metadata">
         <div class="git-metadata-mark" aria-hidden="true">◇</div>
-        <h2>此文件只展示事实元数据</h2>
+        <h2>{t('udiff.factsOnly')}</h2>
         <p>{reason}</p>
         <dl>
-          <div><dt>旧侧</dt><dd>{size(pair.old)} · {pair.old.oid ? pair.old.oid.slice(0, 12) : '不存在'}</dd></div>
-          <div><dt>新侧</dt><dd>{size(pair.new)} · {pair.new.oid ? pair.new.oid.slice(0, 12) : '不存在'}</dd></div>
+          <div><dt>{t('udiff.oldSide')}</dt><dd>{size(pair.old)} · {pair.old.oid ? pair.old.oid.slice(0, 12) : t('udiff.absent')}</dd></div>
+          <div><dt>{t('udiff.newSide')}</dt><dd>{size(pair.new)} · {pair.new.oid ? pair.new.oid.slice(0, 12) : t('udiff.absent')}</dd></div>
         </dl>
       </div>
     )
@@ -155,13 +156,13 @@ export function UnifiedDiff({ file, pair, loading, error }: UnifiedDiffProps) {
   return (
     <div class="git-diff-stack" data-diff-kind="text">
       <div class="git-hunk-toolbar">
-        {hunks.approximate && <span class="git-approx-warning" role="status">近似结果，可能遗漏细节</span>}
+        {hunks.approximate && <span class="git-approx-warning" role="status">{t('udiff.approx')}</span>}
         <span class="spacer" />
-        <span aria-live="polite">{hunks.total ? `${hunks.current} / ${hunks.total} 处差异` : '无行级差异'}</span>
-        <button type="button" onClick={() => move('previous')} title={`上一处（${display('previousHunk')}）`} disabled={!hunks.total}>↑</button>
-        <button type="button" onClick={() => move('next')} title={`下一处（${display('nextHunk')}）`} disabled={!hunks.total}>↓</button>
+        <span aria-live="polite">{hunks.total ? t('udiff.hunkCount', { cur: hunks.current, total: hunks.total }) : t('udiff.noLineDiff')}</span>
+        <button type="button" onClick={() => move('previous')} title={t('udiff.prevTitle', { key: display('previousHunk') })} disabled={!hunks.total}>↑</button>
+        <button type="button" onClick={() => move('next')} title={t('udiff.nextTitle', { key: display('nextHunk') })} disabled={!hunks.total}>↓</button>
       </div>
-      <div class="git-cm-host" ref={hostRef} aria-label={`${file.path} 只读统一差异`} />
+      <div class="git-cm-host" ref={hostRef} aria-label={t('udiff.aria', { path: file.path })} />
     </div>
   )
 }

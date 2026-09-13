@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { closeReferences, cancelReferences, refHits, refName, refStatus, REF_LIMIT } from './references'
 import { navigateWithHistory } from './navStack'
 import type { RefHit } from './symbolWorker'
@@ -19,10 +20,10 @@ function groupByFile(hits: RefHit[]): { path: string; items: RefHit[] }[] {
 
 function statusText(): string {
   switch (refStatus.value) {
-    case 'scanning': return '扫描中…'
-    case 'done': return '扫描完成'
-    case 'truncated': return `已达上限 ${REF_LIMIT} 条,结果已截断`
-    case 'cancelled': return '已取消'
+    case 'scanning': return t('content.scanningShort')
+    case 'done': return t('ref.done')
+    case 'truncated': return t('content.truncated', { limit: REF_LIMIT })
+    case 'cancelled': return t('content.cancelled')
     default: return ''
   }
 }
@@ -54,35 +55,35 @@ export function ReferencePanel() {
     <div class="ref-panel">
       <div class="ref-header">
         <span class="ref-title">
-          “{refName.value}” 的引用 · {hits.length} 处 / {groups.length} 个文件
+          {t('ref.title', { name: refName.value, hits: hits.length, files: groups.length })}
         </span>
         <span class={`ref-status${refStatus.value === 'truncated' ? ' ref-status-warn' : ''}`}>
           {statusText()}
         </span>
         <span class="spacer" />
         {scanning && (
-          <button class="ref-btn" title="停止扫描" onClick={() => cancelReferences(true)}>
-            停止
+          <button class="ref-btn" title={t('content.stop')} onClick={() => cancelReferences(true)}>
+            {t('content.stopBtn')}
           </button>
         )}
-        <button class="ref-btn" title="关闭引用面板" onClick={kb.close}>
+        <button class="ref-btn" title={t('ref.close')} onClick={kb.close}>
           ✕
         </button>
       </div>
       <div class="ref-hint">
-        结果基于名称匹配,可能包含同名但无关的位置;注释与字符串字面量中的同名文本已排除。
+        {t('ref.hint')}
       </div>
       <div
         class="ref-body"
         tabIndex={-1}
         ref={kb.containerRef}
         role="listbox"
-        aria-label="引用结果"
+        aria-label={t('ref.resultsLabel')}
         aria-activedescendant={kb.activeId}
         onKeyDown={(e) => kb.onKeyDown(e as unknown as KeyboardEvent)}
       >
         {hits.length === 0 ? (
-          <div class="ref-empty">{scanning ? '扫描中…' : '未找到引用'}</div>
+          <div class="ref-empty">{scanning ? t('content.scanningShort') : t('ref.noRefs')}</div>
         ) : (
           groups.map((g) => (
             <div key={g.path} class="ref-group">

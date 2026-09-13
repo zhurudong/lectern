@@ -17,7 +17,12 @@ export const confirmPairing = async (origin, signal) => await dialog(`on run arg
   if gave up of result then return "cancel"
   return "allow"
 end run`, [origin], signal) === 'allow'
-export const chooseProject = (name, signal) => dialog(`on run argv
-  set selectedFolder to choose folder with prompt ("为 Lectern 项目「" & item 1 of argv & "」选择同一个本机目录（仅首次需要）")
+export const chooseProject = (name, signal, locale = 'zh') => dialog(`on run argv
+  if item 2 of argv is "en" then
+    set promptText to "Choose the same local folder for Lectern project: " & item 1 of argv & " (first use only)"
+  else
+    set promptText to "为 Lectern 项目「" & item 1 of argv & "」选择同一个本机目录（仅首次需要）"
+  end if
+  set selectedFolder to choose folder with prompt promptText
   return POSIX path of selectedFolder
-end run`, [name], signal)
+end run`, [name, locale], signal)

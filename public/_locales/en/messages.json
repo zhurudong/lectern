@@ -1,0 +1,11 @@
+{
+  "extensionName": {
+    "message": "Lectern — Code Reader"
+  },
+  "extensionDescription": {
+    "message": "Read local code, explore definitions and references, search projects and compare files and Git changes."
+  },
+  "openTitle": {
+    "message": "Open Lectern"
+  }
+}

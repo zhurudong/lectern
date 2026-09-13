@@ -12,6 +12,7 @@ const fail = (message) => {
   console.error(`FAIL  ${message}`)
   process.exitCode = 1
 }
+
 if (!/^[0-9a-f]{40}$/.test(first) || !/^[0-9a-f]{40}$/.test(second) || first === second) {
   fail('fixture commits are not distinct SHA-1 object ids')
 }

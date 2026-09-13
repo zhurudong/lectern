@@ -1,3 +1,5 @@
+> 本文的离线、只读保证适用于标准阅读器；AI 终端及第三方 CLI 的边界见文末。
+
 *[English](SECURITY.md) · 中文*
 
 # 安全策略
@@ -64,3 +66,9 @@ node scripts/check-invariants.mjs
 构建可从源码复现，Release 里的 zip 就是 `npm run build` 的明文产物，**不做混淆**。
 在浏览器里也可检查 DevTools → Network：本地 `file://` 读取与扩展资源是正常行为，
 不应出现外发 HTTP(S) 请求。
+
+## 可选本机终端
+
+AI 构建额外请求 nativeMessaging，仅连接 com.lectern.agent。Chrome 与伴随程序双重校验打包时绑定的扩展 origin；主机使用有大小上限的 stdio 帧、协议版本协商，并在项目关联后为每个连接至多启动一个 PTY。正式 native 安装包不包含 localhost 服务。
+
+第三方 CLI 以用户权限运行，可以修改文件和连接模型服务；阅读器的离线、只读承诺不适用于它。主机身份校验绕过、协议解析、非预期进程执行、跨项目关联及安装/更新安全问题属于报告范围。CLI 自身漏洞也应向相应项目报告。存储和删除规则见隐私政策。

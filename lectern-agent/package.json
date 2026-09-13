@@ -1,7 +1,7 @@
 {
   "name": "lectern-agent",
-  "version": "0.1.0",
-  "description": "Opt-in loopback PTY companion for Lectern",
+  "version": "0.2.1",
+  "description": "Native Messaging PTY companion for Lectern; legacy loopback CLI retained for development",
   "type": "module",
   "license": "Apache-2.0",
   "bin": {

@@ -1,4 +1,5 @@
 import { signal } from '@preact/signals'
+import { t } from '../i18n'
 import { mode, selectedFile } from '../state'
 import { activeFileParsing, activeFileSymbols, indexState, lookupDefinitions, type SymbolHit } from './indexStore'
 import { KIND, isOutlineOnlyKind } from './symbols'
@@ -90,13 +91,13 @@ export async function jumpToDefinition(name: string, fromLine?: number): Promise
     showNotice(
       single
         ? activeFileParsing.value
-          ? '文件符号仍在解析中,可稍后重试'
-          : '单文件模式下仅支持文件内跳转,打开所在文件夹可获得跨文件跳转'
+          ? t('jump.parsing')
+          : t('jump.singleFile')
         : indexState.value === 'building'
-          ? '符号索引仍在构建中,可稍后重试'
+          ? t('jump.indexBuilding')
           : indexState.value === 'unavailable'
-            ? '符号索引不可用,无法跳转'
-            : `未在项目内找到 “${trimmed}” 的定义`,
+            ? t('jump.indexUnavailable')
+            : t('jump.notFound', { name: trimmed }),
     )
     return
   }

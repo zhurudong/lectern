@@ -20,7 +20,7 @@ export interface KeyDef {
   /** 原生键的展示文本(仅当 key 为 null 时使用) */
   readonly nativeDisplay?: string
   /** 归类,供帮助面板分组 */
-  readonly group: '面板' | '代码区' | '目录树' | '大纲' | '搜索' | '变更'
+  readonly group: '面板' | '代码区' | '目录树' | '大纲' | '搜索' | '对比'
   /**
    * 是否属于"需真机核验才提示"的补充键位。
    * 原生键(Tab / 方向键)不需要核验 —— 它们不是我们绑的。
@@ -61,8 +61,15 @@ export const KEYS = {
   fileSearch: { label: '文件名搜索', key: 'Mod-k', group: '搜索', needsVerification: true },
   symbolSearch: { label: '符号搜索', key: 'Mod-Shift-o', group: '搜索', needsVerification: true },
   contentSearch: { label: '全文搜索', key: 'Mod-Shift-f', group: '搜索', needsVerification: true },
-  previousHunk: { label: '上一处差异', key: 'Alt-ArrowUp', group: '变更', needsVerification: false },
-  nextHunk: { label: '下一处差异', key: 'Alt-ArrowDown', group: '变更', needsVerification: false },
+  // 差异导航,0.3.3 git 对比与 C1 文件对比**共用同一份 keydef**(0.3.4 合流):
+  // ⌥↑/↓ 走 @codemirror/merge 的 goToPreviousChunk/goToNextChunk。两个对比视图各自把它
+  // 挂在自己编辑器的 CM6 keymap 上(per-view,永不同时激活),所以同一对键位只留一份定义,
+  // 不各写一份(否则同一动作两条帮助项、改键位两处要同步 —— 正是本模块开头警告的坑)。
+  // ⌥↑/↓ 0.3.3 已按 needsVerification:false 发布(不在浏览器占用名单),故保持 false。
+  previousHunk: { label: '上一处差异', key: 'Alt-ArrowUp', group: '对比', needsVerification: false },
+  nextHunk: { label: '下一处差异', key: 'Alt-ArrowDown', group: '对比', needsVerification: false },
+  // 退出文件对比:Esc 通用约定,不与浏览器键位竞争 —— 与 closeHelp 同为 false。
+  exitCompare: { label: '退出对比', key: 'Escape', group: '对比', needsVerification: false },
 } as const satisfies Record<string, KeyDef>
 
 export type KeyId = keyof typeof KEYS

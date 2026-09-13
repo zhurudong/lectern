@@ -1,10 +1,12 @@
 import { useEffect } from 'preact/hooks'
+import { t } from '../i18n'
 import { mode } from '../state'
-import { KEYS, hint } from '../lib/keys'
+import { hint } from '../lib/keys'
 import { useOverlayKeyboard } from '../lib/useOverlayKeyboard'
 import { focusEditorWhenReady } from '../lib/focusEditor'
 import { verifiedShortcuts } from '../lib/platform'
-import { KIND_BADGE, KIND_LABEL } from './symbols'
+import { KIND_BADGE } from './symbols'
+import { kindLabel } from './kindLabel'
 import {
   candidateList, closeCandidates, closeContextMenu, contextMenu,
   dismissNotice, jumpNotice, jumpToDefinition, pickCandidate,
@@ -88,20 +90,20 @@ export function IntelOverlay() {
             tabIndex={-1}
             ref={kb.containerRef}
             role="listbox"
-            aria-label="同名定义候选"
+            aria-label={t('intel.candLabel')}
             aria-activedescendant={kb.activeId}
             onKeyDown={(e) => kb.onKeyDown(e as unknown as KeyboardEvent)}
           >
             <div class="candidate-header">
               <span>
-                “{candidates.name}” 有 {candidates.hits.length} 处同名定义,请选择
+                {t('intel.candHeader', { name: candidates.name, n: candidates.hits.length })}
               </span>
-              <button class="candidate-close" title="关闭" onClick={kb.close}>
+              <button class="candidate-close" title={t('common.close')} onClick={kb.close}>
                 ✕
               </button>
             </div>
             <div class="candidate-hint">
-              结果基于名称与语法树的启发式匹配,不做类型推断,可能包含同名但无关的定义。
+              {t('intel.candHint')}
             </div>
             <div class="candidate-list">
               {candidates.hits.map((h, i) => (
@@ -113,7 +115,7 @@ export function IntelOverlay() {
                   class={`candidate-row${kb.selected === i ? ' selected' : ''}`}
                   onClick={() => kb.activate(i)}
                 >
-                  <span class={`outline-kind kind-${h.kind}`} title={KIND_LABEL[h.kind]}>
+                  <span class={`outline-kind kind-${h.kind}`} title={kindLabel(h.kind)}>
                     {KIND_BADGE[h.kind]}
                   </span>
                   <span class="candidate-name">{h.name}</span>
@@ -142,7 +144,7 @@ export function IntelOverlay() {
               void jumpToDefinition(menu.word, menu.line)
             }}
           >
-            <span class="intel-menu-label">{KEYS.jumpToDefinition.label}</span>
+            <span class="intel-menu-label">{t('keys.jumpToDefinition')}</span>
             {/* 3b.2:鼠标用户在**用鼠标的那一刻**看到键盘的存在 —— 最不打扰的教学时机。
                 键位文本来自 lib/keys.ts 的单一映射,**这里不写任何键位字面量**;
                 未核验平台上 hint() 返回 null,于是什么也不显示。 */}
@@ -153,15 +155,15 @@ export function IntelOverlay() {
           <button
             class="intel-menu-item"
             disabled={mode.value !== 'project'}
-            title={mode.value !== 'project' ? '需要打开文件夹才能在项目内查找引用' : undefined}
+            title={mode.value !== 'project' ? t('intel.refNeedsProject') : undefined}
             onClick={() => {
               closeContextMenu()
               void findReferences(menu.word)
             }}
           >
-            <span class="intel-menu-label">{KEYS.findReferences.label}</span>
+            <span class="intel-menu-label">{t('keys.findReferences')}</span>
             {hint('findReferences') && <span class="intel-menu-key">{hint('findReferences')}</span>}
-            {mode.value !== 'project' && <span class="intel-menu-note">(需打开文件夹)</span>}
+            {mode.value !== 'project' && <span class="intel-menu-note">{t('intel.needProject')}</span>}
           </button>
         </div>
       )}
@@ -180,7 +182,7 @@ export function NavButtons() {
       <button
         class="nav-btn"
         disabled={!back}
-        title={keys ? '后退(⌥←)' : '后退'}
+        title={keys ? t('nav.backKey') : t('nav.back')}
         onClick={() => void goBack()}
       >
         ←
@@ -188,7 +190,7 @@ export function NavButtons() {
       <button
         class="nav-btn"
         disabled={!forward}
-        title={keys ? '前进(⌥→)' : '前进'}
+        title={keys ? t('nav.forwardKey') : t('nav.forward')}
         onClick={() => void goForward()}
       >
         →

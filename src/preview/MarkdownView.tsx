@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
+import { t } from '../i18n'
 import { rootHandle, selectFile, targetLine } from '../state'
 import { revealPath } from '../tree/treeStore'
 import { resolveFile } from '../lib/resolve'
@@ -104,16 +105,16 @@ export function MarkdownView({ text, path }: { text: string; path: string[] }) {
     <>
       <div class="md-toolbar">
         <button class={view === 'rendered' ? 'active' : ''} onClick={() => setView('rendered')}>
-          渲染
+          {t('mdview.tabRendered')}
         </button>
         <button class={view === 'source' ? 'active' : ''} onClick={() => setView('source')}>
-          源码
+          {t('mdview.tabSource')}
         </button>
       </div>
       {view === 'source' ? (
         <CodeView text={text} language="markdown" />
       ) : html === null ? (
-        <div class="preview-placeholder">渲染中…</div>
+        <div class="preview-placeholder">{t('mdview.rendering')}</div>
       ) : (
         <div
           class="markdown-body"

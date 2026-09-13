@@ -48,6 +48,12 @@ async function readKeyTexts() {
   try {
     const extId = await browser.installExtension(join(PROJECT, 'dist-dev'))
     const page = await browser.newPage()
+    // 语言锁:本检查按中文标注（'跳转到定义'）在帮助面板/右键菜单里定位行。0.3.4 起
+    // DETECT_BROWSER_LANG=true 会让非 zh 浏览器默认英文，故先把 cv-lang 写死 zh（initialLang
+    // 先读 localStorage，无视浏览器语言探测）。
+    await page.evaluateOnNewDocument(() => {
+      try { localStorage.setItem('cv-lang', 'zh') } catch { /* ignore */ }
+    })
     await page.goto(`chrome-extension://${extId}/viewer.html`, { waitUntil: 'load' })
     await page.waitForSelector('.welcome', { timeout: 10000 })
     await page.evaluate(async () => {

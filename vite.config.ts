@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import preact from '@preact/preset-vite'
 import { fileURLToPath } from 'node:url'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, copyFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url))
@@ -9,18 +9,26 @@ const here = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 // 两个入口:查看器整页应用(viewer.html)与 MV3 service worker(background)。
 // background 必须输出为稳定文件名,manifest.json 按名引用。
 export default defineConfig(({ mode }) => ({
-  plugins: [preact(), ...(mode === 'ai' ? [{
+  plugins: [preact(), { name: 'lectern-licenses', writeBundle(options) { for (const file of ['LICENSE', 'THIRD-PARTY-NOTICES.md']) copyFileSync(here(file), resolve(options.dir!, file)) } }, ...(mode === 'ai' ? [{
     name: 'lectern-ai-manifest',
     writeBundle(options) {
       const path = resolve(options.dir!, 'manifest.json')
-      const manifest = JSON.parse(readFileSync(path, 'utf8'))
-      manifest.name = 'Lectern AI (opt-in spike)'
-      manifest.description = '只读代码阅读器 + 本地 AI 终端; agent 可按用户权限修改文件。'
+      const manifest = JSON.parse(readFileSync(here('public/manifest.json'), 'utf8'))
+      for (const locale of ['en', 'zh_CN']) {
+        const messagesPath = resolve(options.dir!, '_locales', locale, 'messages.json')
+        const messages = JSON.parse(readFileSync(messagesPath, 'utf8'))
+        messages.extensionName.message = locale === 'en' ? 'Lectern — Code Reader & AI Terminal' : 'Lectern — 代码阅读与 AI 终端'
+        messages.extensionDescription.message = locale === 'en' ? 'Read local code and review changes. Optionally run your own AI CLI in a side terminal with a macOS companion.' : '本地阅读代码与查看差异；可选安装 macOS 伴随程序，在右侧终端运行自己的 AI CLI。'
+        writeFileSync(messagesPath, JSON.stringify(messages, null, 2))
+      }
       manifest.permissions.push('nativeMessaging')
       const download = process.env.LECTERN_DOWNLOAD_URL
+      if (process.env.LECTERN_RELEASE === '1' && !download) throw new Error('A release requires LECTERN_DOWNLOAD_URL')
       if (download && new URL(download).protocol !== 'https:') throw new Error('Companion download URL must use HTTPS')
       const link = download ? `<a href="${download.replaceAll('&', '&amp;').replaceAll('\"', '&quot;').replaceAll('<', '&lt;')}" target="_blank" rel="noopener noreferrer">下载伴随程序</a>。` : '此开发构建尚未配置正式下载地址，请向维护者获取配套安装包；不要将它当作已发布版本。'
       writeFileSync(resolve(options.dir!, 'native-setup.html'), readFileSync(here('scripts/native/setup.html'), 'utf8').replace('__DOWNLOAD__', link))
+      const englishLink = download ? `<a href="${download.replaceAll('&', '&amp;').replaceAll('\"', '&quot;').replaceAll('<', '&lt;')}">Download Lectern Companion</a>.` : 'No public download is configured in this development build. Request a matching development installer from the maintainer.'
+      writeFileSync(resolve(options.dir!, 'native-setup.en.html'), readFileSync(here('scripts/native/setup.en.html'), 'utf8').replace('__DOWNLOAD__', englishLink))
       writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n')
     },
   }] : [])],

@@ -4,12 +4,13 @@ import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
+import { VERSION } from '../../lectern-agent/native/session.mjs'
 import { PROJECT } from '../paths.mjs'
 const args = process.argv.slice(2)
 const option = (key) => args.includes(key) ? args[args.indexOf(key) + 1] : undefined
 const id = option('--extension-id'), archive = option('--node-archive'), release = args.includes('--release')
 const arch = option('--arch') ?? process.arch
-const version = '0.2.0', nodeVersion = '24.13.0'
+const version = VERSION, nodeVersion = '24.13.0'
 const hashes = { arm64: 'd595961e563fcae057d4a0fb992f175a54d97fcc4a14dc2d474d92ddeea3b9f8', x64: '6f03c1b48ddbe1b129a6f8038be08e0899f05f17185b4d3e4350180ab669a7f3' }
 if (process.platform !== 'darwin' || !hashes[arch] || !/^[a-p]{32}$/.test(id ?? '') || !archive)
   throw new Error('Usage (macOS): node scripts/native/build.mjs --extension-id <32-letter ID> --node-archive <official Node v24.13.0 darwin tar.gz> [--arch arm64|x64] [--release]')

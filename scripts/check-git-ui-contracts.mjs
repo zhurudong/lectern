@@ -19,6 +19,9 @@ const appSource = await readFile(join(PROJECT, 'src/app.tsx'), 'utf8')
 const stylesSource = await readFile(join(PROJECT, 'src/styles.css'), 'utf8')
 const fixtureSource = await readFile(join(PROJECT, 'src/git/devFixture.ts'), 'utf8')
 const workerSource = await readFile(join(PROJECT, 'src/git/gitWorker.ts'), 'utf8')
+// 0.3.4 起 UI 文案迁入 i18n 表(src/i18n/messages.ts);面向用户的措辞契约改为
+// "组件引用了对应的键 + 键在 zh 表里承载既定措辞",而不是断言组件源码里的字面串。
+const messagesSource = await readFile(join(PROJECT, 'src/i18n/messages.ts'), 'utf8')
 
 function assertNoMergeControls(source) {
   assert(/mergeControls:\s*false/.test(source), 'Unified diff must explicitly disable merge controls')
@@ -57,8 +60,14 @@ try {
 assert(fidelityNegativeFailed, 'scanLimit negative control did not fail')
 pass('>32 KB sparse-change negative control fails with scanLimit 500 and passes with bounded timeout', `${defaultChunks.length} → ${boundedChunks.length} chunks`)
 
-assert(/本地快照/.test(pickerSource), 'Remote-tracking refs lack local-snapshot wording')
-assert(/输入 Commit SHA/.test(pickerSource), 'Commit SHA entry is missing')
+assert(
+  /refpick\.localSnapshot/.test(pickerSource) && /['"]refpick\.localSnapshot['"]:\s*'本地快照'/.test(messagesSource),
+  'Remote-tracking refs lack local-snapshot wording',
+)
+assert(
+  /refpick\.enterSha/.test(pickerSource) && /['"]refpick\.enterSha['"]:\s*'输入 Commit SHA'/.test(messagesSource),
+  'Commit SHA entry is missing',
+)
 assert(/disabled=\{side === 'base'\}/.test(pickerSource), 'Worktree is not target-only in the picker')
 assert(/swapDisabled = target\.kind === 'worktree'/.test(comparisonSource), 'Worktree swap guard is missing')
 pass('five-source picker contracts and worktree target-only boundary are present')
@@ -105,9 +114,8 @@ pass('project view toggles preserve one Git component and project boundaries dis
 
 assert(/const \[refreshSeq, setRefreshSeq\] = useState\(0\)/.test(comparisonSource), 'Explicit compare generation is missing')
 assert(/\[client, root, base, target, compareMode, refreshSeq\]/.test(comparisonSource), 'Explicit compare generation does not trigger comparison')
-assert(/重新比较/.test(comparisonSource), 'Explicit recompare action is missing from the UI')
+assert(/git\.refresh/.test(comparisonSource) && /['"]git\.refresh['"]:\s*'重新比较'/.test(messagesSource), 'Explicit recompare action is missing from the localized UI')
 pass('explicit recompare retains endpoints and mode while intentionally rebuilding results')
-
 // AI is a separate, opt-in build, never a Git comparison action.
 function assertAiBoundary(source) {
   assert(/const AiTerminalEntry = __AI_TERMINAL__/.test(source), 'AI import must be build-gated')

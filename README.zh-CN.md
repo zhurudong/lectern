@@ -1,5 +1,8 @@
 *[English](README.md) · 中文*
 
+可选 AI 构建通过 Lectern Companion（macOS 13.5+）提供本机终端。阅读器保持只读；CLI 以你的用户权限运行，可修改文件并按自身设置向模型服务发送上下文。参见[终端安装文档](docs/native-terminal/README.md)与[隐私政策](PRIVACY.zh-CN.md)。
+
+
 # Lectern（读码台）
 
 [![CI](https://github.com/zhurudong/lectern/actions/workflows/ci.yml/badge.svg)](https://github.com/zhurudong/lectern/actions/workflows/ci.yml)
@@ -94,14 +97,14 @@ README 正文，就是为了让你能自己审视这些约束。
 
 ## 语言覆盖
 
-当前覆盖 **28 类语言／语法类型**：26 类专用高亮、2 类近似高亮。
+当前覆盖 **29 类语言／语法类型**：27 类专用高亮、2 类近似高亮。
 JSX 归入 JavaScript，TSX 归入 TypeScript。
 
 | 档位 | 类数 | 语言 |
 | --- | --- | --- |
-| **可跳转**（高亮 + 大纲 + 跳转 + 引用 + 符号搜索） | 7 | Python、Java、C、C++、Go、JavaScript（含 JSX）、TypeScript（含 TSX） |
+| **可跳转**（高亮 + 大纲 + 跳转 + 引用 + 符号搜索） | 9 | Python、Java、C、C++、Go、JavaScript（含 JSX）、TypeScript（含 TSX）、Rust、PHP |
 | **仅大纲** | 2 | Markdown（标题层级）、SQL（常见对象定义与顶层查询/数据操作） |
-| **仅高亮** | 17 | JSON、YAML、TOML、XML、HTML、CSS、SCSS、Sass、Less、Shell、Rust、Ruby、Kotlin、C#、Groovy、Dockerfile、CMake |
+| **仅高亮** | 16 | JSON、YAML、TOML、XML、HTML、CSS、SCSS、Sass、Less、Shell、Ruby、Kotlin、C#、Groovy、Dockerfile、CMake |
 | **近似高亮**（界面上明示） | 2 | Vue、Svelte |
 
 **文件大纲覆盖 9 类语言／格式，共 23 种文件后缀**：上表的 7 类可跳转语言

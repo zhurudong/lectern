@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { beginWorkspaceOpen, enterProject, enterSingleFile } from '../state'
 import { addRecent, type RecentProject } from './recent'
 
@@ -57,16 +58,16 @@ export async function openDroppedItems(data: DataTransfer): Promise<void> {
   try {
     // 目录的 DataTransferItem.kind 也是 file,拿到 handle 后才能区分。
     const items = Array.from(data.items).filter((item) => item.kind === 'file')
-    if (items.length !== 1) throw new Error('请每次拖入一个文件或文件夹。')
+    if (items.length !== 1) throw new Error(t('drop.one'))
     const item = items[0]
     if (typeof item.getAsFileSystemHandle !== 'function') {
-      throw new Error('当前浏览器无法通过拖放打开,请使用“打开文件夹”或“打开文件”。')
+      throw new Error(t('drop.unsupported'))
     }
     // 在任何 await 之前调用;否则浏览器会收回对拖放数据的访问。
     const pending = item.getAsFileSystemHandle()
     const handle = await pending
     if (!isCurrent()) return
-    if (!handle) throw new Error('无法读取拖入的文件或文件夹,请重新拖入或使用打开按钮。')
+    if (!handle) throw new Error(t('drop.unreadable'))
 
     // 先确认可读再切换,失败时保留当前项目/预览。
     if (handle.kind === 'directory') await handle.keys().next()
@@ -75,7 +76,7 @@ export async function openDroppedItems(data: DataTransfer): Promise<void> {
   } catch (err) {
     if (!isCurrent()) return
     if (err instanceof DOMException) {
-      throw new Error('无法访问拖入的文件或文件夹,请检查读取权限或使用打开按钮。')
+      throw new Error(t('drop.denied'))
     }
     throw err
   }

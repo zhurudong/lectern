@@ -10,6 +10,7 @@ import {
 } from '@codemirror/view'
 import { syntaxTreeAvailable, syntaxParserRunning } from '@codemirror/language'
 import { theme } from '../theme'
+import { t } from '../i18n'
 import { targetLine, viewportLine, caretLine } from '../state'
 import { intelLevelByName } from '../lib/filetypes'
 import { jumpToDefinition, openContextMenu, closeContextMenu, definitionsFor } from '../intel/jump'
@@ -218,7 +219,7 @@ export function CodeView({ text, language, fileName }: { text: string; language?
     })
     setNotice(
       outOfRange
-        ? `目标行 ${target.line} 超出当前可定位范围(共 ${total} 行,大文件已截断展示),已定位到最近位置`
+        ? t('code.outOfRange', { line: target.line, total })
         : null,
     )
     const timer = setTimeout(() => {

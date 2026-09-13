@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'preact/hooks'
 import { openFolder, openSingleFile, reconnectRecent } from '../lib/access'
 import { listRecent, removeRecent, type RecentProject } from '../lib/recent'
+import { t } from '../i18n'
+
+// i18n 样板面板(见 openspec/changes/add-english-ui-i18n):入口页所有可见文案改走 `t()`,
+// 含相对时间这类**带占位符**的动态串,证明机制覆盖静态与插值两类文案。切换语言即时重渲染
+// —— `t()` 在渲染期读 `lang` 信号,组件因此自动订阅。
 
 function formatTime(ts: number): string {
   const diff = Date.now() - ts
   const day = 24 * 60 * 60 * 1000
-  if (diff < 60 * 1000) return '刚刚'
-  if (diff < 60 * 60 * 1000) return `${Math.floor(diff / 60000)} 分钟前`
-  if (diff < day) return `${Math.floor(diff / 3600000)} 小时前`
-  if (diff < 30 * day) return `${Math.floor(diff / day)} 天前`
+  if (diff < 60 * 1000) return t('welcome.justNow')
+  if (diff < 60 * 60 * 1000) return t('welcome.minutesAgo', { n: Math.floor(diff / 60000) })
+  if (diff < day) return t('welcome.hoursAgo', { n: Math.floor(diff / 3600000) })
+  if (diff < 30 * day) return t('welcome.daysAgo', { n: Math.floor(diff / day) })
   return new Date(ts).toLocaleDateString()
 }
 
@@ -25,9 +30,9 @@ export function Welcome() {
     setItemError(null)
     const result = await reconnectRecent(rec)
     if (result === 'denied') {
-      setItemError({ id: rec.id, message: '未获得访问授权,可重试或从列表移除' })
+      setItemError({ id: rec.id, message: t('welcome.errDenied') })
     } else if (result === 'gone') {
-      setItemError({ id: rec.id, message: '目录不可用(可能已删除或移动),可从列表移除' })
+      setItemError({ id: rec.id, message: t('welcome.errGone') })
     }
   }
 
@@ -41,20 +46,20 @@ export function Welcome() {
   return (
     <div class="welcome">
       <h1>Lectern</h1>
-      <div class="subtitle">零网络、只读的本地代码阅读器 · 全部在本地完成</div>
+      <div class="subtitle">{t(__AI_TERMINAL__ ? 'welcome.aiSubtitle' : 'welcome.subtitle')}</div>
       <div class="actions">
-        <button onClick={() => void openFolder()}>打开文件夹</button>
+        <button onClick={() => void openFolder()}>{t('welcome.openFolder')}</button>
         <button class="secondary" onClick={() => void openSingleFile()}>
-          打开文件
+          {t('welcome.openFile')}
         </button>
       </div>
       <div class="drop-hint">也可将一个文件或文件夹拖到页面任意位置打开</div>
       <div class="recent">
-        <h2>最近项目</h2>
+        <h2>{t('welcome.recentTitle')}</h2>
         {recent === null ? (
-          <div class="recent-empty">加载中…</div>
+          <div class="recent-empty">{t('welcome.loading')}</div>
         ) : recent.length === 0 ? (
-          <div class="recent-empty">暂无最近项目,先打开一个文件夹吧</div>
+          <div class="recent-empty">{t('welcome.recentEmpty')}</div>
         ) : (
           recent.map((rec) => (
             <div key={rec.id}>
@@ -62,7 +67,7 @@ export function Welcome() {
                 <span class="icon">📁</span>
                 <span class="name">{rec.name}</span>
                 <span class="time">{formatTime(rec.lastOpened)}</span>
-                <button class="remove" title="从列表移除" onClick={(e) => void onRemove(e, rec)}>
+                <button class="remove" title={t('welcome.removeFromList')} onClick={(e) => void onRemove(e, rec)}>
                   ✕
                 </button>
               </div>
@@ -75,10 +80,7 @@ export function Welcome() {
           ))
         )}
       </div>
-      <div class="hint">
-        首次打开目录后,重启浏览器可从最近项目一键重连;浏览器可能会请求一次访问确认。
-        部分受保护目录(如系统目录、下载根目录)无法选择,请改选其子目录。
-      </div>
+      <div class="hint">{t('welcome.hint')}</div>
     </div>
   )
 }

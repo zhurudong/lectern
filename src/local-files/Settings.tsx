@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { signal } from '@preact/signals'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import {
@@ -81,11 +82,11 @@ function SettingsDialog() {
       } catch {
         if (!active || currentRequest !== request) return
         if (!loaded) {
-          setLoadError('无法读取设置，请重试。')
+          setLoadError(t('release.cannot_load_settings_please_retry'))
           setLoading(false)
         } else {
           setFileAccess(null)
-          setAccessError('无法确认文件访问权限，请重新打开此设置页。')
+          setAccessError(t('release.cannot_check_file_access_reopen_these'))
         }
       }
     }
@@ -126,7 +127,7 @@ function SettingsDialog() {
       setAccessError('')
       setSaved(true)
     } catch {
-      if (mounted.current) setSaveError('保存失败，请重试。')
+      if (mounted.current) setSaveError(t('release.could_not_save_please_retry'))
     } finally {
       if (mounted.current) setSaving(false)
     }
@@ -137,7 +138,7 @@ function SettingsDialog() {
       await chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` })
     } catch {
       if (mounted.current) {
-        setAccessError('无法打开扩展设置。请在浏览器的扩展管理中打开 Lectern 详情，开启“允许访问文件网址”。')
+        setAccessError(t('release.cannot_open_extension_settings_open_lectern'))
       }
     }
   }
@@ -159,29 +160,29 @@ function SettingsDialog() {
       <form onSubmit={(event) => { event.preventDefault(); void save() }}>
         <header class="local-file-settings-header">
           <div>
-            <h2 id="local-file-settings-title">本地文件自动打开</h2>
-            <p id="local-file-settings-description">在浏览器中打开选中的本地文件时，自动在当前标签页使用 Lectern 阅读。</p>
+            <h2 id="local-file-settings-title">{t('release.automatic_local_file_opening')}</h2>
+            <p id="local-file-settings-description">{t('release.read_selected_local_file_types_in')}</p>
           </div>
-          <button type="button" class="local-file-settings-close" aria-label="关闭本地文件设置" onClick={close} autoFocus>✕</button>
+          <button type="button" class="local-file-settings-close" aria-label={t('release.close_local_file_settings')} onClick={close} autoFocus>✕</button>
         </header>
 
         <div class="local-file-settings-body" aria-busy={loading || saving}>
           <section class="local-file-settings-access" aria-labelledby="local-file-access-title">
             <div>
-              <h3 id="local-file-access-title">文件访问权限</h3>
+              <h3 id="local-file-access-title">{t('release.file_access')}</h3>
               <p class={fileAccess === false ? 'local-file-settings-warning' : ''}>
-                {fileAccess === null ? loading ? '正在确认授权状态…' : '暂时无法确认授权状态' : fileAccess ? '已允许访问文件网址' : '尚未允许访问文件网址，自动打开暂未生效。'}
+                {fileAccess === null ? loading ? t('release.checking_access') : t('release.access_status_is_currently_unavailable') : fileAccess ? t('release.file_url_access_is_allowed') : t('release.file_url_access_is_not_allowed')}
               </p>
-              {fileAccess !== true && <p>在 Lectern 的扩展详情中手动开启“允许访问文件网址”，返回后会自动更新状态。也可以继续手动选择文件阅读。</p>}
+              {fileAccess !== true && <p>{t('release.enable_allow_access_to_file_urls')}</p>}
             </div>
-            <button type="button" onClick={() => { void openExtensionDetails() }}>打开扩展设置</button>
+            <button type="button" onClick={() => { void openExtensionDetails() }}>{t('release.open_extension_settings')}</button>
             {accessError && <p class="local-file-settings-error" role="alert">{accessError}</p>}
           </section>
 
-          {loading && <p class="local-file-settings-loading" role="status">正在读取设置…</p>}
+          {loading && <p class="local-file-settings-loading" role="status">{t('release.loading_settings')}</p>}
           {loadError && <div class="local-file-settings-load-error" role="alert">
             <p>{loadError}</p>
-            <button type="button" onClick={() => setReload((value) => value + 1)}>重试</button>
+            <button type="button" onClick={() => setReload((value) => value + 1)}>{t('release.retry')}</button>
           </div>}
 
           {savedConfig !== null && <>
@@ -189,28 +190,28 @@ function SettingsDialog() {
               <label class="local-file-settings-enabled">
                 <input type="checkbox" checked={draft.enabled} onChange={(event) => change({ ...draft, enabled: event.currentTarget.checked })} />
                 <span>
-                  <strong>自动使用 Lectern 打开</strong>
-                  <small>仅适用于本地文件网址；保存后对之后打开的文件生效。</small>
+                  <strong>{t('release.open_automatically_in_lectern')}</strong>
+                  <small>{t('release.applies_only_to_local_file_urls')}</small>
                 </span>
               </label>
 
               <div class="local-file-settings-selection-header">
                 <div>
-                  <h3>选择文件后缀</h3>
-                  <p>已选择 {selected.size} / {FILE_EXTENSION_OPTIONS.length} 个</p>
+                  <h3>{t('release.choose_file_extensions')}</h3>
+                  <p>{t('release.selected')} {selected.size} / {FILE_EXTENSION_OPTIONS.length} {t('release.items')}</p>
                 </div>
                 <div class="local-file-settings-bulk-actions">
-                  <button type="button" onClick={() => change({ ...draft, extensions: FILE_EXTENSION_OPTIONS.map((option) => option.extension) })}>全选</button>
-                  <button type="button" onClick={() => change({ ...draft, extensions: [] })}>清空</button>
-                  <button type="button" onClick={() => change(copyConfig(DEFAULT_CONFIG))}>恢复默认</button>
+                  <button type="button" onClick={() => change({ ...draft, extensions: FILE_EXTENSION_OPTIONS.map((option) => option.extension) })}>{t('release.select_all')}</button>
+                  <button type="button" onClick={() => change({ ...draft, extensions: [] })}>{t('release.clear')}</button>
+                  <button type="button" onClick={() => change(copyConfig(DEFAULT_CONFIG))}>{t('release.restore_defaults')}</button>
                 </div>
               </div>
 
-              <p class="local-file-settings-note">默认选择代码、Markdown 和纯文本后缀；HTML 和图片默认不选。Dockerfile 等无后缀文件不在接管范围内。</p>
+              <p class="local-file-settings-note">{t('release.code_markdown_and_text_extensions_are')}</p>
 
               <div class="local-file-settings-groups">
                 {groups.map((group) => <fieldset class="local-file-settings-group" key={group}>
-                  <legend>{group}</legend>
+                  <legend>{t(`local.group.${group}`)}</legend>
                   <div class="local-file-settings-extensions">
                     {FILE_EXTENSION_OPTIONS.filter((option) => option.group === group).map((option) => <label class="local-file-settings-extension" key={option.extension}>
                       <input
@@ -220,7 +221,7 @@ function SettingsDialog() {
                       />
                       <span>
                         <code>.{option.extension}</code>
-                        <small>{option.label}</small>
+                        <small>{['纯文本', '图片'].includes(option.label) ? t(`local.group.${option.label}`) : option.label}</small>
                       </span>
                     </label>)}
                   </div>
@@ -233,11 +234,11 @@ function SettingsDialog() {
         <footer class="local-file-settings-footer">
           <div class="local-file-settings-save-status">
             {saveError ? <p class="local-file-settings-error" role="alert">{saveError}</p> : <p role="status" aria-live="polite">
-              {saving ? '正在保存…' : saved ? '已保存' : dirty ? '有未保存的更改' : ''}
+              {saving ? t('release.saving') : saved ? t('release.saved') : dirty ? t('release.unsaved_changes') : ''}
             </p>}
           </div>
-          <button type="button" onClick={close}>{saved && !dirty ? '关闭' : '取消'}</button>
-          <button type="submit" class="local-file-settings-save" disabled={disabled || !dirty}>保存设置</button>
+          <button type="button" onClick={close}>{saved && !dirty ? t('release.close') : t('release.cancel')}</button>
+          <button type="submit" class="local-file-settings-save" disabled={disabled || !dirty}>{t('release.save_settings')}</button>
         </footer>
       </form>
     </dialog>

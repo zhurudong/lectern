@@ -127,7 +127,9 @@ function checkSymbols() {
         return 'LECTERN_NATIVE_TRANSPORT'
       })
     }
+    const exemptReadOnly = resolve(DIST) === resolve(ROOT, 'dist-dev') && /(^|\/)devFixture-[^/]*\.js$/.test(file.replace(/\\/g, '/'))
     for (const [invariant, patterns] of Object.entries(FORBIDDEN)) {
+      if (invariant === 'read-only' && exemptReadOnly) continue
       if (localReader && invariant === 'zero network') continue
       for (const pattern of patterns) {
         const match = new RegExp(pattern.source, 'g').exec(text)
@@ -161,6 +163,20 @@ function checkManifest() {
     fail('only viewer.html may be exposed to file URLs')
   if (JSON.stringify(manifest.content_security_policy) !== JSON.stringify({ extension_pages: AI ? AI_CSP : PURE_CSP }))
     fail(`CSP must exactly restrict connections to self/file${AI ? '' : ''}`)
+}
+
+/**
+ * The read-only exemption for devFixture-*.js (see checkSymbols) is only sound
+ * because that chunk never reaches the shipped `dist/` — it is dev-only and
+ * tree-shaken out of a production build. Enforce that here: if this run is
+ * checking the production `dist/` and a devFixture chunk is present, the tree-shake
+ * failed and the exemption would be masking a real write path in what ships.
+ */
+function checkDevFixtureNotShipped() {
+  if (resolve(DIST) === resolve(ROOT, 'dist-dev')) return // 只对发货产物 `dist/` 收紧
+  const leaked = jsFiles(DIST).filter((f) => /(^|\/)devFixture-[^/]*\.js$/.test(f.replace(/\\/g, '/')))
+  for (const f of leaked)
+    fail(`dev fixture leaked into shipped build: ${show(f)} — it must be tree-shaken from prod \`dist/\``)
 }
 
 /**
@@ -220,6 +236,7 @@ if (!existsSync(DIST)) {
 const stale = warnIfStale()
 checkSymbols()
 checkManifest()
+checkDevFixtureNotShipped()
 
 if (failed) {
   console.error(`\nThe build breaks an invariant. See CONTRIBUTING.md, "The three invariants".`)
