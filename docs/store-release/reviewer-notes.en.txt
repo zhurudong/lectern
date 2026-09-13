@@ -11,6 +11,9 @@ No Lectern account or payment is required to use the reader. The optional termin
 7. The CLI runs with user permissions, can modify files, and may contact the user's configured provider. Native Messaging is local; no local HTTP server, token, telemetry or hook is required.
 8. To remove the companion, close terminals and run /Applications/Lectern Companion.app/Contents/Resources/Uninstall.command. Uninstalling retains CLI installations and project association preferences. Remove the extension separately.
 
+Companion download: https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1
+Privacy policy: https://github.com/zhurudong/lectern/blob/companion-v0.2.1/PRIVACY.md
+Extension ID: ahmcjpgaejjfgiihipkjlhmepcnkbddm
 Source: https://github.com/zhurudong/lectern
 Support: https://github.com/zhurudong/lectern/issues
 The submitted build's in-app guide contains the actual public companion download URL. Before submitting, confirm the guide, installer and public privacy-policy link are accessible without a maintainer login. A missing installer or unavailable CLI account is not a successful terminal test.

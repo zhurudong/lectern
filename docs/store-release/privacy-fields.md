@@ -53,6 +53,6 @@ Data is processed locally to display user-selected files and relay the optional 
 
 在确认这些承诺与自己的实际运营一致后，勾选后台要求的声明：不出售用户数据；不用于与单一用途无关的目的；不用于信用或贷款评估。不要额外添加数据运营、广告或分析 SDK。
 
-隐私政策 URL：填发布站点的 `privacy.html` 实际 HTTPS 地址；先在未登录窗口验证。不要填写本机路径，也不要继续使用尚未覆盖 AI 行为的旧政策。
+隐私政策 URL：填写 `https://github.com/zhurudong/lectern/blob/companion-v0.2.1/PRIVACY.md`。该固定源码版本的政策已核对无需登录即可访问，覆盖 AI/CLI 行为。中文政策为同一标签下的 `PRIVACY.zh-CN.md`。
 
 依据：[Google 隐私字段](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy)、[本机数据处理仍需披露](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq)、[远程代码定义](https://developer.chrome.com/docs/extensions/develop/migrate/remote-hosted-code)。上述类别对应关系是基于本仓库实现的判断。

@@ -4,8 +4,8 @@
   "observedStoreId": "ahmcjpgaejjfgiihipkjlhmepcnkbddm",
   "storeIdConfirmed": true,
   "highestUploadedVersion": null,
-  "downloadUrl": null,
-  "privacyUrl": null,
+  "downloadUrl": "https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1",
+  "privacyUrl": "https://github.com/zhurudong/lectern/blob/companion-v0.2.1/PRIVACY.md",
   "companionPackages": [
     {
       "arch": "arm64",
