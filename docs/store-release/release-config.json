@@ -3,6 +3,15 @@
   "companionVersion": "0.2.1",
   "observedStoreId": "ahmcjpgaejjfgiihipkjlhmepcnkbddm",
   "storeIdConfirmed": true,
+  "storeReview": {
+    "version": "0.4.0",
+    "status": "rejected",
+    "notificationId": "Yellow Argon",
+    "violationDate": "2026-09-13",
+    "affectedLocales": ["zh_CN", "en"],
+    "reason": "Excessive keywords in detailed descriptions: language-name lists",
+    "source": "user-provided Chrome Web Store dashboard screenshot"
+  },
   "highestUploadedVersion": null,
   "downloadUrl": "https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1",
   "privacyUrl": "https://github.com/zhurudong/lectern/blob/companion-v0.2.1/PRIVACY.md",

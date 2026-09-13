@@ -1,33 +1,23 @@
-Lectern turns Chrome into a workspace for reading local code.
+Lectern lets you read local projects in Chrome, explore their structure, review changes and open an AI terminal beside the code when needed. Get familiar with a project or review work on your computer without first uploading files or launching an IDE.
 
-Open a project on your computer to browse source files, navigate definitions, search symbols and review changes, with your own AI CLI beside the code. Get highlighting for 29 language and syntax categories, plus automatic rendering when you open local files with selected extensions in Chrome. Explore an unfamiliar project, read open-source code or review local changes.
+Main features
 
-1. Read projects directly from your computer
-Choose a folder to browse its file tree, or open an individual file, without first uploading the project or launching an IDE. The reader processes files locally and is read-only. View code, documentation, configuration files and images in one place. Reading works without the optional AI companion.
+• Local reading and highlighting: Choose a folder to browse its file tree, or open a single file. Highlighting covers 29 language and syntax categories; two use approximate highlighting, clearly marked in the interface. The reader processes local files in read-only mode.
 
-2. Use a local AI terminal beside your code (macOS preview)
-Open the optional terminal on the right of the reader to use an installed AI CLI such as Codex or Claude Code while you read. It stays inside the current page, with a draggable divider to adjust its width. Associate each project with its local folder once through the system picker; later sessions reuse the association. Keep your existing CLI sign-in and model settings. No separate Lectern account is needed.
+• Navigation and search: Use file outlines to find your place, or search a project by filename, symbol or text. Navigate definitions and references in supported languages, then return through navigation history. Matching uses syntax and names rather than promising language-server precision.
 
-3. Highlight 29 language and syntax categories, with outlines and code navigation
-Dedicated highlighting covers 27 categories: Python, Java, C, C++, Go, JavaScript (including JSX), TypeScript (including TSX), Rust, PHP, Markdown, SQL, JSON, YAML, TOML, XML, HTML, CSS, SCSS, Sass, Less, Shell, Ruby, Kotlin, C#, Groovy, Dockerfile and CMake.
-Vue and Svelte have approximate highlighting, clearly marked in the interface.
-Nine categories support file outlines, go to definition, find references and project symbol search: Python, Java, C, C++, Go, JavaScript, TypeScript, Rust and PHP. Markdown and SQL also have in-file outlines. Search a project by filename or text, and use navigation history to return to where you were reading. Definition and reference matching uses syntax and symbol names; it does not promise language-server precision.
+• An adjacent AI terminal: Use your installed Codex or Claude Code in the current page with your existing sign-in and model settings. Drag the divider to adjust its width. Associate each project with its local folder once and reuse that association later. This feature is currently a macOS preview.
 
-4. Automatically render local files with your chosen extensions
-Select file extensions in Automatic opening and enable Chrome's Allow access to file URLs. When you open a matching local file, such as .md, .sql, .java or .py, the current tab opens its corresponding Lectern preview. Choose from 72 supported extensions covering code, Markdown, plain text and images. Change your selection or turn the feature off at any time. Automatic opening applies only to local file:// addresses.
+• Automatic rendering by file extension: Choose from 72 supported file extensions and enable Chrome's Allow access to file URLs. Opening a matching local file:// address then displays its reading view in the current tab. Adjust or disable this at any time.
 
-5. Read Markdown, configuration files and images
-Switch Markdown between rendered and source views, with heading outlines, tables and highlighted code blocks. When a project folder is open, view local relative images and follow links within the project. Preview PNG, JPEG, GIF, SVG and WebP images, and read logs and common configuration files.
+• Documents and images: Switch Markdown between rendered and source views, with heading outlines, tables and highlighted code blocks. With a project folder open, view local relative images and follow links within the project. Common image files can also be previewed directly.
 
-6. Compare files and review local Git changes
-Compare two files side by side, or select local Git branches, tags, commits and the current working tree to inspect added, modified and deleted files. Review changes from a common ancestor or compare two versions directly. Git views read local snapshots and do not automatically fetch from remote repositories.
+• File and Git comparisons: Compare two files side by side, or review branches, tags, commits and working-tree changes from your local repository. Compare versions directly or review changes from a common ancestor. Git views do not automatically fetch remote data.
 
-7. Make the reader your own
-Use English or Chinese, light or dark themes, adjustable panes, a collapsible outline, and keyboard controls for the file tree and code navigation.
+The interface offers English and Chinese, light and dark themes, adjustable panes and keyboard controls for the file tree and code navigation.
 
-AI terminal setup and availability
-The terminal is currently a preview for macOS 13.5 or later. It requires Google Chrome, a separate Lectern Companion installation, and an installed and authenticated AI CLI. Codex and Claude Code are available as choices; other CLIs can be tried through an absolute executable path, with compatibility depending on the CLI. The companion includes its runtime, so it does not require a separate Node.js installation. Closing the terminal ends the current CLI session; reopening starts a new session.
-Download Lectern Companion from GitHub Releases. It is currently unsigned and not notarized. macOS may block installation or launch and require you to review and approve the specific program. Managed Macs may restrict installation.
+Terminal setup
+The optional terminal requires macOS 13.5 or later, Google Chrome, a separate Lectern Companion installation, and an installed and authenticated AI CLI. The companion includes its runtime and is downloaded from GitHub Releases. It is currently unsigned and not notarized; macOS may require you to review and allow the specific installation, and managed Macs may restrict its use. Closing the terminal ends the session; reopening starts a new one. The reader works without the companion.
 
-Local reading and AI data
-The reader does not upload project content, and Lectern has no maintainer-operated code collection or telemetry service. The optional AI CLI runs with your user permissions, can modify files, and may send code and conversations to its configured model provider. Provider accounts, charges and data policies apply separately.
+Data handling
+The reader does not upload project content, and Lectern has no maintainer-operated code collection or telemetry service. The CLI runs with your user permissions, can modify files and may send code and conversations to its configured model provider. Provider accounts, charges and data policies apply separately.
