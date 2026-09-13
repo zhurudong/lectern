@@ -15,6 +15,7 @@ const verifyForUpload = final || draft
 const configIndex = process.argv.indexOf('--config')
 const configPath = join(PROJECT, 'docs/store-release/release-config.json')
 const cfg = JSON.parse(readFileSync(configIndex < 0 ? (existsSync(configPath) ? configPath : join(PROJECT, 'docs/store-release/release-config.example.json')) : resolve(process.argv[configIndex + 1]), 'utf8'))
+const storeReview = cfg.storeReview?.version === version ? cfg.storeReview : null
 const out = join(PROJECT, 'release-artifacts', `web-store-${version}`)
 const source = join(PROJECT, 'docs/store-release')
 const run = (cmd, args, options = {}) => execFileSync(cmd, args, { cwd: PROJECT, encoding: 'utf8', ...options })
@@ -83,7 +84,9 @@ for (const locale of ['en','zh_CN']) metadata[locale]=JSON.parse(readFileSync(jo
 writeFileSync(join(out,'metadata.json'),JSON.stringify(metadata,null,2)+'\n')
 writeFileSync(join(out,'index.html'), render('Lectern 发布材料', `# Lectern ${version} 发布材料
 
-${final ? '技术准备检查通过，尚未提交商店。' : draft ? '> 技术检查通过，可上传至商店草稿并填写材料。安装验收仍有缺项，见 status.json；当前不要提交审核。尚未上传商店。' : '> 当前是本地候选，尚有下载发布或安装验收等前置事项未完成，详见缺项清单。不要提交候选 ZIP。'}
+${storeReview?.status === 'rejected' ? '> 最新用户截图显示商店已拒绝本版本（' + storeReview.notificationId + '）。请按 [重新提交步骤](resubmission-2026-09-13.html) 替换中英文详细描述。尚未确认重新提交成功。' : '本工具生成本地材料；商店状态以后台为准。'}
+
+${final ? '技术准备检查通过。' : draft ? '上传技术检查通过；安装验收的未覆盖范围保留在 status.json 中。' : '> 当前是本地候选，详见缺项清单。不要提交候选 ZIP。'}
 
 [从第一步开始](START-HERE.html) · [查看缺项](status.json)
 
@@ -108,8 +111,8 @@ ${final ? '技术准备检查通过，尚未提交商店。' : draft ? '> 技术
 [${final ? '正式上传 ZIP' : draft ? '商店草稿 ZIP（只保存草稿）' : '本地候选 ZIP（不能提交）'}](${packageDir}/${basename(zip)}) · [校验清单](SHA256SUMS.txt)
 
 [重建说明](engineering.html)`, 'zh-CN'))
-writeFileSync(join(out,'status.json'),JSON.stringify({status:final?'ready-for-manual-review':draft?'ready-for-draft-upload':'candidate-only', version, companionVersion:VERSION, companionDistribution:distribution, storeId:cfg.observedStoreId, sourceCommit:run('git',['rev-parse','HEAD']).trim(), sourceDirty:!!run('git',['status','--porcelain','--untracked-files=no']).trim(), generatedAt:new Date().toISOString(), package:relative(out,zip), technicalChecksPassed:verifyForUpload, missing:[...missing,...pendingAcceptance], pendingAcceptance, manualValidation:cfg.manualValidation??null, screenshotNote:'Actual candidate UI; terminal screenshot is first-use installation guidance, no simulated model output. No store upload has occurred.'},null,2)+'\n')
+writeFileSync(join(out,'status.json'),JSON.stringify({status:final?'ready-for-manual-review':draft?'ready-for-draft-upload':'candidate-only', version, companionVersion:VERSION, companionDistribution:distribution, storeId:cfg.observedStoreId, storeReview, sourceCommit:run('git',['rev-parse','HEAD']).trim(), sourceDirty:!!run('git',['status','--porcelain','--untracked-files=no']).trim(), generatedAt:new Date().toISOString(), package:relative(out,zip), technicalChecksPassed:verifyForUpload, missing:[...missing,...pendingAcceptance], pendingAcceptance, manualValidation:cfg.manualValidation??null, screenshotNote:'Actual candidate UI; terminal screenshot is first-use installation guidance, no simulated model output.'},null,2)+'\n')
 const hashes=[]
 const walk=dir=>{ for(const ent of readdirSync(dir,{withFileTypes:true})) {const p=join(dir,ent.name);if(ent.isDirectory())walk(p);else if(ent.name!=='SHA256SUMS.txt')hashes.push(`${createHash('sha256').update(readFileSync(p)).digest('hex')}  ${relative(out,p)}`) } }
 walk(out);writeFileSync(join(out,'SHA256SUMS.txt'),hashes.sort().join('\n')+'\n')
-console.log(`Prepared ${out}\n${final ? 'Ready for manual review; not submitted' : draft ? `Ready for draft upload only; not submitted. Pending acceptance: ${pendingAcceptance.join('; ')}` : `CANDIDATE ONLY. Missing: ${[...missing,...pendingAcceptance].join('; ')}`}`)
+console.log(`Prepared ${out}\n${final ? 'Ready for manual review' : draft ? `Upload technical checks passed. Pending acceptance: ${pendingAcceptance.join('; ')}` : `CANDIDATE ONLY. Missing: ${[...missing,...pendingAcceptance].join('; ')}`}\nThis command only prepares local files; it does not upload or submit them.`)
