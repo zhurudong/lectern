@@ -31,7 +31,7 @@ npm run package:companion -- --extension-id <当前扩展的32位ID> --node-arch
 - `LECTERN_NOTARY_PROFILE`：已配置的 notarytool keychain profile
 - `LECTERN_DOWNLOAD_URL`：对应的 HTTPS 发布入口
 
-构建命令加 `--release`。它签名原生文件/应用和安装包，提交 Apple 公证、装订票据并验证；任何失败均非发布成功。构建器当前固定版本 0.2.0、协议 1；升级时显式同步版本、发布记录与协议兼容性。
+构建命令加 `--release`。它签名原生文件/应用和安装包，提交 Apple 公证、装订票据并验证；任何失败均非发布成功。构建器从 native/session.mjs 读取版本，当前 0.2.1、协议 1；升级时显式同步版本、发布记录与协议兼容性。
 
 发布前在无 Node/npm/源码的干净 Mac 上验证：安装、首次缺 CLI 指引、CLI 登录、目录选择、关闭/重开、同名项目、更新保留关联、卸载后出现安装指引。arm64 与 Intel 各验一次。自动化不能代替 Gatekeeper、系统授权和干净机器验收。尚未取得签名/商店配置时不得宣称正式发布完成。
 
