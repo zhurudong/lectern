@@ -218,11 +218,12 @@ function parseSpec() {
     if (!found) throw new Error(`cannot find the "${marker}" bullet in the file-preview spec`)
     // The bullet reads `- **专用高亮**:A、B、C。` or
     // `- **近似高亮**(qualifier):A、B(qualifier)。` — drop the qualifiers first,
-    // then take everything after the colon that introduces the list.
+    // then read the list up to the first sentence-ending full stop. A following
+    // explanatory sentence may mention languages and contain its own commas.
     const body = found.replace(/[（(][^)）]*[)）]/g, '')
     const colon = body.search(/[:：]/)
     if (colon < 0) throw new Error(`the "${marker}" bullet has no list separator`)
-    const names = split(body.slice(colon + 1))
+    const names = split(body.slice(colon + 1).split('。', 1)[0])
     if (names.length === 0) throw new Error(`the "${marker}" bullet parsed to an empty list`)
     return set(names)
   }

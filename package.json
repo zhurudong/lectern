@@ -12,7 +12,7 @@
   "homepage": "https://github.com/zhurudong/lectern",
   "scripts": {
     "dev": "vite build --watch",
-    "check": "node scripts/check-invariants.mjs && node scripts/check-language-coverage.mjs && npm run check:local-files && npm run check:sql && npm run check:git && npm run check:i18n",
+    "check": "node scripts/check-invariants.mjs && node scripts/check-language-coverage.mjs && node --test scripts/check-language-coverage.test.mjs && node scripts/check-repository.mjs && node scripts/check-role-vocabulary.mjs && npm run check:local-files && npm run check:sql && npm run check:git && npm run check:i18n",
     "check:local-files": "node scripts/check-local-files.mjs",
     "test:local-files": "node scripts/e2e-local-files.mjs",
     "check:sql": "node scripts/check-sql-outline.mjs",

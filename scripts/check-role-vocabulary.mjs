@@ -104,13 +104,14 @@ function selfTest() {
   }
 }
 
-const files = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 })
+// Include new, non-ignored files so local checks catch violations before staging.
+const files = [...new Set(execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 })
   .toString('utf8')
   .split('\0')
-  .filter(Boolean)
+  .filter(Boolean))]
   .filter((f) => !EXCLUDED.some((p) => p.test(f)))
 
-console.log('Checking tracked text files for internal session-role vocabulary:')
+console.log('Checking repository text files for internal session-role vocabulary:')
 console.log(`  ${FORBIDDEN.map((p) => p.source).join('  ')}`)
 console.log(`  excluded: ${EXCLUDED.map((p) => p.source).join('  ')}\n`)
 
