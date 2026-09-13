@@ -90,6 +90,8 @@ async function closeServer() {
 async function newControl() {
   if (control && !control.isClosed()) await control.close()
   control = watch(await browser.newPage())
+  // 本套用例断言中文文案；固定扩展源的语言，供随后接管的文件标签页复用。
+  await control.evaluateOnNewDocument(() => localStorage.setItem('cv-lang', 'zh'))
   await control.goto(`chrome-extension://${extensionId}/viewer.html`, { waitUntil: 'load' })
   await control.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent.includes('自动打开')))
 }

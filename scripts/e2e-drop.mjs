@@ -76,6 +76,8 @@ try {
   const extensionId = await browser.installExtension(dist)
   assert(extensionId, 'Production extension was not installed')
   page = await browser.newPage()
+  // Text selectors below use Chinese regardless of the host browser locale.
+  await page.evaluateOnNewDocument(() => localStorage.setItem('cv-lang', 'zh'))
   page.setDefaultTimeout(10000)
   page.on('pageerror', (error) => errors.push(String(error)))
   page.on('console', (message) => {

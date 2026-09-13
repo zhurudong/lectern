@@ -38,6 +38,8 @@ try {
   })
   const extensionId = await browser.installExtension(dist)
   const page = await browser.newPage()
+  // Text assertions below use Chinese regardless of the host browser locale.
+  await page.evaluateOnNewDocument(() => localStorage.setItem('cv-lang', 'zh'))
   page.setDefaultTimeout(10000)
   page.on('pageerror', (e) => errors.push(String(e)))
   page.on('request', (r) => { if (/^https?:/i.test(r.url())) network.push(r.url()) })
