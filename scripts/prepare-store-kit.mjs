@@ -1,4 +1,4 @@
-// Build a reviewable local handoff, never upload/publish. --final fails closed.
+// Build a local handoff, never upload/publish. A draft can retain acceptance gaps.
 import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, cpSync, existsSync, rmSync } from 'node:fs'
 import { join, resolve, basename, relative } from 'node:path'
@@ -9,6 +9,9 @@ import { buildPages, render } from './build-public-pages.mjs'
 import { VERSION } from '../lectern-agent/native/session.mjs'
 const version = JSON.parse(readFileSync(join(PROJECT, 'package.json'), 'utf8')).version
 const final = process.argv.includes('--final')
+const draft = process.argv.includes('--draft-upload')
+assert.ok(!(final && draft), 'Choose either --final or --draft-upload')
+const verifyForUpload = final || draft
 const configIndex = process.argv.indexOf('--config')
 const configPath = join(PROJECT, 'docs/store-release/release-config.json')
 const cfg = JSON.parse(readFileSync(configIndex < 0 ? (existsSync(configPath) ? configPath : join(PROJECT, 'docs/store-release/release-config.example.json')) : resolve(process.argv[configIndex + 1]), 'utf8'))
@@ -29,10 +32,14 @@ const uploadConfirmed = cfg.highestUploadedVersion == null
 if (!uploadConfirmed) missing.push('Confirm this candidate version can be uploaded to the store item')
 for (const key of ['downloadUrl', 'privacyUrl']) { try { assert.equal(new URL(cfg[key]).protocol, 'https:') } catch { missing.push(`Provide public HTTPS ${key}`) } }
 for (const arch of ['arm64', 'x64']) if (!(cfg.companionPackages ?? []).some(p => p.arch === arch && existsSync(resolve(p.path)))) missing.push(`${distribution === 'signed' ? 'Signed/notarized' : 'GitHub unsigned'} companion for ${arch}`)
-if (!cfg.cleanInstallVerified) missing.push('Record clean install verification on supported architectures')
 if (cfg.candidateVersion !== version || cfg.companionVersion !== VERSION) missing.push('Release configuration versions must match source')
+const pendingAcceptance = cfg.cleanInstallVerified ? [] : ['Record clean install verification on supported architectures']
 if (final) {
-  assert.deepEqual(missing, [], `Release prerequisites incomplete: ${missing.join('; ')}`)
+  const prerequisites = [...missing, ...pendingAcceptance]
+  assert.deepEqual(prerequisites, [], `Release prerequisites incomplete: ${prerequisites.join('; ')}`)
+}
+if (verifyForUpload) {
+  assert.deepEqual(missing, [], `Upload prerequisites incomplete: ${missing.join('; ')}`)
   for (const key of ['downloadUrl', 'privacyUrl']) {
     const response = await fetch(cfg[key], { signal: AbortSignal.timeout(20000) })
     assert.ok(response.ok, `${key} is not public: ${response.status}`)
@@ -66,8 +73,9 @@ for (const locale of ['en','zh_CN']) for (const name of ['01-code-reader.png','0
 for (const [name,w,h] of [['small-promo-440x280.png',440,280],['marquee-promo-1400x560.png',1400,560]]) {
   const img=readFileSync(join(out,'images/promos',name)); assert.equal(img.readUInt32BE(16),w); assert.equal(img.readUInt32BE(20),h)
 }
-const packages = join(out, final ? 'final-upload' : 'packages'); mkdirSync(packages, { recursive: true })
-const zip = join(packages, `lectern-${version}-ai-${final ? 'web-store' : 'CANDIDATE-NOT-FOR-SUBMISSION'}.zip`)
+const packageDir = final ? 'final-upload' : draft ? 'draft-upload' : 'packages'
+const packages = join(out, packageDir); mkdirSync(packages, { recursive: true })
+const zip = join(packages, `lectern-${version}-ai-${final ? 'web-store' : draft ? 'DRAFT-ONLY' : 'CANDIDATE-NOT-FOR-SUBMISSION'}.zip`)
 rmSync(zip, { force: true }); run('/usr/bin/zip', ['-qr', zip, '.'], { cwd: join(PROJECT,'dist-ai') })
 const files=run('/usr/bin/unzip',['-Z1',zip]).trim().split('\n'); assert.ok(files.includes('manifest.json')); assert.ok(!files.some(p=>p.startsWith('dist-ai/')))
 const metadata = {}
@@ -75,7 +83,7 @@ for (const locale of ['en','zh_CN']) metadata[locale]=JSON.parse(readFileSync(jo
 writeFileSync(join(out,'metadata.json'),JSON.stringify(metadata,null,2)+'\n')
 writeFileSync(join(out,'index.html'), render('Lectern 发布材料', `# Lectern ${version} 发布材料
 
-${final ? '技术准备检查通过，尚未提交商店。' : '> 当前是本地候选，尚有下载发布或安装验收等前置事项未完成，详见缺项清单。不要提交候选 ZIP。'}
+${final ? '技术准备检查通过，尚未提交商店。' : draft ? '> 技术检查通过，可上传至商店草稿并填写材料。安装验收仍有缺项，见 status.json；当前不要提交审核。尚未上传商店。' : '> 当前是本地候选，尚有下载发布或安装验收等前置事项未完成，详见缺项清单。不要提交候选 ZIP。'}
 
 [从第一步开始](START-HERE.html) · [查看缺项](status.json)
 
@@ -97,11 +105,11 @@ ${final ? '技术准备检查通过，尚未提交商店。' : '> 当前是本�
 
 ## 发布文件
 
-[${final ? '正式上传 ZIP' : '本地候选 ZIP（不能提交）'}](${final ? 'final-upload' : 'packages'}/${basename(zip)}) · [校验清单](SHA256SUMS.txt)
+[${final ? '正式上传 ZIP' : draft ? '商店草稿 ZIP（只保存草稿）' : '本地候选 ZIP（不能提交）'}](${packageDir}/${basename(zip)}) · [校验清单](SHA256SUMS.txt)
 
 [重建说明](engineering.html)`, 'zh-CN'))
-writeFileSync(join(out,'status.json'),JSON.stringify({status:final?'ready-for-manual-review':'candidate-only', version, companionVersion:VERSION, companionDistribution:distribution, storeId:cfg.observedStoreId, sourceCommit:run('git',['rev-parse','HEAD']).trim(), sourceDirty:!!run('git',['status','--porcelain','--untracked-files=no']).trim(), generatedAt:new Date().toISOString(), missing, screenshotNote:'Actual candidate UI; terminal screenshot is first-use installation guidance, no simulated model output. No store upload has occurred.'},null,2)+'\n')
+writeFileSync(join(out,'status.json'),JSON.stringify({status:final?'ready-for-manual-review':draft?'ready-for-draft-upload':'candidate-only', version, companionVersion:VERSION, companionDistribution:distribution, storeId:cfg.observedStoreId, sourceCommit:run('git',['rev-parse','HEAD']).trim(), sourceDirty:!!run('git',['status','--porcelain','--untracked-files=no']).trim(), generatedAt:new Date().toISOString(), package:relative(out,zip), technicalChecksPassed:verifyForUpload, missing:[...missing,...pendingAcceptance], pendingAcceptance, manualValidation:cfg.manualValidation??null, screenshotNote:'Actual candidate UI; terminal screenshot is first-use installation guidance, no simulated model output. No store upload has occurred.'},null,2)+'\n')
 const hashes=[]
 const walk=dir=>{ for(const ent of readdirSync(dir,{withFileTypes:true})) {const p=join(dir,ent.name);if(ent.isDirectory())walk(p);else if(ent.name!=='SHA256SUMS.txt')hashes.push(`${createHash('sha256').update(readFileSync(p)).digest('hex')}  ${relative(out,p)}`) } }
 walk(out);writeFileSync(join(out,'SHA256SUMS.txt'),hashes.sort().join('\n')+'\n')
-console.log(`Prepared ${out}\n${final ? 'Ready for manual review; not submitted' : `CANDIDATE ONLY. Missing: ${missing.join('; ')}`}`)
+console.log(`Prepared ${out}\n${final ? 'Ready for manual review; not submitted' : draft ? `Ready for draft upload only; not submitted. Pending acceptance: ${pendingAcceptance.join('; ')}` : `CANDIDATE ONLY. Missing: ${[...missing,...pendingAcceptance].join('; ')}`}`)

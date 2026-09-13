@@ -2,6 +2,8 @@ Lectern 0.4.0 — reviewer test instructions
 
 No Lectern account or payment is required to use the reader. The optional terminal requires macOS 13.5+, Google Chrome, Lectern Companion and a separately installed/authenticated Codex or Claude Code CLI. Model service accounts and charges are separate from Lectern.
 
+Validation recorded on 2026-09-13: the public ARM64 installer was installed as an upgrade on macOS 26.5.1. Chrome 152 loaded an isolated local candidate with the formal store ID and used the actual system native host; PTY input/output and resizing passed. The user confirmed directory association and a real AI CLI request/response. A clean macOS user environment, Intel runtime and installation from Chrome Web Store have not yet been validated.
+
 1. Open the extension from the toolbar. Choose Open Folder and select a disposable local source repository.
 2. Open a source file. Test the file tree, symbol search, text search, definition navigation and file comparison. Toggle English/Chinese and light/dark themes. No project content is uploaded by the reader.
 3. Optional file URL opening: open Automatic opening, select the file types, save, then enable Chrome's Allow access to file URLs for this extension. Navigate to a matching local file URL. This feature uses local file rules only.

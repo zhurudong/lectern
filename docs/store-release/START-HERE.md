@@ -13,6 +13,7 @@
 | 图片 | images/en、images/zh_CN、images/promos、images/icon-128.png | 商店图形资源 |
 | 隐私政策 | 本文第 4 步的 GitHub 链接 | 填商店隐私政策网址；site/ 为可选网站版本 |
 | 扩展候选 ZIP | packages/*-ai-CANDIDATE-NOT-FOR-SUBMISSION.zip | 前提齐备前只保留在本机 |
+| 商店草稿 ZIP | draft-upload/*-ai-DRAFT-ONLY.zip | 技术检查通过后上传，仅保存草稿 |
 | 正式扩展 ZIP | final-upload/*-ai-web-store.zip | 完成下面所有前置项后生成并上传 |
 | 文件校验与状态 | SHA256SUMS.txt、status.json | 防止拿错包、了解缺项 |
 
@@ -34,11 +35,15 @@ Chrome 商店 ID 与本机“加载已解压扩展”的开发 ID 不同。现�
 
 GitHub CLI 已登录并完成发布。公开下载页、两个安装包以及双语隐私政策均已用未登录请求核验；下载文件的 SHA-256 与发布前完全一致。后续用户下载不需要维护者账号。
 
-## 3. 用户第一次安装（下载后做一次真实验证）
+## 3. 安装验证（ARM64 升级与真实 CLI 已通过）
 
-正式扩展公钥已收到并校验，对应 ID `ahmcjpgaejjfgiihipkjlhmepcnkbddm`。已生成独立本地验收目录 `release-artifacts/store-test-0.4.0/extension/`；纯净版及待上传 AI 包的 manifest 均未加入测试公钥。在独立 Chrome 配置中，该验收版已用正式 ID 与安装包内未修改的 0.2.1 ARM64 原生主机完成握手，旧开发 ID 被拒绝。该测试提取了安装包内容，未执行系统安装、目录选择或 AI CLI，不能代替下面的首次安装验收。
+正式扩展公钥已收到并校验，对应 ID `ahmcjpgaejjfgiihipkjlhmepcnkbddm`。独立验收副本位于 `release-artifacts/store-test-0.4.0/extension/`；纯净版及待上传 AI 包的 manifest 均未加入测试公钥。
 
-维护者验收时，先用独立 Chrome 配置开启开发者模式，加载上述 `extension/` 目录并核对 ID，再按下面步骤安装公开下载的伴随程序。当前本机的旧 companion 绑定开发 ID，安装 0.2.1 会升级它并切换到正式 ID，因此旧开发版将无法连接；应使用新验收版进行后续操作。正式商店用户安装扩展后，无需公钥、开发者模式或加载目录。这是 [Chrome 官方保持开发扩展 ID 的方法](https://developer.chrome.com/docs/extensions/reference/manifest/key)。
+2026-09-13，用户已从 Chrome 下载公开 ARM64 包并通过系统 Installer 升级到 0.2.1。文件校验、系统收据及安装文件一致性检查通过。独立 Chrome 直接发现系统注册并以正式 ID 完成握手，真实 PTY 输入输出及调整尺寸通过，旧开发 ID 被拒绝。用户随后在独立验收窗口完成项目目录选择、关联和真实 AI CLI 请求/回复。详见 [验证记录](verification-2026-09-13.md)。
+
+该机器已有开发环境及旧 companion，所以这次覆盖 ARM64 升级安装，不覆盖全新系统或 Intel。后续维护者可执行 `npm run test:store-manual` 打开独立验收窗口。正式商店用户无需公钥、开发者模式或加载目录；本地验收使用的是 [Chrome 官方保持开发扩展 ID 的方法](https://developer.chrome.com/docs/extensions/reference/manifest/key)。
+
+首次用户的实际使用步骤如下：
 
 1. 从公开 GitHub Release 下载与 Mac 芯片匹配的 `UNSIGNED.pkg` 和 `.sha256`。核对仓库所有者、版本、扩展 ID 及校验和。
 2. 双击安装包。因为未签名、未公证，macOS 可能阻止安装或启动；由用户按 [Apple 官方说明](https://support.apple.com/102445) 决定是否允许该具体程序。受组织管理的 Mac 可能不允许这样做。
@@ -54,18 +59,20 @@ GitHub CLI 已登录并完成发布。公开下载页、两个安装包以及双
 
 `site/` 静态站点与 `.github/workflows/pages.yml` 仍可选用。它们不是本次上传前必须由你配置的步骤。
 
-## 5. 生成 Chrome 正式上传 ZIP（我操作）
+## 5. 生成上传 ZIP（我操作）
 
-公开下载与隐私 URL 可访问、包内身份与架构检查通过、用户的真实安装验收完成后，我把实际链接写入配置并重新构建。unsigned 模式保留身份/版本/架构/校验和检查，明确验证未签名事实和安装页披露，不运行公证验证来冒充签名发布。
+公开下载、隐私 URL 和安装页已配置。unsigned 模式保留身份/版本/架构/校验和检查，验证未签名事实和安装页披露。
 
-只在这些前提满足时生成 `final-upload/`。Chrome Web Store 的最终审核结果由 Google 决定，GitHub 托管本身不能保证通过审核。
+`npm run prepare:store -- --draft-upload` 核验公开链接、两个架构的发布包和扩展产物，生成 `draft-upload/`。即使还有安装验收缺项，也可以先上传这个 ZIP 并保存商店草稿；`status.json` 会保留缺项。
+
+`--final` 仍要求完整的安装验收记录，再生成 `final-upload/`。这两步不上传或提交商店。Chrome Web Store 的最终审核结果由 Google 决定。
 
 ## 6. 上传新版本（你操作商店后台）
 
-只有交付目录出现 `final-upload/lectern-版本-ai-web-store.zip` 且 `status.json` 为 `ready-for-manual-review`，才进入这一步。
+`status.json` 为 `ready-for-draft-upload` 时，可以上传 `draft-upload/lectern-0.4.0-ai-DRAFT-ONLY.zip` 并保存草稿，暂不提交审核。`ready-for-manual-review` 对应 `final-upload/` 中的正式上传包。始终以 `status.json` 的 `package` 字段选文件。
 
 1. 回到第 1 步确认的同一个 Lectern 条目。
-2. 打开“软件包 / Package”，选择上传新软件包，选 `final-upload/` 中的 **AI 扩展 ZIP**。
+2. 打开“软件包 / Package”，选择上传新软件包，选上述状态对应的 **AI 扩展 ZIP**。
 3. 等后台解析完成，核对名称、版本、`nativeMessaging` 及本地文件权限。名称来自包中的 `_locales`；如不可编辑，不要用后台临时文案掩盖错误。
 4. 如果提示版本号不够高或有审核中的版本冲突，保留错误提示发给我；不删除条目。
 

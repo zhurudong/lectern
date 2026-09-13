@@ -14,4 +14,10 @@
 - 旧开发 ID 被拒绝；纯净档和待上传 AI 包的 manifest 没有被测试公钥改写。
 - 自动测试产生的临时项目关联已清理；没有启动 AI CLI 或调用模型服务。
 
-详细机器报告位于 `release-artifacts/store-test-0.4.0/installed-connection-check.json`。后续仍需记录真实目录选择、AI CLI 使用、会话重开/新项目、干净用户环境、Intel 安装以及商店安装复验。`cleanInstallVerified` 保持 false。
+用户随后在独立 Chrome 验收窗口中完成真实操作，并回复“完成验证”：打开测试项目、首次在系统选择器关联同一目录、在右侧终端向 AI CLI 发出只读请求并得到回复。验收目录为 `release-artifacts/store-test-0.4.0/sample-project/`，所给请求是“请说明 hello.js 的作用，不修改文件”。该结果为用户确认，未采集会话内容或凭据；CLI 名称及版本未单独记录。
+
+本次已经验证 ARM64 升级安装、正式扩展身份、实际系统原生主机、PTY 输入输出/尺寸调整，以及用户实际目录关联与 AI CLI 使用。扩展来自本地验收副本，不是 Chrome Web Store 安装。
+
+详细机器报告位于 `release-artifacts/store-test-0.4.0/installed-connection-check.json`。仍需记录会话重开/新项目、干净用户环境、Intel 安装以及商店安装复验；这次确认不覆盖这些项目。`cleanInstallVerified` 保持 false。
+
+商店草稿包复核：两个架构安装包的身份、版本、校验和及架构检查通过，公开下载/隐私链接和双语安装页通过。ZIP 的 23 个文件与用户刚验收的副本逐项一致，仅移除了本地验收 manifest 中的公钥；没有重新构建产品代码。新增 `--draft-upload` 只允许准备商店草稿，缺少版本/条目确认仍拒绝生成，`--final` 仍拒绝未完成的安装验收。纯净档沿用此前通过的 `npm run check` 结果，本次仅改发布脚本和文档。
