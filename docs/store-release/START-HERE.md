@@ -36,7 +36,9 @@ GitHub CLI 已登录并完成发布。公开下载页、两个安装包以及双
 
 ## 3. 用户第一次安装（下载后做一次真实验证）
 
-提交审核前，本地测试扩展也必须保持正式 ID。现有开发版 ID 不同，不能直接连接本次安装包。先在商店后台进入**已有 Lectern 条目 → 软件包（Package）→ 查看公钥（View public key）**，复制公钥交给我。我会校验公钥计算出的 ID，并生成单独的本地验收目录，再开始系统安装。公钥是公开信息，不需要私钥或密码，也不需要创建新商店条目。这是 [Chrome 官方保持开发扩展 ID 的方法](https://developer.chrome.com/docs/extensions/reference/manifest/key)。
+正式扩展公钥已收到并校验，对应 ID `ahmcjpgaejjfgiihipkjlhmepcnkbddm`。已生成独立本地验收目录 `release-artifacts/store-test-0.4.0/extension/`；纯净版及待上传 AI 包的 manifest 均未加入测试公钥。在独立 Chrome 配置中，该验收版已用正式 ID 与安装包内未修改的 0.2.1 ARM64 原生主机完成握手，旧开发 ID 被拒绝。该测试提取了安装包内容，未执行系统安装、目录选择或 AI CLI，不能代替下面的首次安装验收。
+
+维护者验收时，先用独立 Chrome 配置开启开发者模式，加载上述 `extension/` 目录并核对 ID，再按下面步骤安装公开下载的伴随程序。当前本机的旧 companion 绑定开发 ID，安装 0.2.1 会升级它并切换到正式 ID，因此旧开发版将无法连接；应使用新验收版进行后续操作。正式商店用户安装扩展后，无需公钥、开发者模式或加载目录。这是 [Chrome 官方保持开发扩展 ID 的方法](https://developer.chrome.com/docs/extensions/reference/manifest/key)。
 
 1. 从公开 GitHub Release 下载与 Mac 芯片匹配的 `UNSIGNED.pkg` 和 `.sha256`。核对仓库所有者、版本、扩展 ID 及校验和。
 2. 双击安装包。因为未签名、未公证，macOS 可能阻止安装或启动；由用户按 [Apple 官方说明](https://support.apple.com/102445) 决定是否允许该具体程序。受组织管理的 Mac 可能不允许这样做。
