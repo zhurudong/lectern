@@ -1,8 +1,7 @@
 // Build a reviewable local handoff, never upload/publish. --final fails closed.
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync, readdirSync, mkdirSync, cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, readdirSync, mkdirSync, cpSync, existsSync, rmSync } from 'node:fs'
 import { join, resolve, basename, relative } from 'node:path'
-import { tmpdir } from 'node:os'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { PROJECT } from './paths.mjs'
@@ -11,17 +10,25 @@ import { VERSION } from '../lectern-agent/native/session.mjs'
 const version = JSON.parse(readFileSync(join(PROJECT, 'package.json'), 'utf8')).version
 const final = process.argv.includes('--final')
 const configIndex = process.argv.indexOf('--config')
-const cfg = JSON.parse(readFileSync(configIndex < 0 ? join(PROJECT, 'docs/store-release/release-config.example.json') : resolve(process.argv[configIndex + 1]), 'utf8'))
+const configPath = join(PROJECT, 'docs/store-release/release-config.json')
+const cfg = JSON.parse(readFileSync(configIndex < 0 ? (existsSync(configPath) ? configPath : join(PROJECT, 'docs/store-release/release-config.example.json')) : resolve(process.argv[configIndex + 1]), 'utf8'))
 const out = join(PROJECT, 'release-artifacts', `web-store-${version}`)
 const source = join(PROJECT, 'docs/store-release')
 const run = (cmd, args, options = {}) => execFileSync(cmd, args, { cwd: PROJECT, encoding: 'utf8', ...options })
+const distribution = cfg.companionDistribution ?? 'signed'
+assert.ok(['signed', 'unsigned'].includes(distribution), 'Unknown companion distribution mode')
 const missing = []
 if (!cfg.storeIdConfirmed || !/^[a-p]{32}$/.test(cfg.observedStoreId ?? '')) missing.push('Confirm the existing store item ID')
 const parts = v => v.split('.').map(Number)
 const newer = (a, b) => { const x = parts(a), y = parts(b); for (let i=0;i<4;i++) { if ((x[i]??0)!==(y[i]??0)) return (x[i]??0)>(y[i]??0) } return false }
-if (!/^[0-9]+(\.[0-9]+){0,3}$/.test(cfg.highestUploadedVersion ?? '') || !newer(version, cfg.highestUploadedVersion)) missing.push('Confirm highest uploaded version is lower than candidate')
+// Bind a user's upload confirmation to the item/version without inventing history.
+// A known conflicting previous version still blocks release.
+const uploadConfirmed = cfg.highestUploadedVersion == null
+  ? cfg.confirmedUpload?.version === version && cfg.confirmedUpload?.extensionId === cfg.observedStoreId
+  : /^[0-9]+(\.[0-9]+){0,3}$/.test(cfg.highestUploadedVersion) && newer(version, cfg.highestUploadedVersion)
+if (!uploadConfirmed) missing.push('Confirm this candidate version can be uploaded to the store item')
 for (const key of ['downloadUrl', 'privacyUrl']) { try { assert.equal(new URL(cfg[key]).protocol, 'https:') } catch { missing.push(`Provide public HTTPS ${key}`) } }
-for (const arch of ['arm64', 'x64']) if (!(cfg.companionPackages ?? []).some(p => p.arch === arch && existsSync(resolve(p.path)))) missing.push(`Signed/notarized companion for ${arch}`)
+for (const arch of ['arm64', 'x64']) if (!(cfg.companionPackages ?? []).some(p => p.arch === arch && existsSync(resolve(p.path)))) missing.push(`${distribution === 'signed' ? 'Signed/notarized' : 'GitHub unsigned'} companion for ${arch}`)
 if (!cfg.cleanInstallVerified) missing.push('Record clean install verification on supported architectures')
 if (cfg.candidateVersion !== version || cfg.companionVersion !== VERSION) missing.push('Release configuration versions must match source')
 if (final) {
@@ -36,21 +43,9 @@ if (final) {
   }
   for (const { arch, path } of cfg.companionPackages) {
     const pkg = resolve(path)
-    assert.ok(['arm64','x64'].includes(arch)); assert.ok(!pkg.includes('UNSIGNED'))
-    run(process.execPath, ['scripts/check-release.mjs', '--release'], { stdio: 'inherit', env: { ...process.env, LECTERN_EXTENSION_ID: cfg.observedStoreId, LECTERN_DOWNLOAD_URL: cfg.downloadUrl, LECTERN_COMPANION_PKG: pkg } })
-    const temp = mkdtempSync(join(tmpdir(), 'lectern-final-package-'))
-    try {
-      const unpack = join(temp, 'unpacked'); run('/usr/sbin/pkgutil', ['--expand-full', pkg, unpack])
-      const all = []
-      const walk = dir => { for (const entry of readdirSync(dir, { withFileTypes: true })) { const p = join(dir, entry.name); if (entry.isDirectory()) walk(p); else all.push(p) } }
-      walk(unpack)
-      for (const name of ['native-release.json', 'com.lectern.agent.json']) {
-        const matches = all.filter(p => basename(p) === name); assert.equal(matches.length, 1)
-        assert.deepEqual(JSON.parse(readFileSync(matches[0])).allowed_origins, [`chrome-extension://${cfg.observedStoreId}/`])
-      }
-      const runtime = all.find(p => p.endsWith('/Contents/Resources/node')); assert.ok(runtime)
-      assert.equal(run('/usr/bin/lipo', ['-archs', runtime]).trim(), arch === 'x64' ? 'x86_64' : 'arm64')
-    } finally { rmSync(temp, { recursive: true, force: true }) }
+    assert.ok(['arm64','x64'].includes(arch)); assert.ok(!pkg.includes('UNSIGNED-DEV'))
+    run(process.execPath, ['scripts/check-release.mjs', '--release'], { stdio: 'inherit', env: { ...process.env, LECTERN_EXTENSION_ID: cfg.observedStoreId, LECTERN_DOWNLOAD_URL: cfg.downloadUrl, LECTERN_COMPANION_PKG: pkg, LECTERN_COMPANION_DISTRIBUTION: distribution, LECTERN_COMPANION_ARCH: arch } })
+
   }
   for (const lang of ['native-setup.html','native-setup.en.html']) {
     const html = readFileSync(join(PROJECT,'dist-ai',lang),'utf8')
@@ -63,7 +58,7 @@ for (const name of readdirSync(source)) {
   if (name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.json')) cpSync(join(source,name),join(out,name))
   if (name.endsWith('.md')) writeFileSync(join(out,name.replace(/\.md$/,'.html')), render(name,readFileSync(join(source,name),'utf8'),'zh-CN'))
 }
-buildPages(join(out, 'site'), cfg.downloadUrl || undefined)
+buildPages(join(out, 'site'), cfg.downloadUrl || undefined, distribution)
 cpSync(join(PROJECT, 'public/icons/icon-128.png'), join(out,'images/icon-128.png'))
 for (const locale of ['en','zh_CN']) for (const name of ['01-code-reader.png','02-dark-reader.png','03-terminal-first-use.png']) {
   const img=readFileSync(join(out,'images',locale,name)); assert.equal(img.toString('hex',0,8),'89504e470d0a1a0a'); assert.equal(img.readUInt32BE(16),1280); assert.equal(img.readUInt32BE(20),800)
@@ -80,7 +75,7 @@ for (const locale of ['en','zh_CN']) metadata[locale]=JSON.parse(readFileSync(jo
 writeFileSync(join(out,'metadata.json'),JSON.stringify(metadata,null,2)+'\n')
 writeFileSync(join(out,'index.html'), render('Lectern 发布材料', `# Lectern ${version} 发布材料
 
-${final ? '技术准备检查通过，尚未提交商店。' : '> 当前是本地候选，尚缺正式签名、公证、公开链接和安装验收。不要提交候选 ZIP。'}
+${final ? '技术准备检查通过，尚未提交商店。' : '> 当前是本地候选，尚有下载发布或安装验收等前置事项未完成，详见缺项清单。不要提交候选 ZIP。'}
 
 [从第一步开始](START-HERE.html) · [查看缺项](status.json)
 
@@ -105,7 +100,7 @@ ${final ? '技术准备检查通过，尚未提交商店。' : '> 当前是本�
 [${final ? '正式上传 ZIP' : '本地候选 ZIP（不能提交）'}](${final ? 'final-upload' : 'packages'}/${basename(zip)}) · [校验清单](SHA256SUMS.txt)
 
 [重建说明](engineering.html)`, 'zh-CN'))
-writeFileSync(join(out,'status.json'),JSON.stringify({status:final?'ready-for-manual-review':'candidate-only', version, companionVersion:VERSION, storeId:cfg.observedStoreId, sourceCommit:run('git',['rev-parse','HEAD']).trim(), sourceDirty:!!run('git',['status','--porcelain','--untracked-files=no']).trim(), generatedAt:new Date().toISOString(), missing, screenshotNote:'Actual candidate UI; terminal screenshot is first-use installation guidance, no simulated model output. No store upload has occurred.'},null,2)+'\n')
+writeFileSync(join(out,'status.json'),JSON.stringify({status:final?'ready-for-manual-review':'candidate-only', version, companionVersion:VERSION, companionDistribution:distribution, storeId:cfg.observedStoreId, sourceCommit:run('git',['rev-parse','HEAD']).trim(), sourceDirty:!!run('git',['status','--porcelain','--untracked-files=no']).trim(), generatedAt:new Date().toISOString(), missing, screenshotNote:'Actual candidate UI; terminal screenshot is first-use installation guidance, no simulated model output. No store upload has occurred.'},null,2)+'\n')
 const hashes=[]
 const walk=dir=>{ for(const ent of readdirSync(dir,{withFileTypes:true})) {const p=join(dir,ent.name);if(ent.isDirectory())walk(p);else if(ent.name!=='SHA256SUMS.txt')hashes.push(`${createHash('sha256').update(readFileSync(p)).digest('hex')}  ${relative(out,p)}`) } }
 walk(out);writeFileSync(join(out,'SHA256SUMS.txt'),hashes.sort().join('\n')+'\n')

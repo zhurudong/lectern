@@ -1,6 +1,6 @@
 # Lectern 0.4.0：按这份清单发布
 
-本次目标是升级现有 Lectern 条目，发布带可选 AI 终端的版本。扩展候选包和商店材料已在本机生成，尚未上传或发布。完整版本还依赖 Apple 签名、公证和公开安装包；这些不能用未签名开发包替代。
+本次目标是升级现有 Lectern 条目，发布带可选 AI 终端的版本。扩展候选包和商店材料已在本机生成，尚未上传或发布。本次按用户选择，通过 GitHub Releases 分发未签名、未公证的安装包，不要求 Apple Developer 会员。macOS 可能阻止安装或启动，需用户核对来源后自行决定是否允许；具体系统行为仍需安装验收。
 
 ## 先认清你会用到的东西
 
@@ -18,60 +18,43 @@
 
 `release-artifacts/web-store-0.4.0/` 是交付目录。候选 ZIP 内 manifest 位于根目录，不需要再次压缩。不要上传整个交付目录，也不要上传 macOS `.pkg` 到 Chrome Web Store。
 
-## 1. 先确认现有条目和版本（你现在做这一步）
+## 1. 确认现有条目和版本（已完成）
 
 打开 Chrome Web Store 开发者后台，进入**已有 Lectern 条目**。先不创建新条目，不上传包。
 
-从已打开的后台 URL 观察到的 ID 为 `ahmcjpgaejjfgiihipkjlhmepcnkbddm`。核对它确实属于 Lectern；在“软件包 / Package”以及状态页面查看已发布版本、草稿/审核中版本和当前发布状态。
-
-把 **条目名称、扩展 ID、最高已上传版本、当前状态** 发给我，或发一张包含这些信息的截图。我据此确定最终版本与安装包绑定。若最高版本已达到或超过 0.4.0，必须改用更高版本并重新生成；不要删除线上版本以迁就本地候选。
+用户已确认正式 ID 为 `ahmcjpgaejjfgiihipkjlhmepcnkbddm`，并确认本次 `0.4.0` 可以上传，两项均已写入 release-config.json。具体历史最高版本及后台状态未提供，不作推测。本次确认只适用于该 ID 和版本；后续改变目标或版本需重新核对。
 
 Chrome 商店 ID 与本机“加载已解压扩展”的开发 ID 不同。现有开发包绑定的 ID 不能用于正式安装包。
 
-## 2. 准备 Apple 开发者资格（你完成账号步骤）
+## 2. 发布 Lectern Agent 到 GitHub（现在做这一步）
 
-这是发布 macOS 伴随程序所需，和 Chrome 开发者账号是两回事。
+我会生成与正式扩展 ID 绑定的 ARM64 / Intel 安装包、SHA-256 与发布说明，标记 `UNSIGNED`。它们与旧 `UNSIGNED-DEV` 包不同：绑定正式商店 ID，并附分发元数据，但同样没有 Apple Developer ID 签名或公证。
 
-1. 打开 [Apple Developer Program](https://developer.apple.com/programs/enroll/)，登录自己的 Apple 账号。
-2. 若尚未加入，按个人或公司的实际身份注册，完成双重认证、身份核验、协议与付费。**不要购买 Enterprise Program**。标准会员官方年费通常为 99 美元，按所在地页面显示的货币、税费和条款为准。
-3. 若已经是有效会员，直接使用现有团队。完成后只告诉我“会员已生效”，以及用于签名的 Team ID；不用把 Apple 密码、付款资料或验证码发给我。
+下载位置使用现有 `zhurudong/lectern` 仓库的 GitHub Release，计划标签为 `companion-v0.2.1`。先检查同名 Release；已有版本不得直接覆盖。标记为预发布，避免把尚未走完首次安装验收的包描述成全面验证完成。
 
-这些步骤涉及你的身份、协议和付款，需要你本人完成。[官方注册说明](https://developer.apple.com/support/enrollment/)
+当前这台 Mac 的 GitHub CLI 尚未登录。你在终端执行 `gh auth login`，选择 GitHub.com 和浏览器登录，完成后回复“已登录”。不必发送密码或 token。我继续上传安装包、校验和与源码版本，并核对公开下载链接。
 
-## 3. 创建签名证书并放入这台 Mac（按页面操作，我接手后续命令）
+## 3. 用户第一次安装（下载后做一次真实验证）
 
-1. 在这台 Mac 打开“钥匙串访问”，从“证书助理”选择“从证书颁发机构请求证书”，填写自己的邮箱与名称，选择保存到磁盘，生成 CSR。私钥留在这台 Mac 的钥匙串中。
-2. Apple Developer → Certificates, Identifiers & Profiles → Certificates → 新建证书。创建 **Developer ID Application**，上传 CSR，下载证书，双击导入钥匙串。
-3. 同样创建 **Developer ID Installer** 并导入。不要选择 Mac App Distribution 或 Mac Installer Distribution，它们用于不同分发渠道。
-4. 在钥匙串“我的证书”中确认两张 Developer ID 证书各自能展开看到私钥。只下载 `.cer` 而没有私钥，不能签名。
-5. 告诉我“两个证书已安装”。证书名称和 Team ID 可提供；不用导出或发送私钥。
+1. 从公开 GitHub Release 下载与 Mac 芯片匹配的 `UNSIGNED.pkg` 和 `.sha256`。核对仓库所有者、版本、扩展 ID 及校验和。
+2. 双击安装包。因为未签名、未公证，macOS 可能阻止安装或启动；由用户按 [Apple 官方说明](https://support.apple.com/102445) 决定是否允许该具体程序。受组织管理的 Mac 可能不允许这样做。
+3. 这里不提供关闭整个系统安全检查、批量解除隔离的安装脚本。安装器可能请求管理员授权，这是安装到 Applications 和注册 Chrome 主机所需。
+4. 准备并登录 Codex 或 Claude Code CLI，返回 Lectern 点 AI 终端 → 重新连接，首次在系统选择器中选择同一项目目录。
+5. 后续同一项目自动复用关联；新项目选择一次目录。关闭终端结束 CLI 会话。
 
-然后我核对签名身份、配置构建。公证凭据由你在本机终端交互输入到钥匙串，例如运行 `xcrun notarytool store-credentials lectern-notary` 按提示完成；不要把应用专用密码放进聊天、仓库或发布材料。如果本机缺少可用的 notarytool，先按 Xcode 工具提示完成安装。
+先在可丢弃的测试目录验收，不卸载日常使用的 CLI。ARM64 和 Intel 的系统安装各自验证，记录到 `first-install-checklist.md`。本机自动化通过不会自动勾选这些记录。
 
-[Apple Developer ID 证书说明](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/)
+## 4. 公开隐私政策（我准备，你核对链接）
 
-## 4. 我生成正式伴随程序，你验证首次安装
+最短路径是使用本次已公开 GitHub 源码版本中的隐私政策页面，无需新增域名或配置 GitHub Pages。发布后，隐私字段填写该具体标签的 `PRIVACY.md` 渲染页面；中文对应 `PRIVACY.zh-CN.md`。先在未登录窗口确认能看到本次 AI/CLI 处理说明。
 
-前面资料齐备后，我执行下面这些工程步骤，你无需手工拼命令：
+`site/` 静态站点与 `.github/workflows/pages.yml` 仍可选用。它们不是本次上传前必须由你配置的步骤。
 
-- 为正式扩展 ID 构建 ARM64 和 Intel x64 包，逐个签名、公证、装订票据并验证。
-- 在包内核对扩展 origin、版本、运行时架构，生成 SHA-256。
-- 把包与校验文件放到你拥有的 GitHub 仓库 Release。拟用独立标签 `companion-v0.2.1`，避免与扩展的 v0.4.0 混淆；实际已有标签冲突时换新版本。
-- 发布下载页后，验证不登录也能下载。**GitHub draft release 的地址不能当公开下载地址。**
+## 5. 生成 Chrome 正式上传 ZIP（我操作）
 
-你在干净用户环境按 `first-install-checklist.md` 操作并记录结果。不要先卸载你日常使用的 CLI；使用另一台 Mac 或独立 macOS 用户做干净验证。两种架构必须各验；只有一种通过时，先明确缩小支持范围并同步包与文案，不能把未测试架构写成已支持。
+公开下载与隐私 URL 可访问、包内身份与架构检查通过、用户的真实安装验收完成后，我把实际链接写入配置并重新构建。unsigned 模式保留身份/版本/架构/校验和检查，明确验证未签名事实和安装页披露，不运行公证验证来冒充签名发布。
 
-## 5. 公开隐私政策和下载入口
-
-源码已准备 GitHub Pages 工作流 `.github/workflows/pages.yml`。建议使用现有仓库部署，免买新域名。
-
-1. 先把本次分支的代码和工作流合并到仓库默认分支（由我处理代码与检查，正式合并前可供你审阅）。
-2. GitHub 仓库 Settings → Pages → Build and deployment → Source 选择 **GitHub Actions**。
-3. Actions → **Publish Lectern support and privacy pages** → Run workflow。`download_url` 填第 4 步已公开且可下载的 companion release 页。
-4. 打开工作流输出的实际 `page_url`。若仓库使用默认域名，预期为 `https://zhurudong.github.io/lectern/`；**以实际部署结果为准，不把预期地址当已发布**。
-5. 在未登录窗口打开首页、`privacy.html`、`privacy.zh-CN.html`；核对含 AI/CLI 处理说明，下载链接能正常到达正式安装包。
-
-这时把真实 URL 给我，我重新构建扩展，使内置安装指引指向该公开下载入口，再生成正式上传 ZIP。`site/` 内页面也可部署到你已有的其他 HTTPS 静态站点。
+只在这些前提满足时生成 `final-upload/`。Chrome Web Store 的最终审核结果由 Google 决定，GitHub 托管本身不能保证通过审核。
 
 ## 6. 上传新版本（你操作商店后台）
 
@@ -95,7 +78,7 @@ Chrome 商店 ID 与本机“加载已解压扩展”的开发 ID 不同。现�
 | 简体中文截图 | images/zh_CN/ 中对应三张 |
 | 小型宣传图 | images/promos/small-promo-440x280.png |
 | 大型宣传图 | images/promos/marquee-promo-1400x560.png（可选位置） |
-| 主页 | 第 5 步真实发布的页面 URL |
+| 主页 | 实际公开的 GitHub 仓库或发布页 URL |
 | 支持网址 | https://github.com/zhurudong/lectern/issues |
 | 成熟内容 | 当前代码阅读工具不包含成人内容，保持关闭 |
 | 视频 | 没有真实演示视频就留空，不填占位地址 |
@@ -107,7 +90,7 @@ Chrome 商店 ID 与本机“加载已解压扩展”的开发 ID 不同。现�
 ## 8. 填隐私权规范和审核说明
 
 1. 对照 `privacy-fields.html` 从上往下填写单一用途、每项权限、远程代码和数据类别。
-2. 隐私政策 URL 填第 5 步验证过的 `privacy.html` 完整 HTTPS 地址。
+2. 隐私政策 URL 填第 4 步验证过的隐私政策完整 HTTPS 地址。
 3. “测试说明 / Test instructions”粘贴 `reviewer-notes.en.txt`。如有独立网址栏，补正式 companion 下载页；不要提供你的私人 CLI 账号或密钥。
 4. 分发保持现有条目的地区、公开范围与免费设置；除非你决定改变。AI 模型的单独账号/费用已在描述里披露。
 5. 查看后台错误清单。真实缺少的字段需要补齐；不能仅为消除错误勾选不符合实际的隐私承诺。

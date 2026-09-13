@@ -1,0 +1,27 @@
+{
+  "candidateVersion": "0.4.0",
+  "companionVersion": "0.2.1",
+  "observedStoreId": "ahmcjpgaejjfgiihipkjlhmepcnkbddm",
+  "storeIdConfirmed": true,
+  "highestUploadedVersion": null,
+  "downloadUrl": null,
+  "privacyUrl": null,
+  "companionPackages": [
+    {
+      "arch": "arm64",
+      "path": "release-artifacts/Lectern-Companion-0.2.1-macOS-arm64-UNSIGNED.pkg"
+    },
+    {
+      "arch": "x64",
+      "path": "release-artifacts/Lectern-Companion-0.2.1-macOS-x64-UNSIGNED.pkg"
+    }
+  ],
+  "cleanInstallVerified": false,
+  "confirmedUpload": {
+    "version": "0.4.0",
+    "extensionId": "ahmcjpgaejjfgiihipkjlhmepcnkbddm",
+    "source": "user confirmation"
+  },
+  "companionDistribution": "unsigned",
+  "plannedDownloadUrl": "https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1"
+}

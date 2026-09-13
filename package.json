@@ -3,7 +3,7 @@
   "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "Lectern — a read-only local code reader with configurable file URL opening (Chrome MV3 extension)",
+  "description": "Lectern \u2014 a read-only local code reader with configurable file URL opening (Chrome MV3 extension)",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -37,7 +37,8 @@
     "check:release": "node scripts/check-release.mjs",
     "prepare:store": "node scripts/prepare-store-kit.mjs",
     "shots:store": "node scripts/shot-release-kit.mjs",
-    "build:public-pages": "node scripts/build-public-pages.mjs"
+    "build:public-pages": "node scripts/build-public-pages.mjs",
+    "prepare:agent-release": "node scripts/native/prepare-github.mjs"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.2",

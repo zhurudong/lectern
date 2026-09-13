@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { execFileSync } from 'node:child_process'
-import { VERSION } from '../lectern-agent/native/session.mjs'
+import { join } from 'node:path'
+import { verifyArtifact } from './native/verify-artifact.mjs'
 import { PROJECT } from './paths.mjs'
 const release = process.argv.includes('--release')
 const pkg = JSON.parse(readFileSync(join(PROJECT, 'package.json')))
@@ -28,19 +27,17 @@ for (const dir of ['dist', 'dist-ai']) {
 const ai = join(PROJECT, 'dist-ai')
 for (const file of ['native-setup.html', 'native-setup.en.html']) {
   const html = readFileSync(join(ai, file), 'utf8')
-  assert.ok(!html.includes('__DOWNLOAD__'))
+  assert.ok(!/__DOWNLOAD__|__SIGNING__/.test(html))
   if (release) assert.ok(!/尚未配置|No public download/.test(html), 'Release download is not configured')
 }
 if (release) {
   assert.match(process.env.LECTERN_EXTENSION_ID ?? '', /^[a-p]{32}$/, 'Set the confirmed store extension ID')
   assert.equal(new URL(process.env.LECTERN_DOWNLOAD_URL).protocol, 'https:')
-  assert.equal(process.platform, 'darwin', 'Formal companion verification requires macOS')
-  assert.ok(process.env.LECTERN_COMPANION_PKG, 'Set the exact signed package path')
-  const companion = resolve(process.env.LECTERN_COMPANION_PKG)
-  assert.ok(companion.endsWith('.pkg') && !companion.includes('UNSIGNED') && existsSync(companion))
-  assert.ok(companion.includes(`-${VERSION}-`), 'Companion version must match source')
-  execFileSync('/usr/sbin/pkgutil', ['--check-signature', companion], { stdio: 'inherit' })
-  execFileSync('/usr/bin/xcrun', ['stapler', 'validate', companion], { stdio: 'inherit' })
-  execFileSync('/usr/sbin/spctl', ['--assess', '--type', 'install', '--verbose', companion], { stdio: 'inherit' })
+  assert.ok(process.env.LECTERN_COMPANION_PKG, 'Set the exact companion package path')
+  const distribution = process.env.LECTERN_COMPANION_DISTRIBUTION ?? 'signed'
+  verifyArtifact(process.env.LECTERN_COMPANION_PKG, { extensionId: process.env.LECTERN_EXTENSION_ID, distribution, arch: process.env.LECTERN_COMPANION_ARCH })
+  if (distribution === 'unsigned') {
+    for (const file of ['native-setup.html', 'native-setup.en.html']) assert.match(readFileSync(join(ai, file), 'utf8'), /not notarized|未公证/, 'Disclose unsigned installation before release')
+  }
 }
 console.log(`PASS release metadata, locales, license files, build separation and setup pages${release ? ' (release mode)' : ' (candidate only; no publication implied)'}`)
