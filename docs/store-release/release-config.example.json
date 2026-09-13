@@ -7,5 +7,7 @@
   "downloadUrl": null,
   "privacyUrl": null,
   "companionPackages": [],
-  "cleanInstallVerified": false
+  "cleanInstallVerified": false,
+  "companionDistribution": "unsigned",
+  "plannedDownloadUrl": "https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1"
 }

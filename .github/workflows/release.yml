@@ -60,7 +60,7 @@ jobs:
             exit 1
           fi
 
-          # The AI candidate is distinct; its public release remains gated by native signing.
+          # The AI candidate is distinct; its public release still requires verified companion distribution and install checks.
           (cd dist-ai && zip -qr "../lectern-${version}-ai-candidate.zip" .)
           sha256sum "lectern-${version}-ai-candidate.zip" > "lectern-${version}-ai-candidate.zip.sha256"
           sha256sum "${manual}" > "${manual}.sha256"

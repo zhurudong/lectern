@@ -57,7 +57,21 @@ try {
   const promo = await browser.newPage()
   for (const [name, width, height] of [['small-promo-440x280.png', 440, 280], ['marquee-promo-1400x560.png', 1400, 560]]) {
     await promo.setViewport({ width, height, deviceScaleFactor: 1 })
-    await promo.setContent(`<!doctype html><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;background:#132033;color:#f6f8ff;font-family:system-ui;padding:${width === 440 ? '28px 30px' : '60px 100px'};height:100vh;display:flex;flex-direction:column;justify-content:space-between}.brand{display:flex;align-items:center;gap:16px;font-weight:700;font-size:${width === 440 ? 30 : 54}px}.brand img{width:${width === 440 ? 48 : 80}px}h1{font-size:${width === 440 ? 31 : 76}px;line-height:1.12;font-weight:600;letter-spacing:-1px;margin:12px 0}p{color:#b9cbe5;font-size:${width === 440 ? 14 : 25}px;margin:0;border-top:1px solid #3b4c64;padding-top:16px}</style><div class="brand"><img src="data:image/png;base64,${icon}">Lectern</div><h1>Read code.<br>Keep your context.</h1><p>Local code reader · Optional AI terminal</p>`)
+    const compact = width === 440
+    const headline = compact ? 'Read code.<br>Run your AI CLI.' : 'Read your code.<br>Keep your AI CLI beside it.'
+    const detail = compact ? 'Code reader + AI terminal, side by side.' : 'Browse local files. Follow definitions. Review changes — with your AI CLI alongside.'
+    await promo.setContent(`<!doctype html><meta charset="utf-8"><style>
+      *{box-sizing:border-box}
+      body{margin:0;background:#132033;color:#f6f8ff;font-family:system-ui;padding:${compact ? '24px 30px' : '48px 100px'};height:100vh;display:flex;flex-direction:column;justify-content:space-between}
+      .brand{display:flex;align-items:center;gap:16px;font-weight:700;font-size:${compact ? 30 : 50}px}
+      .brand img{width:${compact ? 44 : 72}px}
+      h1{font-size:${compact ? 32 : 72}px;line-height:1.12;font-weight:600;letter-spacing:-1px;margin:${compact ? '14px 0' : '20px 0'}}
+      footer{border-top:1px solid #3b4c64;padding-top:${compact ? 12 : 20}px}
+      p{color:#c5d5eb;font-size:${compact ? 14 : 24}px;line-height:1.4;margin:0}
+      small{display:block;color:#a6b8d0;font-size:${compact ? 11 : 16}px;line-height:1.4;margin-top:${compact ? 6 : 12}px}
+    </style><div class="brand"><img src="data:image/png;base64,${icon}">Lectern</div>
+    <h1>${headline}</h1><footer><p>${detail}</p><small>AI terminal requires macOS companion + installed CLI.</small></footer>`)
+    await promo.evaluate(() => document.fonts.ready)
     await promo.screenshot({ path: join(promos, name) })
   }
   await promo.close()

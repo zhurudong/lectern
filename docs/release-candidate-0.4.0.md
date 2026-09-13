@@ -1,5 +1,8 @@
 # Lectern 0.4.0 发布候选交接
 
+> 更新：用户已确认商店 ID 与 0.4.0 上传资格，并选择 GitHub 未签名分发，不购买 Apple Developer 会员。当前可执行清单见 [发布步骤](store-release/START-HERE.md)；下方最初签名计划保留作历史记录。
+
+
 当前分支：`codex/web-store-release`。0.4.0 是候选版本，尚未提交或发布 Chrome Web Store。用户尚未提供正式商店条目和 Apple Developer ID / 公证配置。
 
 ## 已完成

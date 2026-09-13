@@ -20,7 +20,15 @@ npm run package:companion -- --extension-id <当前扩展的32位ID> --node-arch
 
 开发注册卸载：`node scripts/native/register-dev.mjs --uninstall`。必须先移除开发注册再测试正式 pkg，否则 Chrome 用户级注册会遮盖系统级注册。旧 WS 服务迁移前先关闭终端，再运行 `node lectern-agent/cli.mjs --uninstall`；它不是新版必需组件。
 
-## 正式发布
+## GitHub 分发（本次选择）
+
+用户选择暂不购买 Apple Developer 会员。用 `--unsigned-release` 为正式商店 ID 构建 `UNSIGNED.pkg`，公开放在 GitHub Releases；不把旧开发包改名充当分发包。发布页须同时提供 SHA-256、源码标签、扩展 ID、芯片说明与未签名/未公证披露。macOS 可能拦截安装和启动，由用户核对来源后按 Apple 官方说明自行决定。安装包不会关闭 Gatekeeper 或清除隔离属性。
+
+当前正式扩展 ID：`ahmcjpgaejjfgiihipkjlhmepcnkbddm`。
+
+以下签名路径保留供将来采用，本次不要求完成。
+
+## 可选的签名发布
 
 确认 Web Store **AI 扩展** ID。为扩展构建配置真实 `LECTERN_DOWNLOAD_URL=https://...`（可为同时列出两种芯片安装包的发布页），再 `npm run build:ai`。没有配置时安装指引会明确说明下载尚未发布，不生成假下载链接。
 
@@ -33,7 +41,7 @@ npm run package:companion -- --extension-id <当前扩展的32位ID> --node-arch
 
 构建命令加 `--release`。它签名原生文件/应用和安装包，提交 Apple 公证、装订票据并验证；任何失败均非发布成功。构建器从 native/session.mjs 读取版本，当前 0.2.1、协议 1；升级时显式同步版本、发布记录与协议兼容性。
 
-发布前在无 Node/npm/源码的干净 Mac 上验证：安装、首次缺 CLI 指引、CLI 登录、目录选择、关闭/重开、同名项目、更新保留关联、卸载后出现安装指引。arm64 与 Intel 各验一次。自动化不能代替 Gatekeeper、系统授权和干净机器验收。尚未取得签名/商店配置时不得宣称正式发布完成。
+发布前在无 Node/npm/源码的干净 Mac 上验证：安装、首次缺 CLI 指引、CLI 登录、目录选择、关闭/重开、同名项目、更新保留关联、卸载后出现安装指引。arm64 与 Intel 各验一次。自动化不能代替 Gatekeeper、系统授权和干净机器验收。无论签名与否，都必须验证实际下载与安装；未签名分发不得描述成 Apple 已验证。
 
 ## 更新与卸载
 

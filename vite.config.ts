@@ -22,13 +22,15 @@ export default defineConfig(({ mode }) => ({
         writeFileSync(messagesPath, JSON.stringify(messages, null, 2))
       }
       manifest.permissions.push('nativeMessaging')
+      const distribution = process.env.LECTERN_COMPANION_DISTRIBUTION ?? 'unsigned'
+      if (!['signed', 'unsigned'].includes(distribution)) throw new Error('Invalid companion distribution')
       const download = process.env.LECTERN_DOWNLOAD_URL
       if (process.env.LECTERN_RELEASE === '1' && !download) throw new Error('A release requires LECTERN_DOWNLOAD_URL')
       if (download && new URL(download).protocol !== 'https:') throw new Error('Companion download URL must use HTTPS')
       const link = download ? `<a href="${download.replaceAll('&', '&amp;').replaceAll('\"', '&quot;').replaceAll('<', '&lt;')}" target="_blank" rel="noopener noreferrer">下载伴随程序</a>。` : '此开发构建尚未配置正式下载地址，请向维护者获取配套安装包；不要将它当作已发布版本。'
-      writeFileSync(resolve(options.dir!, 'native-setup.html'), readFileSync(here('scripts/native/setup.html'), 'utf8').replace('__DOWNLOAD__', link))
+      writeFileSync(resolve(options.dir!, 'native-setup.html'), readFileSync(here('scripts/native/setup.html'), 'utf8').replace('__DOWNLOAD__', link).replace('__SIGNING__', distribution === 'unsigned' ? '当前 GitHub 安装包未签名、未公证。macOS 可能阻止安装或启动；请先核对来源及校验和，再由你根据 Apple 官方说明决定是否允许。阅读器无需安装伴随程序。' : '发布包使用 Developer ID 签名并经 Apple 公证，请核对下载页的版本、芯片与校验和。'))
       const englishLink = download ? `<a href="${download.replaceAll('&', '&amp;').replaceAll('\"', '&quot;').replaceAll('<', '&lt;')}">Download Lectern Companion</a>.` : 'No public download is configured in this development build. Request a matching development installer from the maintainer.'
-      writeFileSync(resolve(options.dir!, 'native-setup.en.html'), readFileSync(here('scripts/native/setup.en.html'), 'utf8').replace('__DOWNLOAD__', englishLink))
+      writeFileSync(resolve(options.dir!, 'native-setup.en.html'), readFileSync(here('scripts/native/setup.en.html'), 'utf8').replace('__DOWNLOAD__', englishLink).replace('__SIGNING__', distribution === 'unsigned' ? 'The GitHub installer is unsigned and not notarized. macOS may block installation or launch. Verify the source and checksum before deciding whether to allow it using Apple’s instructions. The reader works without the companion.' : 'Release packages are Developer ID signed and notarized by Apple. Check the version, chip and checksum on the download page.'))
       writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n')
     },
   }] : [])],
