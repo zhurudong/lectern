@@ -36,6 +36,8 @@
     "check:i18n": "node scripts/check-i18n-release.mjs",
     "check:release": "node scripts/check-release.mjs",
     "prepare:store": "node scripts/prepare-store-kit.mjs",
+    "prepare:store-test": "node scripts/prepare-store-test.mjs",
+    "check:store-identity": "node scripts/e2e-store-identity.mjs",
     "shots:store": "node scripts/shot-release-kit.mjs",
     "build:public-pages": "node scripts/build-public-pages.mjs",
     "prepare:agent-release": "node scripts/native/prepare-github.mjs"

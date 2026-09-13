@@ -32,3 +32,12 @@ npm run prepare:store -- --final
 GitHub Pages：工作流只在手动触发时发布 `release-artifacts/public-site/`。页面从根目录中英文隐私政策生成，不复制旧商店文案。下载参数留空时页面明确说明未提供正式下载，不能用来冒充已完成的终端分发。
 
 GitHub 未签名包：`npm run package:companion -- --unsigned-release --extension-id <正式ID> --arch arm64 --node-archive <官方归档>`，x64 同理。默认不加参数仍为开发包；`--release` 仍是需要证书和公证的签名路径。正式扩展构建和验收配置 `LECTERN_COMPANION_DISTRIBUTION=unsigned`。
+
+商店 ID 的本地验收：公钥保存在 `extension-public-key.pem`，它是可公开的商店身份信息。按上面的公开下载地址构建 AI 包后，执行：
+
+```sh
+npm run prepare:store-test
+npm run check:store-identity
+```
+
+准备脚本先计算公钥对应的 Chrome ID 并与已确认条目核对，然后只在 `release-artifacts/store-test-<version>/extension/` 副本中增加 manifest.key。连接检查使用独立 Chrome 配置及校验过的安装包原始内容，验证正式 ID 的真实握手和开发 ID 的拒绝；不替换系统 companion、不启动 CLI，不把此结果计作干净安装。该架构的报告保存在同目录的 `connection-check.json`。这些命令不操作 Chrome Web Store。
