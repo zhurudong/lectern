@@ -11,6 +11,7 @@ export interface GitObject {
   body: Uint8Array
   source: 'loose' | 'pack'
 }
+
 export const MAX_METADATA_OBJECT_BYTES = 16 * 1024 * 1024
 export const MAX_BLOB_BODY_BYTES = 5 * 1024 * 1024
 const MAX_HEADER_BYTES = 128

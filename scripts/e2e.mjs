@@ -104,6 +104,14 @@ try {
   check('MV3 service worker 已注册', !!swTarget, swTarget?.url() ?? '未观测到(可能已休眠)')
 
   const page = await browser.newPage()
+  // 语言锁(add-english-ui-i18n):套件绝大多数断言走中文文案。0.3.4 起 DETECT_BROWSER_LANG=true
+  // 会让非 zh 浏览器默认英文,而 CI 浏览器 locale 多为 en —— 若不锁,整套中文断言会被英文界面
+  // 打红。initialLang() 先读 localStorage['cv-lang'],存了就无视浏览器语言探测,故在**每次文档
+  // 装载前**写死 zh。这不是掩盖问题:英文由文末专门的冒烟 + DETECT 用例覆盖。
+  const lockLangZh = (p) => p.evaluateOnNewDocument(() => {
+    try { localStorage.setItem('cv-lang', 'zh') } catch { /* 隐私模式等,忽略 */ }
+  })
+  await lockLangZh(page)
   const httpRequests = []
   const consoleErrors = []
   page.on('request', (r) => {
@@ -420,8 +428,51 @@ try {
       '',                                // 6
       '#endif',                          // 7
     ].join('\n'))
-    // B 组高频语言 + C 组整文件名 + D 组近似高亮(任务 2c / 2d / 2e)
-    await write(src, 'main.rs', 'fn main() {\n    let x: u32 = 1;\n    println!("{}", x);\n}\n')
+    // Rust / PHP 已升到"可跳转"档(官方 Lezer 语法)。文件保持紧凑以便全部行都在视口内渲染
+    // (CodeMirror 虚拟滚动,视口外的行不入 DOM,clickWord 就点不到);同时目标定义**不在第 1 行**,
+    // 避免"跳转后 caret 落在目标行"与"caret 恒在第 1 行"的缺陷碰巧重合而假绿。
+    await write(src, 'main.rs', [
+      '// Rust 可跳转夹具',                    // 1
+      'pub const RUST_LIMIT: u32 = 3;',        // 2
+      '',                                      // 3
+      'struct RustBox {',                      // 4
+      '    slot: u32,',                        // 5
+      '}',                                     // 6
+      '',                                      // 7
+      'impl RustBox {',                        // 8
+      '    fn peek(&self) -> u32 { self.slot }', // 9
+      '}',                                     // 10
+      '',                                      // 11
+      'fn rustEntry(seed: u32) -> u32 {',      // 12
+      '    seed * 2',                          // 13
+      '}',                                     // 14
+      '',                                      // 15
+      'fn rustCaller() -> u32 {',              // 16
+      '    rustEntry(21)',                     // 17
+      '}',                                     // 18
+    ].join('\n'))
+    // app.php 刻意放在**项目根**而非 src/:src 的子项数一旦 +1,会把根层尾部的
+    // added-later.txt 挤出"刷新后"那条断言的虚拟滚动渲染窗口(实测过);放根层则 src
+    // 子项数与基线一致,那条既有断言不受影响。可跳转能力与文件位置无关。
+    await write(root, 'app.php', [
+      '<?php',                                 // 1
+      'namespace PhpDemo;',                    // 2
+      '',                                      // 3
+      'const PHP_LIMIT = 3;',                  // 4
+      '',                                      // 5
+      'class PhpBox {',                        // 6
+      '    public $slot;',                     // 7
+      '    public function peek() { return $this->slot; }', // 8
+      '}',                                     // 9
+      '',                                      // 10
+      'function phpEntry($seed) {',            // 11
+      '    return $seed * 2;',                 // 12
+      '}',                                     // 13
+      '',                                      // 14
+      'function phpCaller() {',                // 15
+      '    return phpEntry(21);',              // 16
+      '}',                                     // 17
+    ].join('\n'))
     await write(src, 'app.rb', 'class Greeter\n  def initialize(name)\n    @name = name\n  end\nend\n')
     await write(src, 'Main.kt', 'fun main() {\n    val x: Int = 1\n    println(x)\n}\n')
     await write(src, 'Prog.cs', [
@@ -516,6 +567,40 @@ try {
     await write(root, 'temp.txt', 'to be deleted\n')
     await write(root, 'photo.svg', '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><circle cx="30" cy="30" r="25" fill="#c586c0"/></svg>')
     await write(root, 'single.md', '单文件模式相对图片: ![x](docs/logo.svg)\n')
+    // ---- 文件对比(C1)夹具 ----
+    // 两份相似 YAML:验证"并排对比 + 行级差异 + 两侧各按自身类型高亮"(task 3.1),
+    // 以及"对比不进导航栈"(task 3.4)。刻意各写几行不同。
+    await write(root, 'cmp-a.yaml', [
+      'server:',
+      '  host: localhost',
+      '  port: 8080',
+      '  workers: 4',
+      'logging:',
+      '  level: info',
+      '  file: /var/log/a.log',
+    ].join('\n') + '\n')
+    await write(root, 'cmp-b.yaml', [
+      'server:',
+      '  host: localhost',
+      '  port: 9090',           // 改
+      '  workers: 8',           // 改
+      'logging:',
+      '  level: debug',         // 改
+      '  file: /var/log/a.log',
+    ].join('\n') + '\n')
+    // ~32 KB、只在 8 个分散行上不同:验证"小改动不得被呈现为整份改变"(task 8.4)。
+    // A = 当前文件,B = 对比目标。改动分散,精算应得到多个分离的差异块;
+    // 若退回默认 scanLimit:500(按字符,32 KB 超阈值),会悄悄退化成 1 块"整份都变了"。
+    {
+      const base = Array.from({ length: 1000 }, (_, i) =>
+        `line ${String(i).padStart(4, '0')}: the quick brown fox jumps over`)
+      const variant = base.slice()
+      for (const idx of [120, 240, 360, 480, 600, 720, 840, 960]) {
+        variant[idx] = `line ${String(idx).padStart(4, '0')}: THE LAZY DOG SLEEPS SOUNDLY tonight`
+      }
+      await write(root, 'cmp-32k-a.txt', base.join('\n') + '\n')
+      await write(root, 'cmp-32k-b.txt', variant.join('\n') + '\n')
+    }
     // 二进制:含 NUL
     await write(bin, 'blob.bin', new Uint8Array([0x7f, 0x45, 0x4c, 0x46, 0, 0, 1, 2, 3, 0, 250, 251]))
     // 6MB 的支持语言文件:验证"超过 5MB 不参与符号索引"在预览区与大纲区都要明示(任务 9.2)
@@ -649,6 +734,27 @@ try {
     return false
   }
 
+  // 只判断某行是否存在(不点击)。目录树是虚拟滚动的,目标行可能压根没渲染在视口里 ——
+  // 所以滚遍全树去找,而不是只看当前 DOM 就断定不存在(和 clickRow 同一口径)。
+  const findRow = async (label) => {
+    const seen = () =>
+      page.evaluate(
+        (lbl) => [...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent === lbl),
+        label,
+      )
+    if (await seen()) return true
+    const box = await page
+      .$eval('.tree', (el) => ({ h: el.scrollHeight, vh: el.clientHeight, top: el.scrollTop }))
+      .catch(() => null)
+    if (!box) return false
+    for (let top = 0; top < box.h; top += Math.max(100, box.vh * 0.8)) {
+      await page.$eval('.tree', (el, t) => { el.scrollTop = t }, top)
+      await new Promise((r) => setTimeout(r, 120))
+      if (await seen()) return true
+    }
+    return false
+  }
+
   // 按"出现某个具体符号"等待:不能只等 .outline-row 出现 ——
   // 切文件瞬间上一个文件的条目可能仍在 DOM 里,泛化的等待会命中旧内容。
   const outlineRows = () =>
@@ -770,7 +876,14 @@ try {
     const dirsFirst = names.slice(0, 4).join(',')
     check('目录优先排序', dirsFirst === 'bigdir,bin,docs,many', dirsFirst)
     const fileSeg = names.slice(4)
-    check('文件名自然排序', fileSeg.join(',').includes('big.log,data.json'), fileSeg.join(','))
+    // 根层文件按名称自然排序(不区分大小写);对比夹具 cmp-* 排在 big.log 与 data.json 之间。
+    check(
+      '文件名自然排序',
+      fileSeg
+        .join(',')
+        .includes('big.log,cmp-32k-a.txt,cmp-32k-b.txt,cmp-a.yaml,cmp-b.yaml,data.json'),
+      fileSeg.join(','),
+    )
   }
   await page.screenshot({ path: join(SHOTS, 'shot-2-project.png') })
 
@@ -1898,7 +2011,7 @@ try {
 
   // ---- B 组高频语言 / C 组整文件名 / D 组近似高亮(任务 2c / 2d / 2e)----
   for (const [file, path, probe, label] of [
-    ['main.rs', 'src/main.rs', 'fn main()', 'Rust'],
+    // 注意:Rust / PHP 已升到"可跳转"档,不在此"仅高亮"清单里(见下方专门的可跳转断言)
     ['app.rb', 'src/app.rb', 'class Greeter', 'Ruby'],
     ['Main.kt', 'src/Main.kt', 'fun main()', 'Kotlin'],
     ['Prog.cs', 'src/Prog.cs', 'namespace App', 'C#'],
@@ -1942,6 +2055,79 @@ try {
       shown === label && kinds >= 3 && cap === '仅高亮',
       `语言=${shown} 高亮类=${kinds} 能力=${cap}`,
     )
+  }
+
+  // ---- Rust / PHP:新升"可跳转"档 —— 每门:大纲有符号 + ⌘点击跳转到定义 + 查找引用非空 ----
+  // 由官方 Lezer 语法(@lezer/rust、@lezer/php)驱动,走与 Go/TS 同一条符号抽取通道。
+  for (const t of [
+    {
+      file: 'main.rs', path: 'src/main.rs', lang: 'Rust', probe: 'fn rustCaller',
+      expect: ['RUST_LIMIT@2', 'RustBox@4', 'slot@5', 'peek@9', 'rustEntry@12', 'rustCaller@16'],
+      forbid: ['seed', 'self'],
+      callWord: 'rustEntry', defLine: 'fn rustEntry(seed', refCount: 2,
+    },
+    {
+      file: 'app.php', path: 'app.php', lang: 'PHP', probe: 'function phpCaller',
+      expect: ['PhpDemo@2', 'PHP_LIMIT@4', 'PhpBox@6', '$slot@7', 'peek@8', 'phpEntry@11', 'phpCaller@15'],
+      forbid: ['seed', 'this', '$seed'],
+      callWord: 'phpEntry', defLine: 'function phpEntry($seed', refCount: 2,
+    },
+  ]) {
+    await openFile(t.file, t.path)
+    await waitOutline('peek')
+    // ① 大纲有符号且行号正确
+    {
+      const rows = await outlineRows()
+      const got = rows.map((r) => `${r.name}@${r.line}`)
+      const missing = t.expect.filter((e) => !got.includes(e))
+      check(`大纲条目内容与行号正确(${t.lang})`, missing.length === 0, missing.length ? '缺失 ' + missing.join(',') : got.join(' '))
+      const leaked = t.forbid.filter((f) => rows.some((r) => r.name === f))
+      check(`${t.lang} 形参/局部变量未进入大纲`, leaked.length === 0, leaked.length ? '误收 ' + leaked.join(',') : '已排除')
+    }
+    // 能力标识为"可跳转",语言名正确
+    {
+      const cap = await page.$eval('.intel-cap', (el) => ({ text: el.textContent, cls: el.className }))
+      check(`${t.lang} 显示"可跳转"能力标识`, cap.text === '可跳转' && cap.cls.includes('intel-cap-full'), JSON.stringify(cap))
+      const shown = await page.$eval('.intel-lang', (el) => el.textContent)
+      check(`${t.lang} 预览区显示语言名`, shown === t.lang, shown)
+    }
+    // ② ⌘+点击调用点跳转到定义(定义不在第 1 行,排除 caret 恒在开头的假绿)
+    await page.waitForFunction(
+      (p) => document.querySelector('.cm-content')?.textContent?.includes(p),
+      { timeout: 10000 }, t.probe,
+    )
+    {
+      // callWord 出现两次:第 1 次是定义行,第 2 次是调用点 —— 取第 2 个
+      await clickWord(t.callWord, { nth: 2, meta: true })
+      await page.waitForSelector('.cm-target-line', { timeout: 8000 })
+      const line = await targetLineText()
+      check(`${t.lang} ⌘+点击调用点跳转到定义行`, !!line && line.includes(t.defLine), line?.trim())
+    }
+    // ③ 查找引用非空,命中定义处与调用处(均在本文件)
+    {
+      await clickWord(t.callWord, { right: true })
+      await page.waitForSelector('.intel-menu', { timeout: 8000 })
+      await page.evaluate(() => {
+        const btn = [...document.querySelectorAll('.intel-menu-item')].find((b) => b.textContent?.startsWith('查找引用'))
+        btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      })
+      await page.waitForSelector('.ref-panel', { timeout: 8000 })
+      await page.waitForFunction(
+        () => (document.querySelector('.ref-status')?.textContent ?? '').includes('扫描完成'),
+        { timeout: 30000 },
+      )
+      const files = await page.$$eval('.ref-file', (els) => els.map((e) => e.textContent?.trim().split(' ')[0] ?? ''))
+      const refRows = await page.$$eval('.ref-row', (els) => els.length)
+      check(
+        `${t.lang} 查找引用非空且命中定义处与调用处(${t.refCount} 处)`,
+        files.includes(t.path) && refRows === t.refCount,
+        `文件=${files.join('|')} 条数=${refRows}`,
+      )
+      await page.evaluate(() => {
+        const btn = [...document.querySelectorAll('.ref-btn')].find((b) => b.textContent === '✕')
+        btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      })
+    }
   }
 
   // 2d.3:Makefile 没有可用模式 —— 按纯文本展示,MUST NOT 借别的模式假装有高亮
@@ -4162,11 +4348,29 @@ try {
     check('虚拟滚动只渲染视口行', visible < 100, `${visible} rows in DOM`)
     await page.screenshot({ path: join(SHOTS, 'shot-5-bigdir.png') })
     await page.$eval('.tree', (el) => { el.scrollTop = 0 })
-    await new Promise((r) => setTimeout(r, 400)) // 等虚拟滚动重渲染
-    await clickRow('bigdir') // 折叠
+    // 折叠 bigdir。这里过去很脆:滚到 20000 后回顶,虚拟滚动重渲染有延迟,单次 clickRow + 固定
+    // 等待在慢机器上会失手;而"盲目重试点击"又会震荡(点了没反应就再点 → 反把它重新展开)。
+    // 改为读**实际展开态**(dir 行的 aria-expanded,Tree.tsx 出的)来驱动:只在 expanded=true 时
+    // 点一次折叠,读到 false 即停,读到 absent(还没渲染出来)就滚回顶再等。无猜测、无震荡。
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const st = await page.evaluate(() => {
+        const row = [...document.querySelectorAll('.tree-row')]
+          .find((r) => r.querySelector('.label')?.textContent === 'bigdir')
+        return row ? row.getAttribute('aria-expanded') : 'absent'
+      })
+      if (st === 'false') break
+      if (st === 'true') {
+        await clickRow('bigdir') // 折叠
+        await new Promise((r) => setTimeout(r, 400)) // 等 toggle 落定再复读,别在同一帧里连点
+      } else {
+        await page.$eval('.tree', (el) => { el.scrollTop = 0 })
+        await new Promise((r) => setTimeout(r, 300)) // 等虚拟滚动把 bigdir 行渲染回来
+      }
+    }
+    // 折叠后 1500 个 entry- 行要从虚拟滚动里退出,给足重渲染时间。
     await page.waitForFunction(
       () => ![...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent?.startsWith('entry-')),
-      { timeout: 5000 },
+      { timeout: 8000 },
     )
     // 把 src 重新展开:下面"刷新后已展开目录保持"那条断言的前提就是 src 处于展开态,
     // 上面为了让 bigdir 进入渲染范围临时收起过它。
@@ -4205,8 +4409,15 @@ try {
     const w = await fh.createWritable(); await w.write('new\n'); await w.close()
   })
   await page.click('button[title="刷新目录树"]')
-  await page.waitForFunction(() => [...document.querySelectorAll('.tree-row .label')].some((e) => e.textContent === 'added-later.txt'), { timeout: 5000 })
-  check('手动刷新反映新增文件', true)
+  // added-later.txt 是根层文件,刷新后目录树重渲染需要时间,且它可能落在虚拟滚动视口之外
+  // (夹具变多时更容易撞上)——滚遍全树去找、给几轮重试,匹配断言真实意图"刷新确实收进了
+  // 新文件",而不是"它恰好落在当前视口里"。
+  let sawAdded = false
+  for (let i = 0; i < 6 && !sawAdded; i++) {
+    sawAdded = await findRow('added-later.txt')
+    if (!sawAdded) await new Promise((r) => setTimeout(r, 500))
+  }
+  check('手动刷新反映新增文件', sawAdded, sawAdded ? '' : '滚遍全树仍未见新文件')
   // 展开态按路径逐层异步恢复,等全部加载完成再断言
   await page.waitForFunction(
     () => {
@@ -4656,6 +4867,7 @@ try {
   // 既不绑定也不提示;能力全部由界面入口保证。这一条可自动化,不属于真机清单。
   {
     const winPage = await browser.newPage()
+    await lockLangZh(winPage)
     await winPage.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
     )
@@ -4684,6 +4896,7 @@ try {
   // 用独立页面跑:必须是 activePath 尚为 null 的全新组件实例,而且不能扰动主页面的状态。
   {
     const racePage = await browser.newPage()
+    await lockLangZh(racePage)
     await racePage.goto(`chrome-extension://${extId}/viewer.html`, { waitUntil: 'load' })
     await racePage.waitForSelector('.welcome', { timeout: 10000 })
     // 在页面内埋观察者:`.tree` 一出现就立刻聚焦 —— 此刻 loadChildren 还没 resolve,
@@ -4719,6 +4932,7 @@ try {
       const id = tree?.getAttribute('aria-activedescendant')
       return {
         premise: window.__cvRacePremise,
+        snapshot: window.__cvTreeState?.(),
         activeLabel: id ? (document.getElementById(id)?.querySelector('.label')?.textContent ?? null) : null,
         firstRowLabel: document.querySelector('.tree-row .label')?.textContent ?? null,
       }
@@ -4732,9 +4946,403 @@ try {
     check(
       '树未就绪时获得焦点,就绪后活动行仍落在首行',
       race.activeLabel != null && race.activeLabel === race.firstRowLabel,
-      `活动行=${race.activeLabel} 首行=${race.firstRowLabel}`,
+      `活动行=${race.activeLabel} 首行=${race.firstRowLabel} 同瞬=${JSON.stringify(race.snapshot)}`,
     )
     await racePage.close()
+  }
+
+  // ================= 文件对比(C1,change: add-file-compare)=================
+  {
+    // 回到原始合成项目(前面若干块动过 page 的项目)。
+    await page.evaluate(async () => {
+      window.__cv.enterProject(await navigator.storage.getDirectory())
+    })
+    await page.waitForSelector('.tree-row', { timeout: 10000 })
+
+    // 探针:整个对比动线里,系统文件选择器一次都不许被调用(task 2.3)——
+    // 原生对话框自动化驱不动,主动线一旦建在它上面,这个功能就永久只能靠人验。
+    await page.evaluate(() => {
+      window.__pickerCalls = 0
+      for (const k of ['showOpenFilePicker', 'showDirectoryPicker', 'showSaveFilePicker']) {
+        const orig = window[k]
+        window[k] = (...a) => {
+          window.__pickerCalls++
+          return orig ? orig.apply(window, a) : Promise.reject(new Error('blocked'))
+        }
+      }
+    })
+
+    const stats = () => page.evaluate(() => window.__cv.compareStats.value)
+    const waitCompareReady = () =>
+      page.waitForFunction(
+        () =>
+          !!document.querySelector('.compare-view .cm-mergeView') &&
+          window.__cv.compareStats.value !== null,
+        { timeout: 15000 },
+      )
+    const setOverride = (k, v) => page.evaluate((k, v) => window.__cv.setCompareOverride(k, v), k, v)
+    const exit = () => page.evaluate(() => window.__cv.exitCompare())
+    // 「对比文件」按钮只在当前文件读成 text(state='ready')后才渲染 —— 而 openFile 只等
+    // 文件路径进 header(读取是异步的)。所以点它之前先等它真的挂上;再**轮询式自愈**地
+    // 开选择器:每轮若选择器还没出现就点一次按钮(重渲染瞬间的一次点击可能没落到位),
+    // 直到 `.compare-picker` 出现。用 evaluate 触发 click 而非 page.click,绕开 puppeteer
+    // 的"可点击点"几何判定。
+    const openPicker = async () => {
+      await page.waitForFunction(() => !!document.querySelector('.compare-entry'), { timeout: 10000 })
+      await page.waitForFunction(
+        () => {
+          if (document.querySelector('.compare-picker')) return true
+          document.querySelector('.compare-entry')?.click()
+          return false
+        },
+        { timeout: 10000, polling: 300 },
+      )
+    }
+    // 真人动线:点「对比文件」→ 选择器里按文件名搜 → 点结果。
+    // **不先在普通预览里打开目标**(task 6.3 的硬要求:直接进对比态)。
+    const enterCompareViaPicker = async (targetName) => {
+      await openPicker()
+      // 输入框自愈:若刚开的选择器被 sel.nonce 变化触发的 resetCompare 顺手关掉了,
+      // 再点一次入口重开(与 openPicker 同一套自愈)。
+      await page.waitForFunction(
+        () => {
+          if (document.querySelector('.compare-picker-input')) return true
+          document.querySelector('.compare-entry')?.click()
+          return false
+        },
+        { timeout: 10000, polling: 300 },
+      )
+      await page.type('.compare-picker-input', targetName)
+      await page.waitForFunction(
+        (n) =>
+          [...document.querySelectorAll('.compare-picker-results .result-name')].some(
+            (e) => e.textContent === n,
+          ),
+        { timeout: 20000 },
+        targetName,
+      )
+      await page.evaluate((n) => {
+        const el = [...document.querySelectorAll('.compare-picker-results .search-result')].find(
+          (r) => r.querySelector('.result-name')?.textContent === n,
+        )
+        el?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+      }, targetName)
+    }
+
+    // ---- 3.1 / spec「对比项目内的两个文件」:并排两栏 + 行级差异高亮 + 两侧各自高亮 ----
+    await openFile('cmp-a.yaml', 'cmp-a.yaml')
+    await enterCompareViaPicker('cmp-b.yaml')
+    await waitCompareReady()
+    {
+      const layout = await page.evaluate(() => ({
+        editors: document.querySelectorAll('.compare-host .cm-mergeViewEditor').length,
+        changed: document.querySelectorAll(
+          '.compare-host .cm-changedLine, .compare-host .cm-changedText',
+        ).length,
+        // 两侧各自语法高亮:YAML 会被 lezer 着色成若干 span(不是纯文本一坨)
+        highlightSpans: document.querySelectorAll('.compare-host .cm-line span').length,
+      }))
+      check(
+        '3.1 并排两栏渲染 + 行级差异高亮 + 两侧各自语法高亮',
+        layout.editors === 2 && layout.changed > 0 && layout.highlightSpans > 0,
+        JSON.stringify(layout),
+      )
+      const txt = await page.$eval('.compare-toolbar', (el) => el.textContent)
+      check(
+        '9.1 命名诚实:视图称"文件对比",不含 git / 版本对比 字样',
+        /文件对比/.test(txt) && !/git|版本对比|diff 于/i.test(txt),
+        txt,
+      )
+    }
+
+    // ---- 4.1 / spec「两侧都拒绝修改」----
+    {
+      const beforeText = await page.$eval('.compare-host .cm-content', (el) => el.textContent)
+      await page.click('.compare-host .cm-content')
+      await page.keyboard.type('SHOULD_NOT_APPEAR')
+      const afterText = await page.$eval('.compare-host .cm-content', (el) => el.textContent)
+      check(
+        '4.1 只读:对比视图任一侧键盘输入后内容不变',
+        beforeText === afterText && !afterText.includes('SHOULD_NOT_APPEAR'),
+        beforeText === afterText ? '内容未变' : '内容被改动',
+      )
+    }
+
+    // ---- 4.3 只读控件负向断言:界面上查不到接受/回退/合并控件 ----
+    const revertControlCount = () =>
+      page.evaluate(
+        () =>
+          document.querySelectorAll('.compare-host .cm-merge-revert button').length +
+          document.querySelectorAll('.compare-host .cm-chunkButtons button').length,
+      )
+    {
+      const n = await revertControlCount()
+      check(
+        '4.3 只读:对比视图内查不到接受/回退/合并控件(负向断言,非"传了 readOnly"的配置断言)',
+        n === 0,
+        `找到 ${n} 个`,
+      )
+    }
+    // ---- 4.4 让 4.3 红过一次:强开回退控件,确认同一条负向断言确实抓得到 ----
+    {
+      await exit()
+      await setOverride('forceRevertControls', true)
+      await enterCompareViaPicker('cmp-b.yaml')
+      await waitCompareReady()
+      const forced = await page
+        .waitForFunction(
+          () => document.querySelectorAll('.compare-host .cm-merge-revert button').length > 0,
+          { timeout: 5000 },
+        )
+        .then(() => true)
+        .catch(() => false)
+      const n = await revertControlCount()
+      check(
+        '4.4 红过一次:强开回退控件后,4.3 的负向断言确实抓到控件(证明它咬得住,不是恒绿)',
+        forced && n > 0,
+        `强开后找到 ${n} 个`,
+      )
+      await exit()
+      await setOverride('forceRevertControls', false)
+    }
+
+    // ---- 3.4 对比是临时视图态:进出对比不改动导航栈,退出后仍在原文件普通预览 ----
+    {
+      // 先用会入栈的入口(符号跳转)造一个非空导航栈,否则 before/after 都是 null 的等式太弱。
+      await clickRow('src') // 展开 src
+      await new Promise((r) => setTimeout(r, 200))
+      await openFile('handler.go', 'src/handler.go')
+      await clickSearchMode('符号')
+      await page.keyboard.type('Dispatch')
+      await page.waitForFunction(
+        () =>
+          [...document.querySelectorAll('.search-result .result-name')].some(
+            (e) => e.textContent === 'Dispatch',
+          ),
+        { timeout: 20000 },
+      )
+      await page.keyboard.press('Enter')
+      await page.waitForFunction(
+        () => document.querySelector('.preview-header .file-path')?.textContent === 'src/handler.go',
+        { timeout: 10000 },
+      )
+      await new Promise((r) => setTimeout(r, 300))
+      const stackBefore = await page.evaluate(() => window.__cvNavStack?.() ?? null)
+      await enterCompareViaPicker('cmp-b.yaml')
+      await waitCompareReady()
+      await exit()
+      const stackAfter = await page.evaluate(() => window.__cvNavStack?.() ?? null)
+      const nonEmpty = !!stackBefore && Array.isArray(stackBefore.stack) && stackBefore.stack.length > 0
+      check(
+        '3.4 进出对比不改动导航栈(对比不入 navStack)',
+        nonEmpty && JSON.stringify(stackBefore) === JSON.stringify(stackAfter),
+        `before=${JSON.stringify(stackBefore)} after=${JSON.stringify(stackAfter)}`,
+      )
+      const stillFile = await page.$eval('.preview-header .file-path', (el) => el.textContent)
+      check('3.4 退出对比后仍停在原文件的普通预览', stillFile === 'src/handler.go', stillFile)
+    }
+
+    // ---- 7.3 退出对比后焦点交还到触发按钮(不落 body)----
+    {
+      await openFile('cmp-a.yaml', 'cmp-a.yaml')
+      await enterCompareViaPicker('cmp-b.yaml')
+      await waitCompareReady()
+      await exit()
+      const af = await page.evaluate(() => ({
+        tag: document.activeElement?.tagName ?? null,
+        isEntry: document.activeElement?.classList?.contains('compare-entry') ?? false,
+      }))
+      check(
+        '7.3 退出对比后焦点交还到触发它的「对比文件」按钮,不落 document.body',
+        af.isEntry === true && af.tag !== 'BODY',
+        JSON.stringify(af),
+      )
+    }
+    // ---- 7.4 让 7.3 红过一次:去掉焦点归还,确认焦点确实掉到 body ----
+    {
+      await setOverride('skipFocusReturn', true)
+      await enterCompareViaPicker('cmp-b.yaml')
+      await waitCompareReady()
+      await exit()
+      const af = await page.evaluate(() => ({
+        tag: document.activeElement?.tagName ?? null,
+        isEntry: document.activeElement?.classList?.contains('compare-entry') ?? false,
+      }))
+      check(
+        '7.4 红过一次:去掉焦点归还后焦点确实掉到 body(证明 7.3 咬得住)',
+        af.tag === 'BODY' && af.isEntry === false,
+        JSON.stringify(af),
+      )
+      await setOverride('skipFocusReturn', false)
+    }
+
+    // ---- 7.1 差异间键盘通道登记进键盘帮助面板 ----
+    {
+      await page.click('.help-toggle')
+      await page.waitForSelector('.help-panel', { timeout: 5000 })
+      const rows = await page.$$eval('.help-row-label', (els) => els.map((e) => e.textContent))
+      check(
+        '7.1 差异间键盘通道登记进帮助面板(0.3.4 与 git 对比共用同一份 上/下一处差异)',
+        rows.includes('上一处差异') && rows.includes('下一处差异'),
+        rows.filter((r) => /差异|对比/.test(r)).join(' | ') || '(未找到)',
+      )
+      await page.keyboard.press('Escape')
+      await new Promise((r) => setTimeout(r, 150))
+    }
+
+    // ---- 8.4 小改动不得被呈现为整份改变(约 32 KB、8 处分散改动)----
+    {
+      await openFile('cmp-32k-a.txt', 'cmp-32k-a.txt')
+      await enterCompareViaPicker('cmp-32k-b.txt')
+      await waitCompareReady()
+      const good = await stats()
+      check(
+        '8.4 32 KB / 只改几行:精算定位到分散的多处差异,不是"整份都变了",且未降级为近似',
+        good.chunkCount >= 2 && good.imprecise === false && good.spansWhole === false,
+        JSON.stringify(good),
+      )
+      // 8.4 红过一次:退回 MergeView 默认 scanLimit:500(按字符,32 KB 超阈值),
+      // 确认它确实把 8 处分散小改动并成 1 个覆盖大半份文档的块 =“整份都变了”,
+      // 即上面那条断言抓得到。**注意:此路径 precise 仍为 true(悄悄退化)** ——
+      // 所以红过一次靠 spansWhole,不靠 imprecise,这正是 task 8.3 禁用默认 scanLimit 的实证。
+      await exit()
+      await setOverride('useDefaultScanLimit', true)
+      await enterCompareViaPicker('cmp-32k-b.txt')
+      await waitCompareReady()
+      const degraded = await stats()
+      check(
+        '8.4 红过一次:退回默认 scanLimit 后,8 处小改动被并成 1 个覆盖大半份的块="整份都变了"(证明该断言咬得住)',
+        degraded.chunkCount === 1 && degraded.spansWhole === true,
+        JSON.stringify(degraded),
+      )
+      await exit()
+      await setOverride('useDefaultScanLimit', false)
+    }
+
+    // ---- 8.2 / spec「比对降级为近似时必须说出来」:超工作量预算 → precise:false → 视图内明示近似 ----
+    {
+      // 把 timeout 压到 1ms,让精算必定超预算 → 库自报 precise:false(可检出的降级)。
+      await openFile('cmp-32k-a.txt', 'cmp-32k-a.txt')
+      await setOverride('tinyTimeout', true)
+      await enterCompareViaPicker('cmp-32k-b.txt')
+      await waitCompareReady()
+      const approx = await stats()
+      const approxNotice = await page
+        .$eval('.compare-view .compare-reliability', (el) => el.textContent)
+        .catch(() => null)
+      check(
+        '8.2 / spec:超工作量预算降级为近似(precise:false)时,对比视图内明示"近似、可能与实际不符"',
+        approx.imprecise === true && !!approxNotice && /近似/.test(approxNotice),
+        `imprecise=${approx.imprecise} 提示=${approxNotice ?? '(无)'}`,
+      )
+      await exit()
+      await setOverride('tinyTimeout', false)
+    }
+
+    // ---- 6.3 / 6.4 截断:直接进对比态与一个 50 MB 文件对比,视图内明示未加载部分差异未知 ----
+    {
+      // 6.4 夹具自检:big.log 确实超过 5 MB(否则"截断"这个前提根本不成立,断言会空绿)
+      const bigSize = await page.evaluate(async () => {
+        const root = await navigator.storage.getDirectory()
+        const fh = await root.getFileHandle('big.log')
+        return (await fh.getFile()).size
+      })
+      check('6.4 夹具自检:截断夹具 big.log 确实 > 5 MB', bigSize > 5 * 1024 * 1024, `${bigSize} 字节`)
+
+      // 直接进对比态:当前是小文件 cmp-a.yaml,从未在普通预览里打开过 big.log(task 6.3)
+      await openFile('cmp-a.yaml', 'cmp-a.yaml')
+      await enterCompareViaPicker('big.log')
+      await waitCompareReady()
+      const st = await stats()
+      check(
+        '6.4 夹具自检:big.log 在对比里确实触发了截断(truncated=true)',
+        st.truncatedB === true,
+        JSON.stringify(st),
+      )
+      const notice = await page
+        .$eval('.compare-view .compare-reliability', (el) => el.textContent)
+        .catch(() => null)
+      check(
+        '6.2/6.3 截断侧:对比视图内(非依赖普通预览)明示只对比了已加载部分、未加载部分差异未知',
+        !!notice && /截断/.test(notice) && /未加载部分/.test(notice),
+        notice ?? '(无提示)',
+      )
+      await exit()
+    }
+
+    // ---- 5.1/5.2/5.3 可解释地缺席:同一文件 / 图片 / 二进制 / 读不到 ----
+    {
+      const noticeFor = async (targetPath) => {
+        await openPicker()
+        await page.evaluate((p) => window.__cv.chooseCompareTarget(p), targetPath)
+        const t = await page
+          .$eval('.compare-picker-notice', (el) => el.textContent)
+          .catch(() => null)
+        await page.evaluate(() => window.__cv.exitCompare())
+        return t
+      }
+      await openFile('cmp-a.yaml', 'cmp-a.yaml')
+      // 等 sel.nonce 触发的 resetCompare 落定,避免它把随后开的选择器顺手关掉
+      await new Promise((r) => setTimeout(r, 400))
+      const sameFile = await noticeFor('cmp-a.yaml')
+      check('5.1 与自身对比:给出可解释的缺席(不报错、不静默)', !!sameFile && /当前.*预览|另一个文件/.test(sameFile), sameFile ?? '(无)')
+      const image = await noticeFor('photo.svg')
+      check('5.1 目标是图片:给出可解释的缺席', !!image && /图片/.test(image), image ?? '(无)')
+      const binary = await noticeFor('bin/blob.bin')
+      check('5.1 目标是二进制:给出可解释的缺席', !!binary && /二进制/.test(binary), binary ?? '(无)')
+      const missing = await noticeFor('nope/does-not-exist.txt')
+      check('5.1 目标读不到(已删除/移动/授权失效):给出可解释的缺席', !!missing && /读不到/.test(missing), missing ?? '(无)')
+    }
+
+    // ---- 2.4 / 5.1 单文件模式:没有项目 → 可解释地缺席,不是点了没反应的入口 ----
+    {
+      await page.evaluate(async () => {
+        const root = await navigator.storage.getDirectory()
+        window.__cv.enterSingleFile(await root.getFileHandle('cmp-a.yaml'))
+      })
+      await page.waitForFunction(
+        () => document.querySelector('.preview-header .file-path')?.textContent === 'cmp-a.yaml',
+        { timeout: 10000 },
+      )
+      await new Promise((r) => setTimeout(r, 400)) // 让 enterSingleFile 的 resetCompare 落定
+      await openPicker()
+      // 单文件模式下选择器无输入框,自愈等"缺席解释"出现(必要时重开)
+      await page.waitForFunction(
+        () => {
+          if (document.querySelector('.compare-picker-empty')) return true
+          if (!document.querySelector('.compare-picker')) document.querySelector('.compare-entry')?.click()
+          return false
+        },
+        { timeout: 8000, polling: 300 },
+      )
+      const empty = await page.$eval('.compare-picker-empty', (el) => el.textContent).catch(() => null)
+      check(
+        '2.4 单文件模式:入口给出"需先打开项目"的可解释缺席(不是点了没反应,也不是无解释消失)',
+        !!empty && /项目/.test(empty),
+        empty ?? '(无解释)',
+      )
+      await page.evaluate(() => window.__cv.exitCompare())
+    }
+
+    // ---- 2.3 全程未调用系统文件选择器 ----
+    {
+      const calls = await page.evaluate(() => window.__pickerCalls)
+      check(
+        '2.3 发起并完成多次对比全程,showOpenFilePicker / showDirectoryPicker 从未被调用',
+        calls === 0,
+        `调用次数 ${calls}`,
+      )
+    }
+
+    // 交还给后续(旗舰)用例:项目模式 + **打开一个文件**。
+    // 旗舰块第一步 runContent 在**根项目**里跑(此时尚未 enterProject(flagship)),
+    // 而 ContentPanel 渲染在预览区的 selectedFile 分支内 —— 没有文件在,面板不挂载。
+    // 本块开头 enterProject 清空了选中文件,这里补开一个,恢复"项目+文件"这个后续块依赖的前提。
+    await page.evaluate(async () => {
+      window.__cv.enterProject(await navigator.storage.getDirectory())
+    })
+    await page.waitForSelector('.tree-row', { timeout: 10000 })
+    await openFile('cmp-a.yaml', 'cmp-a.yaml')
   }
 
   // ---- 旗舰场景:10,000 文件 / 支持语言占比 85% 不得降级(10.8b + 11.1)----
@@ -5035,6 +5643,83 @@ try {
       '跳转响应 P95 < 200 ms(10k 文件项目、索引已完成)',
       good.length === 20 && p95 < 200,
       `P95 ${p95.toFixed(0)}ms,中位 ${sorted[Math.floor(sorted.length / 2)]?.toFixed(0)}ms,最大 ${sorted[sorted.length - 1]?.toFixed(0)}ms`,
+    )
+  }
+
+  // ---- i18n 英文界面冒烟(add-english-ui-i18n)----
+  // 既有断言全部走默认中文(lang 默认 zh);这里单独验"切到英文后界面真的变英文",
+  // 覆盖切换即时重渲染 + 关键面板的英文文案。不逐条重写三百条断言(见方案 E2E 策略)。
+  {
+    // 顶栏语言开关:zh 时显示 "EN",点一下切到英文后显示 "中"
+    const before = await page.$eval('.lang-toggle', (b) => b.textContent?.trim())
+    await page.click('.lang-toggle')
+    await page.waitForFunction(() => document.querySelector('.lang-toggle')?.textContent?.trim() === '中', { timeout: 3000 })
+    const after = await page.$eval('.lang-toggle', (b) => b.textContent?.trim())
+    check('i18n:语言开关点击后即时切换(EN→中)', before === 'EN' && after === '中', `${before} → ${after}`)
+
+    // 顶栏按钮即时重渲染为英文
+    const topbarEn = await page.$$eval('.topbar button', (bs) => bs.map((b) => b.textContent?.trim()))
+    check(
+      'i18n:顶栏"打开文件夹/文件"重渲染为英文',
+      topbarEn.includes('Open Folder') && topbarEn.includes('Open File'),
+      topbarEn.filter(Boolean).join(' | '),
+    )
+
+    // <html lang> 同步(供 a11y / 截图诊断)
+    const htmlLang = await page.$eval('html', (el) => el.getAttribute('lang'))
+    check('i18n:<html lang> 切到 en', htmlLang === 'en', String(htmlLang))
+
+    // 帮助面板英文:标题、note、以及分组标题都翻译
+    await page.click('.help-toggle')
+    await page.waitForSelector('.help-panel', { timeout: 5000 })
+    const helpTitle = await page.$eval('.help-title', (el) => el.textContent?.trim())
+    const groupTitles = await page.$$eval('.help-group-title', (els) => els.map((e) => e.textContent?.trim()))
+    check('i18n:帮助面板标题英文', helpTitle === 'Keyboard shortcuts', String(helpTitle))
+    check(
+      'i18n:帮助面板分组标题英文(不残留中文)',
+      groupTitles.length > 0 && !groupTitles.some((g) => /[一-鿿]/.test(g ?? '')),
+      groupTitles.join(' / '),
+    )
+    await page.keyboard.press('Escape')
+    await new Promise((r) => setTimeout(r, 150))
+
+    // 缺键回退验证已隐含:任一英文面板若缺键会露出中文 —— 上面的"不残留中文"即守住这条。
+    // 切回中文,保持后续(零网络 / 控制台)断言与套件其余部分一致的语言环境。
+    await page.click('.lang-toggle')
+    await page.waitForFunction(() => document.querySelector('.lang-toggle')?.textContent?.trim() === 'EN', { timeout: 3000 })
+    check('i18n:可切回中文', true)
+  }
+
+  // ---- i18n 浏览器语言探测(DETECT_BROWSER_LANG，0.3.4 起启用）----
+  // 用两张独立页面验证默认语言裁定:未显式选过语言时,非 zh-* 浏览器默认英文、zh-* 默认中文。
+  // 每页各自覆盖 navigator.language 且不写 cv-lang（故走探测分支,不受主页 zh 锁影响）。
+  {
+    const probeDefault = async (navLang) => {
+      const p = await browser.newPage()
+      await p.evaluateOnNewDocument((lang) => {
+        try { localStorage.removeItem('cv-lang') } catch { /* ignore */ }
+        Object.defineProperty(navigator, 'language', { get: () => lang, configurable: true })
+        Object.defineProperty(navigator, 'languages', { get: () => [lang], configurable: true })
+      }, navLang)
+      await p.goto(`chrome-extension://${extId}/viewer.html`, { waitUntil: 'load' })
+      await p.waitForSelector('.welcome', { timeout: 10000 })
+      // 入口页主按钮文案:英文 "Open Folder" / 中文 "打开文件夹"
+      const txt = await p.$$eval('.welcome button', (bs) => bs.map((b) => b.textContent?.trim()))
+      const htmlLang = await p.$eval('html', (el) => el.getAttribute('lang'))
+      await p.close()
+      return { txt, htmlLang }
+    }
+    const en = await probeDefault('en-US')
+    check(
+      'i18n:非中文浏览器默认英文(DETECT）',
+      en.txt.includes('Open Folder') && en.htmlLang === 'en',
+      `${en.htmlLang} · ${en.txt.filter(Boolean).join(' | ')}`,
+    )
+    const zh = await probeDefault('zh-CN')
+    check(
+      'i18n:中文浏览器仍默认中文(DETECT）',
+      zh.txt.includes('打开文件夹') && zh.htmlLang === 'zh-CN',
+      `${zh.htmlLang} · ${zh.txt.filter(Boolean).join(' | ')}`,
     )
   }
 

@@ -8,6 +8,7 @@ export interface ReadyRepository {
   /** Repository-relative, never an external absolute path. */
   gitDirPath: string
 }
+
 export interface UnavailableRepository {
   kind: 'unavailable'
   reason: RepoUnavailableReason

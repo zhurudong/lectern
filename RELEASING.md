@@ -44,6 +44,18 @@ The workflow then:
   parameters) differs between machines. Anyone verifying the artifact should
   rebuild from the tag and compare the *contents*, and the invariant checks are
   there to be run on their own build.
+- **Screenshots reproduce at the scene level, not the pixel level.** Re-running
+  the capture scripts produces different bytes every time — antialiasing and
+  render timing see to that. So *which run* a published image came from is
+  meaningful. When a release needs new screenshots, regenerate the whole set in
+  one run and commit them together. Swapping a single image into a set captured
+  earlier leaves a baseline that is a splice of two runs, and nothing will ever
+  flag it. The published images are the twelve under `docs/images/` and
+  `assets/chrome-web-store/`; `scripts/*.png` are working images and are not
+  published. All twelve come from `scripts/shot-readme.mjs`,
+  `scripts/shot-store.mjs` and `scripts/render-store-promos.mjs` — if you add a
+  published image, add the script that produces it in the same change, or the
+  next restyle will silently ship it stale.
 - **Do not edit a published release's assets.** Cut a new patch version.
 - **Keep the local-read exception auditable.** The standard package permits
   only `storage`, `declarativeNetRequestWithHostAccess` and `file:///*` host

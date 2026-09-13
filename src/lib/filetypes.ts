@@ -47,8 +47,16 @@ const CODE_EXT: Record<string, string> = {
   sh: 'shell',
   bash: 'shell',
   zsh: 'shell',
-  // 高频语言补齐(产品裁定 2026-08-20 的 B 组),全部"仅高亮"档
+  // Rust / PHP 有官方 Lezer 语法(@lezer/rust、@lezer/php),已升到"可跳转"档 ——
+  // 与 Go/TS 同一条通道(真语法树 + 符号抽取),不是 StreamLanguage 的近似。
   rs: 'rust',
+  php: 'php',
+  php3: 'php',
+  php4: 'php',
+  php5: 'php',
+  phtml: 'php',
+  // 以下仍是"仅高亮"档:legacy-modes 的 StreamLanguage 只产扁平树,无法抽符号。
+  // Ruby / Kotlin / C# 目前 npm 上没有一等 Lezer 语法,升不到可跳转(见 docs/language-support.md)。
   rb: 'ruby',
   kt: 'kotlin',
   kts: 'kotlin',
@@ -164,6 +172,7 @@ export type IntelLevel = 'full' | 'outline-only' | 'none'
 const INTEL_FULL = new Set([
   'python', 'java', 'c', 'cpp', 'go',
   'javascript', 'jsx', 'typescript', 'tsx',
+  'rust', 'php',
 ])
 
 const INTEL_OUTLINE_ONLY = new Set(['markdown', 'sql'])
@@ -198,7 +207,7 @@ const LANG_LABEL: Record<string, string> = {
   javascript: 'JavaScript', jsx: 'JSX', typescript: 'TypeScript', tsx: 'TSX',
   json: 'JSON', html: 'HTML', css: 'CSS', scss: 'SCSS', sass: 'Sass', less: 'Less',
   sql: 'SQL', yaml: 'YAML',
-  rust: 'Rust', ruby: 'Ruby', kotlin: 'Kotlin', csharp: 'C#', groovy: 'Groovy', toml: 'TOML',
+  rust: 'Rust', php: 'PHP', ruby: 'Ruby', kotlin: 'Kotlin', csharp: 'C#', groovy: 'Groovy', toml: 'TOML',
   docker: 'Dockerfile', cmake: 'CMake', vue: 'Vue', svelte: 'Svelte',
   xml: 'XML', markdown: 'Markdown', shell: 'Shell',
 }

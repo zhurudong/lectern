@@ -1,4 +1,5 @@
 import { useEffect } from 'preact/hooks'
+import { t } from '../i18n'
 import { navigateWithHistory } from '../intel/navStack'
 import { useOverlayKeyboard } from '../lib/useOverlayKeyboard'
 import type { GrepHit } from '../intel/symbolWorker'
@@ -22,11 +23,11 @@ function groupByFile(hits: GrepHit[]): { path: string; partial: boolean; items: 
 
 function statusText(): string {
   switch (contentStatus.value) {
-    case 'too-short': return `关键词过短,至少输入 ${MIN_QUERY} 个字符`
-    case 'scanning': return `扫描中… ${contentScanned.value}/${contentTotal.value} 个文件`
-    case 'done': return `扫描完成(共扫描 ${contentScanned.value} 个文件)`
-    case 'cancelled': return '已取消'
-    case 'truncated': return `已达上限 ${CONTENT_LIMIT} 条,结果已截断`
+    case 'too-short': return t('content.tooShort', { n: MIN_QUERY })
+    case 'scanning': return t('content.scanning', { scanned: contentScanned.value, total: contentTotal.value })
+    case 'done': return t('content.done', { n: contentScanned.value })
+    case 'cancelled': return t('content.cancelled')
+    case 'truncated': return t('content.truncated', { limit: CONTENT_LIMIT })
     default: return ''
   }
 }
@@ -63,22 +64,22 @@ export function ContentPanel() {
     <div class="ref-panel content-panel">
       <div class="ref-header">
         <span class="ref-title">
-          全文搜索 “{q}” · {hits.length} 处 / {groups.length} 个文件
+          {t('content.title', { q, hits: hits.length, files: groups.length })}
         </span>
         <span class={`ref-status${contentStatus.value === 'truncated' || tooShort ? ' ref-status-warn' : ''}`}>
           {statusText()}
         </span>
         <span class="spacer" />
-        <label class="case-toggle" title="区分大小写">
+        <label class="case-toggle" title={t('content.caseSensitive')}>
           <input type="checkbox" checked={caseSensitive.value} onChange={toggleCaseSensitive} />
           Aa
         </label>
         {scanning && (
-          <button class="ref-btn" title="停止扫描" onClick={() => cancelContentSearch(true)}>
-            停止
+          <button class="ref-btn" title={t('content.stop')} onClick={() => cancelContentSearch(true)}>
+            {t('content.stopBtn')}
           </button>
         )}
-        <button class="ref-btn" title="关闭全文搜索" onClick={kb.close}>
+        <button class="ref-btn" title={t('content.close')} onClick={kb.close}>
           ✕
         </button>
       </div>
@@ -87,7 +88,7 @@ export function ContentPanel() {
         tabIndex={-1}
         ref={kb.containerRef}
         role="listbox"
-        aria-label="全文搜索结果"
+        aria-label={t('content.resultsLabel')}
         aria-activedescendant={kb.activeId}
         onKeyDown={(e) => {
           const ke = e as unknown as KeyboardEvent
@@ -104,15 +105,15 @@ export function ContentPanel() {
         }}
       >
         {tooShort ? (
-          <div class="ref-empty">关键词过短,未启动全项目扫描。</div>
+          <div class="ref-empty">{t('content.tooShortEmpty')}</div>
         ) : hits.length === 0 ? (
-          <div class="ref-empty">{scanning ? '扫描中…' : '未找到匹配内容'}</div>
+          <div class="ref-empty">{scanning ? t('content.scanningShort') : t('content.noMatch')}</div>
         ) : (
           groups.map((g) => (
             <div key={g.path} class="ref-group">
               <div class="ref-file">
                 {g.path} <span class="ref-count">{g.items.length}</span>
-                {g.partial && <span class="ref-partial">文件过大,仅搜索了开头部分</span>}
+                {g.partial && <span class="ref-partial">{t('content.filePartial')}</span>}
               </div>
               {g.items.map((h, i) => {
                 flatIndex += 1

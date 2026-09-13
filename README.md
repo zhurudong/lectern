@@ -1,5 +1,8 @@
 *English · [中文](README.zh-CN.md)*
 
+The optional AI build adds a local terminal through Lectern Companion (macOS 13.5+). The reader stays read-only; your CLI runs with your user permissions, can modify files and may send context to its model provider. See [native terminal setup](docs/native-terminal/README.md) and [privacy policy](PRIVACY.md).
+
+
 # Lectern
 
 [![CI](https://github.com/zhurudong/lectern/actions/workflows/ci.yml/badge.svg)](https://github.com/zhurudong/lectern/actions/workflows/ci.yml)
@@ -126,15 +129,15 @@ expansion, and no promise of compiler-grade accuracy.
 
 ## Language coverage
 
-Lectern covers **28 language/syntax categories**: 26 with dedicated highlighting
+Lectern covers **29 language/syntax categories**: 27 with dedicated highlighting
 and 2 with approximate highlighting. JSX counts with JavaScript, and TSX with
 TypeScript.
 
 | Tier | Categories | Languages |
 | --- | --- | --- |
-| **Navigable** (highlight + outline + definitions + references + symbol search) | 7 | Python, Java, C, C++, Go, JavaScript (incl. JSX), TypeScript (incl. TSX) |
+| **Navigable** (highlight + outline + definitions + references + symbol search) | 9 | Python, Java, C, C++, Go, JavaScript (incl. JSX), TypeScript (incl. TSX), Rust, PHP |
 | **Outline only** | 2 | Markdown (heading hierarchy), SQL (common object definitions and top-level queries/data operations) |
-| **Highlight only** | 17 | JSON, YAML, TOML, XML, HTML, CSS, SCSS, Sass, Less, Shell, Rust, Ruby, Kotlin, C#, Groovy, Dockerfile, CMake |
+| **Highlight only** | 16 | JSON, YAML, TOML, XML, HTML, CSS, SCSS, Sass, Less, Shell, Ruby, Kotlin, C#, Groovy, Dockerfile, CMake |
 | **Approximate highlight** (marked as such in the UI) | 2 | Vue, Svelte |
 
 **File outlines cover 9 categories and 23 file extensions**: the 7 navigable

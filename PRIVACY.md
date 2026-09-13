@@ -1,102 +1,43 @@
 *English · [中文](PRIVACY.zh-CN.md)*
 
-# Privacy Policy
+# Lectern Privacy Policy
 
-**Lectern collects nothing, sends nothing, and stores nothing outside your own
-browser.** This document is the privacy policy referenced by the Chrome Web
-Store listing.
+Last updated: 2026-09-13.
 
-Last updated: 2026-09-11.
+Lectern provides a local code reader and, in the AI build, an optional terminal connected to a separately installed companion. These components have different capabilities. Lectern has no developer-operated data collection service, analytics, telemetry, advertising or account system.
 
-## What is collected
+## Local reader
 
-Nothing. There is no analytics, no telemetry, no crash reporting, no usage
-statistics, no update check, no license check, and no account.
+Reading, indexing, search, Markdown preview and file/Git comparisons run on your computer. The reader does not upload project contents, fetch remote resources or modify your project files. Its bundled resources do not require a CDN. Remote Markdown images are not fetched.
 
-Under the Chrome Web Store's data disclosure categories, the answer is "not
-collected" for every one: personally identifiable information, health
-information, financial information, authentication information, personal
-communications, location, web history, and user activity.
+You grant access by selecting a file or folder in Chrome. Alternatively, Chrome's **Allow access to file URLs** setting grants access to local file URLs. Lectern's automatic-opening preferences select which suffixes open in Lectern; they do not narrow Chrome's underlying file URL permission. Turn that Chrome setting off to revoke URL access. Manually selecting a file remains available.
 
-## What leaves your computer
+The standard build uses `storage` for preferences, `declarativeNetRequestWithHostAccess` for matching local file navigations, and only `file:///*` host access. It has no HTTP(S) host permissions or content scripts.
 
-Nothing. The standard extension does not contact remote services or transmit
-file contents or paths. Every asset it needs — the editor, the language
-grammars, the fonts — is bundled in the extension package. Local `file://`
-reads stay on your machine.
+## Optional AI terminal
 
-It declares `storage` for saved automatic-opening preferences and
-`declarativeNetRequestWithHostAccess` to redirect matching local file
-navigations into the viewer. Its only host permission is `file:///*`; it has
-no HTTP(S) host permissions or content scripts. Only `viewer.html` is exposed
-as a web-accessible resource, and only to `file:///*`.
+Only the AI build requests `nativeMessaging`. Opening its terminal asks Chrome to start the installed Lectern Companion on your computer. The extension passes your selected executable, project identifier/display name, keyboard input and terminal dimensions; the companion returns its selected directory, status and CLI output. This connection uses local native messaging, not a remote Lectern server.
 
-## What it can read, and how you grant it
+The companion launches the CLI you choose with your user permissions. **That CLI can read and modify files and send prompts, source code or other context to its configured model providers.** These actions follow your commands, CLI configuration and provider policies. The reader's read-only and offline guarantees do not apply to the CLI. Lectern does not manage provider accounts, authentication, billing or retention. Consult the CLI and provider before using sensitive projects. There is no Lectern telemetry or model API integration.
 
-Through Chrome's own file picker, you choose a folder or a file and the
-extension receives a handle to that selection. This path does not require
-Chrome's file URL access setting.
+Closing the panel ends its connection and requests termination of the CLI. It is not a promise to undo file edits or erase conversations retained by the CLI/provider. Reconnection starts a new session.
 
-Alternatively, enable **Allow access to file URLs** in Lectern's Chrome
-extension details to let it read local file addresses directly. This Chrome
-setting grants local URL access beyond the individual items selected through
-the picker. The viewer's *自动打开* settings control which file extensions
-automatically open in the current tab; they do not narrow the underlying
-Chrome grant. HTTP(S), remote file hosts, directories and page subresources
-are not handled. Turn off Chrome's setting to revoke URL access.
+## Local storage and deletion
 
-Automatic opening reads one file, up to 64 MiB, into memory and reads it again
-when you refresh the tab. It does not obtain a parent directory handle, index
-neighboring files or resolve Markdown relative resources. Larger files can be
-selected manually; text previews above 5 MiB display their first 1 MiB.
+- Chrome IndexedDB stores recent file/folder handles and AI project identities, not copies of the project source tree.
+- Local storage retains theme, interface language, panel widths and selected CLI executable. Chrome local storage also retains automatic-opening preferences and local redirect rules.
+- The companion stores project-directory associations in `~/.lectern-agent/` outside the browser. The current native transport does not use a pairing token; older development versions may have left tokens/logs in that directory.
+- Terminal output is displayed in the running panel. The companion does not intentionally persist a terminal transcript; the selected CLI may retain its own sessions, logs or credentials.
+- Local file URLs may appear in Chrome history/session restoration. Chrome manages those separately.
 
-It **never writes**. Writing a file through the File System Access API requires
-`createWritable()`, which does not appear anywhere in this extension's source
-or in its built package — a build in which it appears fails the project's CI.
+Removing the extension clears its extension storage and rules, but does not remove the companion, CLI data, provider records or Chrome history. Uninstall the companion separately using its provided uninstall entry. Its default uninstall retains directory associations; remove `~/.lectern-agent/` after uninstalling to erase them. Manage CLI authentication and provider records using their respective tools. Your project files are not deleted by uninstalling Lectern.
 
-## What is stored, and where
+## Downloads and external links
 
-Inside your own Chrome profile, on your machine:
+Installation/help links open external websites when you choose them. Those sites and download providers process requests under their own policies. Lectern does not silently download or execute remote extension code. Chrome and the operating system manage extension/package updates separately.
 
-- **IndexedDB** — handles for recent projects, so you can reconnect after a
-  restart, and the display name and path shown for them;
-- **`localStorage`** — interface preferences: theme, sidebar width, panel
-  collapse state;
-- **`chrome.storage.local`** — the automatic-opening switch and selected file
-  extensions. These preferences are not synced to a remote account.
+## Contact and verification
 
-Chrome also stores the extension's redirect rules locally. They describe the
-selected suffixes, not a history of files opened. An automatically opened
-file's local address is part of its viewer tab URL and can be retained by
-Chrome's own history or session restoration; Lectern does not upload it.
+Source, support and privacy questions: [Lectern repository](https://github.com/zhurudong/lectern/issues).
 
-Lectern does not transmit any of it. Removing the extension removes its stored
-handles, preferences and rules; Chrome's browsing history is managed
-separately. Your project files are never copied into extension storage — it
-contains only the handles Chrome gives out, preferences and redirect rules.
-
-## Third parties
-
-There are none. No SDKs, no CDNs, no fonts loaded from a font service, no
-remote images (images referenced by remote URLs inside a rendered Markdown file
-are deliberately replaced with a placeholder rather than fetched).
-
-## Verifying all of the above
-
-You do not have to take this document's word for it. The extension is open
-source under Apache 2.0. Build it yourself and run the invariant checks:
-
-```bash
-npm ci && npm run build
-node scripts/check-invariants.mjs
-```
-
-The checks enforce exact permissions and CSP, a fixed digest for the sole
-audited local URL reader, rejection of non-local addresses, and forbidden
-transfer APIs in the remaining package. File write APIs remain forbidden
-throughout. The same checks run on every commit in CI, and a release that
-fails them is never published.
-
-## Contact
-
-Open an issue on the project repository.
+The standard build is checked with `npm run build && npm run check`; the opt-in native boundary has separate AI checks. These checks do not establish the behavior or privacy practices of third-party CLIs.

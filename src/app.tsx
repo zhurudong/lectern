@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useState } from 'preact/hooks'
 import { lazy, Suspense } from 'preact/compat'
 import { mode, projectView, rootHandle, rootName, goWelcome, selectedFile } from './state'
 import { theme, toggleTheme } from './theme'
+import { lang, toggleLang, t } from './i18n'
 import { openFolder, openSingleFile } from './lib/access'
 import { useResizable } from './lib/useResizable'
 import { startIndex, stopIndex } from './search/searchStore'
@@ -39,14 +40,14 @@ function IndexStatus() {
   if (st === 'idle') return null
   const text =
     st === 'building'
-      ? `索引构建中…已索引 ${indexedFiles.value} 个文件`
+      ? t('index.building', { n: indexedFiles.value })
       : st === 'done'
-        ? `索引已完成(${indexedFiles.value} 个文件 / ${totalSymbols.value} 个符号)`
+        ? t('index.done', { files: indexedFiles.value, symbols: totalSymbols.value })
         : st === 'partial'
-          ? `项目过大,符号索引仅部分完成(已索引 ${indexedFiles.value} 个文件)`
-          : '符号索引不可用'
+          ? t('index.partial', { n: indexedFiles.value })
+          : t('index.unavailable')
   return (
-    <span class={`intel-index intel-index-${st}`} title="符号索引状态">
+    <span class={`intel-index intel-index-${st}`} title={t('index.statusTitle')}>
       {text}
     </span>
   )
@@ -60,24 +61,29 @@ function TopBar({ aiOpen, onOpenAi }: { aiOpen: boolean; onOpenAi: () => void })
       {m === 'project' && <span class="project-name">{rootName.value}</span>}
       {m === 'project' && <IndexStatus />}
       <span class="spacer" />
-      {__AI_TERMINAL__ && <button class="ai-toggle" aria-expanded={aiOpen} aria-controls="ai-terminal-panel" onClick={onOpenAi}>AI 终端</button>}
+      {__AI_TERMINAL__ && <button class="ai-toggle" aria-expanded={aiOpen} aria-controls="ai-terminal-panel" onClick={onOpenAi}>{t('release.ai_terminal')}</button>}
       {m === 'project' && <SearchBox />}
       {m !== 'welcome' && (
         <>
-          <button onClick={() => void openFolder()}>打开文件夹</button>
-          <button onClick={() => void openSingleFile()}>打开文件</button>
-          <button onClick={goWelcome} title="回到入口页">
-            首页
+          <button onClick={() => void openFolder()}>{t('welcome.openFolder')}</button>
+          <button onClick={() => void openSingleFile()}>{t('welcome.openFile')}</button>
+          <button onClick={goWelcome} title={t('topbar.homeTitle')}>
+            {t('topbar.home')}
           </button>
         </>
       )}
       {/* 3b.4:帮助入口的基线是**界面上可点的按钮**,不依赖任何自定义键位 */}
-      <button onClick={openLocalFileSettings}>自动打开</button>
-      <button class="help-toggle" title="键盘操作" aria-label="键盘操作" onClick={openHelp}>
+<button onClick={openLocalFileSettings}>{t('release.automatic_opening')}</button>
+      <button class="help-toggle" title={t('topbar.helpTitle')} aria-label={t('topbar.helpTitle')} onClick={openHelp}>
         ?
       </button>
-      <button class="theme-toggle" title="切换浅色/暗色主题" onClick={toggleTheme}>
-        {theme.value === 'light' ? '🌙 暗色' : '☀️ 浅色'}
+      <button class="theme-toggle" title={t('topbar.themeTitle')} onClick={toggleTheme}>
+        {theme.value === 'light' ? t('topbar.themeDark') : t('topbar.themeLight')}
+      </button>
+      {/* i18n 语言开关(样板):切换即时重渲染已接入 i18n 的面板(当前为入口页)。
+          最终态见 add-english-ui-i18n 方案 —— 全量迁移后此开关切换整个界面语言。 */}
+      <button class="lang-toggle" title={t('topbar.langToggleTitle')} aria-label={t('topbar.langToggleTitle')} onClick={toggleLang}>
+        {lang.value === 'zh' ? 'EN' : '中'}
       </button>
     </header>
   )
@@ -162,8 +168,8 @@ export function App() {
         {m === 'project' && activeProjectView === 'files' && (
           <>
             <aside class="sidebar" style={{ width: `${sidebarWidth}px` }}>
-              <nav class="project-view-tabs project-view-tabs-files" aria-label="项目视图">
-                <button type="button" class="active" aria-current="page" data-project-view="files" autoFocus>文件</button>
+              <nav class="project-view-tabs project-view-tabs-files" aria-label={t('app.projectViewLabel')}>
+                <button type="button" class="active" aria-current="page" data-project-view="files" autoFocus>{t('app.tabFiles')}</button>
                 <button
                   type="button"
                   data-project-view="changes"
@@ -171,7 +177,7 @@ export function App() {
                     if (root) setGitSessionRoot(root)
                     switchProjectView('changes')
                   }}
-                >变更</button>
+                >{t('app.tabChanges')}</button>
               </nav>
               <Tree />
             </aside>
@@ -189,7 +195,7 @@ export function App() {
             hidden={activeProjectView !== 'changes'}
             key={root}
           >
-            <Suspense fallback={<section class="git-comparison"><div class="git-page-state" role="status">正在载入 Git 对比…</div></section>}>
+            <Suspense fallback={<section class="git-comparison"><div class="git-page-state" role="status">{t('app.loadingGit')}</div></section>}>
               <GitComparison
                 root={root}
                 sidebarWidth={sidebarWidth}

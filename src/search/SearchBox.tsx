@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { t } from '../i18n'
 import { rootHandle, navigateTo } from '../state'
 import { revealPath } from '../tree/treeStore'
 import { resolveFile } from '../lib/resolve'
@@ -6,7 +7,8 @@ import { navigateWithHistory } from '../intel/navStack'
 import { focusEditorWhenReady } from '../lib/focusEditor'
 import { verifiedShortcuts } from '../lib/platform'
 import { searchSymbols, indexState, indexedFiles, indexVersion, type SymbolHit } from '../intel/indexStore'
-import { KIND_BADGE, KIND_LABEL } from '../intel/symbols'
+import { KIND_BADGE } from '../intel/symbols'
+import { kindLabel } from '../intel/kindLabel'
 import { searchFiles, indexing, indexDone, indexPaths } from './searchStore'
 import { closeContentSearch, runContentSearch } from './contentStore'
 
@@ -159,34 +161,34 @@ export function SearchBox() {
   const showDropdown = open && query.trim() !== '' && searchMode !== 'content'
   const placeholder =
     searchMode === 'file'
-      ? '搜索文件名(⌘K / Ctrl+K)'
+      ? t('search.phFile')
       : searchMode === 'symbol'
-        ? (macKeys ? '搜索符号(⌘⇧O)' : '搜索符号')
-        : (macKeys ? '搜索文件内容(⌘⇧F)' : '搜索文件内容')
+        ? (macKeys ? t('search.phSymbolMac') : t('search.phSymbol'))
+        : (macKeys ? t('search.phContentMac') : t('search.phContent'))
 
   return (
     <div class="search-wrap">
       <div class="search-modes" role="tablist">
         <button
           class={`search-mode${searchMode === 'file' ? ' active' : ''}`}
-          title="按文件名搜索(不含文件内容)"
+          title={t('search.modeFileTitle')}
           onClick={() => focusInput('file')}
         >
-          文件名
+          {t('search.modeFile')}
         </button>
         <button
           class={`search-mode${searchMode === 'symbol' ? ' active' : ''}`}
-          title="按符号名搜索项目内的类型、函数、方法与常量"
+          title={t('search.modeSymbolTitle')}
           onClick={() => focusInput('symbol')}
         >
-          符号
+          {t('search.modeSymbol')}
         </button>
         <button
           class={`search-mode${searchMode === 'content' ? ' active' : ''}`}
-          title="在项目内所有文本文件的正文中搜索"
+          title={t('search.modeContentTitle')}
           onClick={() => focusInput('content')}
         >
-          全文
+          {t('search.modeContent')}
         </button>
       </div>
       <input
@@ -233,7 +235,7 @@ function FileResults({
   if (results.length === 0) {
     return (
       <div class="search-status">
-        {indexing.value ? '暂无匹配(索引仍在构建)' : indexDone.value ? '无匹配文件' : '索引未就绪'}
+        {indexing.value ? t('search.noMatchIndexing') : indexDone.value ? t('search.noMatchFile') : t('search.indexNotReady')}
       </div>
     )
   }
@@ -241,7 +243,7 @@ function FileResults({
     <>
       {indexing.value && (
         <div class="search-status">
-          索引构建中…已索引 {indexPaths.value.length} 个文件,以下为部分结果
+          {t('search.partialResults', { n: indexPaths.value.length })}
         </div>
       )}
       {results.map((path, i) => {
@@ -282,10 +284,10 @@ function SymbolResults({
     return (
       <div class="search-status">
         {building
-          ? `索引构建中…已索引 ${indexedFiles.value} 个文件,暂无匹配符号`
+          ? t('search.noMatchSymbolBuilding', { n: indexedFiles.value })
           : indexState.value === 'unavailable'
-            ? '符号索引不可用'
-            : '无匹配符号'}
+            ? t('index.unavailable')
+            : t('search.noMatchSymbol')}
       </div>
     )
   }
@@ -293,7 +295,7 @@ function SymbolResults({
     <>
       {building && (
         <div class="search-status">
-          索引构建中…已索引 {indexedFiles.value} 个文件,以下为部分结果
+          {t('search.partialResults', { n: indexedFiles.value })}
         </div>
       )}
       {results.map((s, i) => (
@@ -306,7 +308,7 @@ function SymbolResults({
           }}
           onMouseEnter={() => onHover(i)}
         >
-          <span class={`outline-kind kind-${s.kind}`} title={KIND_LABEL[s.kind]}>
+          <span class={`outline-kind kind-${s.kind}`} title={kindLabel(s.kind)}>
             {KIND_BADGE[s.kind]}
           </span>
           <span class="result-name">{s.name}</span>

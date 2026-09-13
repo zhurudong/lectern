@@ -176,6 +176,92 @@ export class Engine {
     expect: ['Options@1', 'Alias@3', 'Level@5', 'TOP_CONST@7', 'mutableTop@8', 'process@10', 'arrowFn@15', 'Engine@17', 'field@18', 'run@19'],
     forbid: ['input', 'count', 'localOnly', 'p1', 'p2', 'taskName', 'opts', 'inner', 'loopVar'],
   },
+  {
+    lang: 'rust',
+    src: `use std::fmt;
+
+pub const MAX: u32 = 10;
+static GLOBAL: i32 = 0;
+
+pub struct Point {
+    x: i32,
+    y: i32,
+}
+
+enum Color { Red, Green }
+
+pub trait Shape {
+    fn area(&self) -> f64;
+}
+
+type Alias = u32;
+
+impl Point {
+    pub fn new(a: i32, b: i32) -> Point {
+        let local = a + b;
+        Point { x: a, y: b }
+    }
+}
+
+pub fn free_fn(arg: i32) -> i32 {
+    let inner = arg;
+    inner
+}
+
+mod submod {
+    pub fn helper() {}
+}
+`,
+    expect: ['MAX@3', 'GLOBAL@4', 'Point@6', 'x@7', 'y@8', 'Color@11', 'Red@11', 'Green@11', 'Shape@13', 'area@14', 'Alias@17', 'new@20', 'free_fn@26', 'helper@32', 'submod@31'],
+    // 形参 a/b/arg、局部变量 local/inner、impl 目标类型的重复 Point、字段初始化 x/y:全部不收
+    forbid: ['a', 'b', 'arg', 'local', 'inner', 'self', 'u32', 'i32', 'f64'],
+  },
+  {
+    lang: 'php',
+    src: `<?php
+namespace App;
+
+const MAX = 10;
+
+interface Shape {
+    public function area(): float;
+}
+
+trait Greet {
+    public function hello() { return "hi"; }
+}
+
+class Point implements Shape {
+    public int $x = 0;
+    private $y;
+    const SCALE = 2;
+
+    public function __construct($a, $b) {
+        $local = $a;
+        $this->x = $a;
+    }
+
+    public function area(): float {
+        $tmp = 1.0;
+        return $tmp;
+    }
+}
+
+enum Suit {
+    case Hearts;
+    case Spades;
+}
+
+function free_fn($arg) {
+    $inner = $arg;
+    return $inner;
+}
+`,
+    // 类属性保留 PHP 的 `$` 拼写($x/$y),与源码一致
+    expect: ['App@2', 'MAX@4', 'Shape@6', 'area@7', 'Greet@10', 'hello@11', 'Point@14', '$x@15', '$y@16', 'SCALE@17', '__construct@19', 'area@24', 'Suit@30', 'Hearts@31', 'Spades@32', 'free_fn@35'],
+    // 形参 $a/$b/$arg、局部 $local/$tmp/$inner、成员访问 $this、返回类型 float:不收
+    forbid: ['$a', '$b', '$arg', '$local', '$tmp', '$inner', '$this', 'float'],
+  },
 ]
 
 for (const c of CASES) {
@@ -238,6 +324,18 @@ struct Config {
   check('[go] 方法的容器名为接收者类型', method?.container === 'Handler', String(method?.container))
   const ifaceMethod = goSyms.find((s) => s.name === 'Run')
   check('[go] 接口方法的容器名为接口', ifaceMethod?.container === 'Runner', String(ifaceMethod?.container))
+  // Rust:impl 块内方法的容器为目标类型;结构体字段的容器为结构体
+  const rustSyms = extractSymbols(CASES[5].src, 'rust')
+  const rustMethod = rustSyms.find((s) => s.name === 'new')
+  check('[rust] impl 方法的容器名为目标类型', rustMethod?.container === 'Point', String(rustMethod?.container))
+  const rustField = rustSyms.find((s) => s.name === 'x' && s.line === 7)
+  check('[rust] 结构体字段的容器名为结构体', rustField?.container === 'Point', String(rustField?.container))
+  // PHP:类方法的容器为类;类属性的容器为类
+  const phpSyms = extractSymbols(CASES[6].src, 'php')
+  const phpMethod = phpSyms.find((s) => s.name === '__construct')
+  check('[php] 类方法的容器名为类', phpMethod?.container === 'Point', String(phpMethod?.container))
+  const phpField = phpSyms.find((s) => s.name === '$x')
+  check('[php] 类属性的容器名为类', phpField?.container === 'Point', String(phpField?.container))
 }
 
 // Markdown 标题大纲:围栏代码块内的 # 不得计入

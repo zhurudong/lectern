@@ -60,25 +60,45 @@ jobs:
           fi
           echo "OK: no leftover key mutation in src/."
 
-      # The project was built by several AI sessions with different roles. That
-      # is documented on purpose in HOW_THIS_WAS_BUILT, but the vocabulary of
-      # those sessions ("方案会话", "PM 裁定") does not belong in specs, docs or
-      # code comments that are read as the project speaking to its users.
+      # The project was built by several AI sessions with different roles.
+      # That is documented on purpose in HOW_THIS_WAS_BUILT, but the private
+      # vocabulary of those sessions does not belong in specs, docs or code
+      # comments that are read as the project speaking to its users.
       #
-      # Two exclusions, both deliberate — a gate that flags them would push the
-      # next person into "cleaning up" things we decided twice not to touch:
-      #   openspec/changes/archive/**  historical records; editing one after the
-      #                                fact would make it a fabricated record
-      #   HOW_THIS_WAS_BUILT*          its subject IS the multi-session process,
-      #                                so that vocabulary is its legitimate topic
-      #   this file                    it has to name the words to forbid them;
-      #                                a rule cannot be its own violation
+      # The word list, the exclusions and the reasoning all live in the script,
+      # which also self-tests its matcher before reporting. This was a `git grep`
+      # once; it silently matched nothing on macOS and matched random bytes
+      # inside tracked PNGs on Linux. See the header of the script.
       - name: No internal role vocabulary
+        run: node scripts/check-role-vocabulary.mjs
+
+      # release.yml refuses to publish without docs/releases/<version>.md, but
+      # it only finds out at tag time — after the tag exists and the release
+      # run has already failed. Cutting 0.3.2 hit exactly that: the version was
+      # bumped, everything was green, and the notes did not exist. Checking it
+      # here moves the failure to the commit that bumped the version, which is
+      # the commit that can still fix it cheaply.
+      - name: Release notes exist for the current version
         run: |
-          if git grep -nE "开源会话|方案会话|开发会话|评审会话|review 会话|方案探索会话|\\bPM\\b" \
-               -- . ':!openspec/changes/archive/**' ':!HOW_THIS_WAS_BUILT*' \
-                  ':!.github/workflows/ci.yml'; then
-            echo "::error::Internal session-role vocabulary in a published file — use the neutral function names (product / spec / implementation / review)."
+          version=$(node -p "require('./package.json').version")
+          notes="docs/releases/${version}.md"
+          if [ ! -f "${notes}" ]; then
+            echo "::error::${notes} is missing — release.yml will refuse to publish v${version}."
             exit 1
           fi
-          echo "OK: no internal role vocabulary outside the archive."
+          echo "OK: ${notes} exists."
+
+  native-terminal:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix lectern-agent ci
+      - run: npm run build
+      - run: npm run check
+      - run: npm run check:ai
+      - run: npm run check:release

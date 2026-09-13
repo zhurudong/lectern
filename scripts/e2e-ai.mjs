@@ -46,6 +46,13 @@ try {
   await page.waitForFunction(() => document.querySelector('.ai-status')?.textContent.includes('安装'))
   assert.ok(await page.$('.ai-onboarding a[href="native-setup.html"]'))
   console.log('PASS unavailable host shows install guidance without starting a real companion')
+  await page.click('.lang-toggle')
+  assert.ok(await page.$('.ai-onboarding a[href="native-setup.en.html"]'))
+  // Previously received status text is replaced on reconnect in the selected language.
+  await page.click('.ai-actions button')
+  await page.waitForFunction(() => !/\p{Script=Han}/u.test(document.querySelector('.ai-panel')?.textContent ?? ''))
+  console.log('PASS English terminal labels, errors and installation guide')
+  await page.click('.lang-toggle')
   const launcher = join(temp, 'mock-host')
   const quote = (value) => "'" + value.replaceAll("'", "'\\''") + "'"
   writeFileSync(launcher, '#!/bin/sh\nexec ' + [process.execPath, join(PROJECT, 'scripts/native/mock-host.mjs'), log, scenario].map(quote).join(' ') + '\n', { mode: 0o755 })

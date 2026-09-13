@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { signal } from '@preact/signals'
 import { beginWorkspaceOpen, enterSingleFile, type AppMode, type SelectedFile } from '../state'
 import { openSingleFile } from '../lib/access'
@@ -38,7 +39,7 @@ async function load(url: string) {
   localFileEntry.value = { url }
   try {
     if (!await chrome.extension.isAllowedFileSchemeAccess()) {
-      throw new Error('请在 Chrome 扩展详情中开启“允许访问文件网址”，或使用“打开文件”手动选择。')
+      throw new Error(t('release.enable_allow_access_to_file_urls_61'))
     }
     // Keep the audited transport as an unchanged, separately verified module.
     const moduleUrl = chrome.runtime.getURL('local-file-reader.js')
@@ -66,7 +67,7 @@ async function load(url: string) {
     localFileEntry.value = {
       url,
       error: error instanceof TypeError
-        ? '无法读取文件，请检查文件是否仍存在，以及“允许访问文件网址”是否已开启。'
+        ? t('release.cannot_read_the_file_check_that')
         : error instanceof Error ? error.message : String(error),
     }
   }
@@ -77,17 +78,17 @@ export function LocalFileEntry() {
   if (!state) return null
   return (
     <div class="preview-placeholder local-file-entry" role={state.error ? 'alert' : 'status'}>
-      <div>{state.error ? '本地文件打开失败' : '正在打开本地文件…'}</div>
+      <div>{state.error ? t('release.could_not_open_local_file') : t('release.opening_local_file')}</div>
       {state.error && <p>{state.error}</p>}
       <div class="local-file-actions">
-        {state.error && <button onClick={() => void load(state.url)}>重试</button>}
+        {state.error && <button onClick={() => void load(state.url)}>{t('release.retry')}</button>}
         <button onClick={() => void openSingleFile().catch((error: unknown) => {
           if (localFileEntry.value === state) {
             localFileEntry.value = { url: state.url, error: error instanceof Error ? error.message : String(error) }
           }
-        })}>打开文件</button>
-        {state.error && <button onClick={openLocalFileSettings}>检查自动打开设置</button>}
-        <button onClick={() => { beginWorkspaceOpen(); cancelLocalFileOpen() }}>返回首页</button>
+        })}>{t('release.open_file')}</button>
+        {state.error && <button onClick={openLocalFileSettings}>{t('release.check_automatic_opening_settings')}</button>}
+        <button onClick={() => { beginWorkspaceOpen(); cancelLocalFileOpen() }}>{t('release.back_to_home')}</button>
       </div>
     </div>
   )
