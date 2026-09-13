@@ -18,9 +18,13 @@ npm run prepare:store
 正式候选构建使用核验后的公开下载页：
 
 ```sh
-# 在本机环境中配置 LECTERN_DOWNLOAD_URL 为实际公开下载页
-LECTERN_RELEASE=1 npm run build:ai
-npm run prepare:store -- --final --config /绝对路径/release-config.json
+LECTERN_RELEASE=1 \
+  LECTERN_DOWNLOAD_URL=https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1 \
+  LECTERN_COMPANION_DISTRIBUTION=unsigned npm run build:ai
+# 真实安装验收未完成时先生成候选交付材料
+npm run prepare:store
+# 记录真实安装验收后生成正式上传包
+npm run prepare:store -- --final
 ```
 
 `companionDistribution` 明确选择 `signed` 或 `unsigned`。signed 验证签名与公证；unsigned 验证未签名标记、安装页披露。两者都核对包内 origin、版本、运行时及 PTY 架构、SHA-256、双语安装页下载入口、链接 HTTP 响应及页面内容。成功才生成 `final-upload/`。这些是技术检查；`cleanInstallVerified` 是操作者提供的验收记录，不是机器测得的成功状态。脚本不会上传文件、创建 Release、接受条款或提交商店。
