@@ -1,12 +1,19 @@
-.ai-backdrop { position: fixed; inset: 0; z-index: 1000; background: #0007; display: flex; align-items: center; justify-content: center; }
-.ai-panel { width: min(1100px, 94vw); height: 86vh; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--bg, #202124); color: var(--fg, #ddd); border: 1px solid #777; border-radius: 8px; overflow: auto; text-align: left; }
-.ai-heading { display: flex; justify-content: space-between; align-items: center; }
-.ai-disclosure { margin: 0; padding: 10px; background: #795500; color: #fff; white-space: normal; }
-.ai-panel p { white-space: normal; line-height: 1.5; }
-.ai-panel form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
-.ai-panel label { display: flex; flex-direction: column; gap: 4px; }
-.ai-panel input { width: 210px; }
-.ai-panel input[name=port] { width: 85px; }
+.ai-panel { width: var(--ai-terminal-width, 480px); flex: none; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--bg-sidebar); color: var(--fg); overflow: auto; text-align: left; border-left: 1px solid var(--border); }
+.ai-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ai-heading strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai-panel button { color: var(--fg); background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; font-size: 12px; white-space: nowrap; }
+.ai-panel button:hover { background: var(--bg-hover); }
+.ai-disclosure { margin: 0; padding: 8px; background: #795500; color: #fff; white-space: normal; font-size: 12px; }
+.ai-panel p { white-space: normal; line-height: 1.5; overflow-wrap: anywhere; }
+.ai-panel form { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.ai-panel label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ai-panel input { width: 190px; max-width: 100%; }
 .ai-terminal-host { flex: 1; min-height: 160px; overflow: hidden; background: #000; padding: 4px; }
 .ai-terminal-host .xterm { height: 100%; }
-.ai-status { white-space: normal; }
+.ai-status { white-space: normal; font-size: 12px; }
+.ai-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.ai-cwd { flex-basis: 100%; overflow-wrap: anywhere; font-size: 12px; color: var(--fg-dim); }
+.topbar .ai-toggle[aria-expanded=true] { background: var(--bg-selected); color: var(--fg); }
+
+.ai-onboarding { padding: 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+.ai-panel a { color: var(--accent, #6daaff); }
