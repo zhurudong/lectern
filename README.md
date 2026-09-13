@@ -140,14 +140,13 @@ TypeScript.
 | **Highlight only** | 16 | JSON, YAML, TOML, XML, HTML, CSS, SCSS, Sass, Less, Shell, Ruby, Kotlin, C#, Groovy, Dockerfile, CMake |
 | **Approximate highlight** (marked as such in the UI) | 2 | Vue, Svelte |
 
-**File outlines cover 9 categories and 23 file extensions**: the 7 navigable
-languages above (20 extensions), plus Markdown (`.md`, `.markdown`) and SQL
+**File outlines cover 11 categories and 29 file extensions**: the 9 navigable
+languages above (26 extensions), plus Markdown (`.md`, `.markdown`) and SQL
 (`.sql`). Code outlines list symbols such as types, functions and methods;
 Markdown outlines list headings. Click an entry to jump to its line.
 
-**Rust (`.rs`) supports preview and dedicated syntax highlighting.** It does
-not provide outlines, go to definition, find references or project-wide symbol
-search.
+**Rust (`.rs`) and PHP provide dedicated highlighting, outlines, go to definition,
+find references and project-wide symbol search**, matching the navigable tier above.
 
 By file extension, the preview registry contains **72 distinct extensions**:
 45 code, 2 Markdown, 6 image (`.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`)
