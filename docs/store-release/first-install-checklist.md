@@ -4,6 +4,8 @@
 
 记录：日期、macOS 版本、芯片、Chrome 版本、扩展来源/ID/版本、安装包文件名/SHA-256、CLI 名称/版本。不要记录密码、令牌或私人项目内容。
 
+已有记录：[2026-09-13 ARM64 升级安装与真实 CLI 验证](verification-2026-09-13.md)。该记录不覆盖干净系统、Intel 或商店安装；下面保留为各环境的完整验收模板。
+
 提交前验收可使用独立 Chrome 配置加载候选包，通过商店条目的公开 `key` 保持正式 ID `ahmcjpgaejjfgiihipkjlhmepcnkbddm`，无需先发布商店版本。公钥先核验计算出的 ID；不改正式安装包的 origin，不把开发 ID 添加到其允许列表。商店正式上线后另做一次实际商店安装复验。
 
 - [ ] 干净 macOS 用户没有 Node/npm、源码 host、旧 Lectern Companion。

@@ -23,11 +23,15 @@ LECTERN_RELEASE=1 \
   LECTERN_COMPANION_DISTRIBUTION=unsigned npm run build:ai
 # 真实安装验收未完成时先生成候选交付材料
 npm run prepare:store
+# 技术前提齐备后可先上传商店草稿；仍保留安装验收缺项
+npm run prepare:store -- --draft-upload
 # 记录真实安装验收后生成正式上传包
 npm run prepare:store -- --final
 ```
 
-`companionDistribution` 明确选择 `signed` 或 `unsigned`。signed 验证签名与公证；unsigned 验证未签名标记、安装页披露。两者都核对包内 origin、版本、运行时及 PTY 架构、SHA-256、双语安装页下载入口、链接 HTTP 响应及页面内容。成功才生成 `final-upload/`。这些是技术检查；`cleanInstallVerified` 是操作者提供的验收记录，不是机器测得的成功状态。脚本不会上传文件、创建 Release、接受条款或提交商店。
+`companionDistribution` 明确选择 `signed` 或 `unsigned`。signed 验证签名与公证；unsigned 验证未签名标记、安装页披露。两者都核对包内 origin、版本、运行时及 PTY 架构、SHA-256、双语安装页下载入口、链接 HTTP 响应及页面内容。`--draft-upload` 和 `--final` 执行同样的技术检查，前者生成仅供草稿的 `draft-upload/`，后者还要求安装验收齐备才生成 `final-upload/`。默认候选模式不核验公开链接或完整安装包，不能用来替代上传检查。
+
+`cleanInstallVerified` 是操作者提供的验收记录，不是机器测得的成功状态；ARM64 升级安装的成功记录保存在 `manualValidation` 和对应 Markdown 中，不会将此标志自动设为 true。`status.json` 的 `package` 指定本次 ZIP，`pendingAcceptance` 列出未完成验收。脚本不会上传文件、创建 Release、接受条款或提交商店。
 
 GitHub Pages：工作流只在手动触发时发布 `release-artifacts/public-site/`。页面从根目录中英文隐私政策生成，不复制旧商店文案。下载参数留空时页面明确说明未提供正式下载，不能用来冒充已完成的终端分发。
 

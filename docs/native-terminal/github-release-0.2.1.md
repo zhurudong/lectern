@@ -42,8 +42,10 @@ To uninstall, open `/Applications/Lectern Companion.app/Contents/Resources` in F
 
 ## Verification limits / 验证范围
 
-The packages pass checksum, version, extension identity and Node/PTY/helper architecture checks. The ARM64 bundled runtime also passes handshake and lifecycle checks. The extension passes isolated Native Messaging tests using a test host.
+The packages pass checksum, version, extension identity and Node/PTY/helper architecture checks. On 2026-09-13, the public ARM64 package was downloaded through Chrome with its download quarantine attribute retained and installed as an upgrade on macOS 26.5.1. Chrome 152 loaded an isolated local extension candidate with the formal store ID and connected to the actual system native host. Real PTY input/output, resizing and normal exit passed. The user confirmed project directory association and a real AI CLI request/response.
 
-Clean installation from a quarantined public download, Gatekeeper prompts, Intel runtime behavior and the final Chrome Web Store installation path still need user validation. This is a public preview for that validation, not a claim of Apple approval or completed store review.
+The tested machine already had development tools and an older companion. A clean macOS user environment, Intel runtime behavior and the final Chrome Web Store installation path remain unverified. This upgrade result does not establish Gatekeeper behavior on other machines. This is a public preview for further validation, not a claim of Apple approval or completed store review.
+
+已验证：ARM64 公开包经 Chrome 下载后升级安装、正式扩展 ID 连接系统原生主机、真实终端输入输出与尺寸调整；用户已确认目录关联和真实 AI CLI 请求/回复。尚未验证：干净 macOS 用户环境、Intel 实机和商店安装路径。本次结果不代表其他机器上的 Gatekeeper 行为。
 
 Source for this release is the associated Git tag. Support: [Lectern issues](https://github.com/zhurudong/lectern/issues).
