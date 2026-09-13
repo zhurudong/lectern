@@ -16,9 +16,11 @@ export default defineConfig(({ mode }) => ({
       const manifest = JSON.parse(readFileSync(path, 'utf8'))
       manifest.name = 'Lectern AI (opt-in spike)'
       manifest.description = '只读代码阅读器 + 本地 AI 终端; agent 可按用户权限修改文件。'
-      manifest.content_security_policy = {
-        extension_pages: "script-src 'self'; object-src 'self'; connect-src 'self' file: ws://127.0.0.1:*",
-      }
+      manifest.permissions.push('nativeMessaging')
+      const download = process.env.LECTERN_DOWNLOAD_URL
+      if (download && new URL(download).protocol !== 'https:') throw new Error('Companion download URL must use HTTPS')
+      const link = download ? `<a href="${download.replaceAll('&', '&amp;').replaceAll('\"', '&quot;').replaceAll('<', '&lt;')}" target="_blank" rel="noopener noreferrer">下载伴随程序</a>。` : '此开发构建尚未配置正式下载地址，请向维护者获取配套安装包；不要将它当作已发布版本。'
+      writeFileSync(resolve(options.dir!, 'native-setup.html'), readFileSync(here('scripts/native/setup.html'), 'utf8').replace('__DOWNLOAD__', link))
       writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n')
     },
   }] : [])],

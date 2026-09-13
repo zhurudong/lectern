@@ -51,7 +51,7 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const DIST = resolve(ROOT, process.env.DIST ?? 'dist')
 const AI = process.env.AI_TERMINAL === '1'
 const PURE_CSP = "script-src 'self'; object-src 'self'; connect-src 'self' file:"
-const AI_CSP = PURE_CSP + ' ws://127.0.0.1:*'
+const AI_CSP = PURE_CSP
 // Explicitly audited transport; copied unchanged by Vite. Updating the reader
 // requires reviewing the code and the negative controls before changing this pin.
 const LOCAL_READER_SHA256 = '0ce9b285704b2570ff4f155bc78b1756021d6c2a00575b322487dfc71cbdec83'
@@ -60,8 +60,8 @@ const LOCAL_READER_SHA256 = '0ce9b285704b2570ff4f155bc78b1756021d6c2a00575b32248
 const show = (p) => (p.startsWith(ROOT) ? relative(ROOT, p) : p)
 
 /**
- * Transport references outside the exact local reader (and opt-in loopback
- * constructor) fail. Filesystem writes are forbidden in every shipped script.
+ * Transport references outside the exact local reader (and opt-in native
+ * native connection) fail. Filesystem writes are forbidden in every shipped script.
  */
 const FORBIDDEN = {
   'zero network': [
@@ -70,6 +70,8 @@ const FORBIDDEN = {
     /\bWebSocket\b/, // broader than `new WebSocket`: any reference deserves a look
     /\bEventSource\b/,
     /\bsendBeacon\b/,
+    /\bconnectNative\b/,
+    /\bsendNativeMessage\b/,
   ],
   'read-only': [/\bcreateWritable\b/, /\bshowSaveFilePicker\b/, /\bremoveEntry\b/],
 }
@@ -119,13 +121,11 @@ function checkSymbols() {
         fail('local-file-reader.js differs from the audited local-only transport')
     }
     if (AI) {
-      // Only the single audited numeric-port constructor can be removed before
-      // the unchanged forbidden-symbol scan. Extra sockets/URLs still fail.
-      text = text.replace(/new WebSocket\(`ws:\/\/127\.0\.0\.1:\$\{[a-zA-Z_$][\w$]*\.port\}`\)/g, () => {
+      // Only this exact host is permitted in the opt-in build.
+      text = text.replace(/chrome\.runtime\.connectNative\(["']com\.lectern\.agent["']\)/g, () => {
         transports++
-        return 'LECTERN_LOOPBACK_TRANSPORT'
+        return 'LECTERN_NATIVE_TRANSPORT'
       })
-      if (/wss?:\/\//i.test(text)) fail(`AI transport: unexpected socket URL in ${show(file)}`)
     }
     for (const [invariant, patterns] of Object.entries(FORBIDDEN)) {
       if (localReader && invariant === 'zero network') continue
@@ -140,7 +140,7 @@ function checkSymbols() {
       }
     }
   }
-  if (AI && transports !== 1) fail(`AI transport: expected exactly one loopback constructor, got ${transports}`)
+  if (AI && transports !== 1) fail(`AI transport: expected exactly one native connection, got ${transports}`)
   if (localReaders !== 1) fail('expected exactly one audited local-file-reader.js')
 }
 
@@ -150,7 +150,7 @@ function checkManifest() {
 
   const manifest = JSON.parse(readFileSync(path, 'utf8'))
   const permissions = manifest.permissions ?? []
-  if (JSON.stringify([...permissions].sort()) !== JSON.stringify(['declarativeNetRequestWithHostAccess', 'storage']))
+  if (JSON.stringify([...permissions].sort()) !== JSON.stringify(['declarativeNetRequestWithHostAccess', 'storage', ...(AI ? ['nativeMessaging'] : [])].sort()))
     fail(`unexpected permissions: ${JSON.stringify(permissions)}`)
   if (JSON.stringify(manifest.host_permissions) !== JSON.stringify(['file:///*']))
     fail('host_permissions must contain only file:///*')
@@ -160,7 +160,7 @@ function checkManifest() {
   if (JSON.stringify(manifest.web_accessible_resources) !== JSON.stringify([{ resources: ['viewer.html'], matches: ['file:///*'] }]))
     fail('only viewer.html may be exposed to file URLs')
   if (JSON.stringify(manifest.content_security_policy) !== JSON.stringify({ extension_pages: AI ? AI_CSP : PURE_CSP }))
-    fail(`CSP must exactly restrict connections to self/file${AI ? '/loopback' : ''}`)
+    fail(`CSP must exactly restrict connections to self/file${AI ? '' : ''}`)
 }
 
 /**
@@ -203,13 +203,13 @@ function warnIfStale() {
 
 // Printing the list first is part of the promise the documentation makes:
 // "it prints the exact symbols it looks for". Do not remove it as debug noise.
-console.log(`Checking ${show(DIST)} (${AI ? 'opt-in AI: one loopback transport' : 'pure'}) for:`)
+console.log(`Checking ${show(DIST)} (${AI ? 'opt-in AI: one native transport' : 'pure'}) for:`)
 for (const [invariant, patterns] of Object.entries(FORBIDDEN)) {
   console.log(`  ${invariant.padEnd(13)} ${patterns.map((p) => p.source).join('  ')}`)
 }
 console.log('  local reader  exactly one unchanged, SHA-256 pinned local-only reader')
-console.log('  permissions   exactly storage + declarativeNetRequestWithHostAccess; only file:///*')
-console.log(`                no content scripts; exact ${AI ? 'self/file/loopback' : 'self/file'} CSP`)
+console.log(`  permissions   storage + declarativeNetRequestWithHostAccess${AI ? ' + nativeMessaging' : ''}; only file:///*`)
+console.log(`                no content scripts; exact ${AI ? 'self/file' : 'self/file'} CSP`)
 console.log()
 
 if (!existsSync(DIST)) {
@@ -227,7 +227,7 @@ if (failed) {
 }
 
 const conclusion = AI
-  ? 'audited local reader + exactly one loopback transport, exact permissions/CSP, no filesystem write symbols'
+  ? 'audited local reader + exactly one native transport, exact permissions/CSP, no filesystem write symbols'
   : 'audited local reader only, exact local permissions/CSP, no filesystem write symbols'
 console.log(stale
   ? `OK*  ${conclusion} — *in a build that predates the current sources; rebuild and re-run before quoting this.`

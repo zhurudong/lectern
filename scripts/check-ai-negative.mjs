@@ -14,11 +14,13 @@ try {
   for (const [name, ai, mutate] of [
     ['pure socket', false, (dir) => appendFileSync(join(dir, 'background.js'), '\nnew WebSocket("ws://127.0.0.1:8137")')],
     ['AI extra socket', true, (dir) => appendFileSync(join(dir, 'background.js'), '\nnew WebSocket(`ws://127.0.0.1:${s.port}`)')],
+    ['pure native', false, (dir) => appendFileSync(join(dir, 'background.js'), '\nchrome.runtime.connectNative("com.lectern.agent")')],
+    ['AI extra native', true, (dir) => appendFileSync(join(dir, 'background.js'), '\nchrome.runtime.connectNative("com.lectern.agent")')],
     ['AI cloud fetch', true, (dir) => appendFileSync(join(dir, 'background.js'), '\nfetch("https://example.com")')],
-    ['AI remote host', true, (dir) => {
+    ['AI wrong native host', true, (dir) => {
       for (const file of readdirSync(join(dir, 'assets')).filter((f) => f.endsWith('.js'))) {
         const path = join(dir, 'assets', file)
-        writeFileSync(path, readFileSync(path, 'utf8').replaceAll('ws://127.0.0.1:', 'ws://example.com:'))
+        writeFileSync(path, readFileSync(path, 'utf8').replaceAll('com.lectern.agent', 'com.other.agent'))
       }
     }],
     ['AI wide CSP', true, (dir) => {

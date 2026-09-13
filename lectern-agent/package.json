@@ -13,13 +13,17 @@
     "README.md",
     "install.mjs",
     "LICENSE",
-    "THIRD-PARTY-NOTICES.md"
+    "THIRD-PARTY-NOTICES.md",
+    "preferences.mjs",
+    "dialogs.mjs",
+    "service.mjs",
+    "native"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test test.mjs",
+    "test": "node --test test.mjs automation.test.mjs native.test.mjs",
     "postinstall": "node install.mjs"
   },
   "dependencies": {

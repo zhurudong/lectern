@@ -3,7 +3,7 @@
   "version": "0.3.1",
   "private": true,
   "type": "module",
-  "description": "Lectern — a read-only local code reader with configurable file URL opening (Chrome MV3 extension)",
+  "description": "Lectern \u2014 a read-only local code reader with configurable file URL opening (Chrome MV3 extension)",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -30,7 +30,9 @@
     "typecheck": "tsc --noEmit",
     "build:ai": "tsc --noEmit && vite build --mode ai",
     "check:ai": "npm run build:ai && AI_TERMINAL=1 DIST=dist-ai node scripts/check-invariants.mjs && npm run check:ai-negative && npm --prefix lectern-agent test && node scripts/e2e-ai.mjs",
-    "check:ai-negative": "node scripts/check-ai-negative.mjs"
+    "check:ai-negative": "node scripts/check-ai-negative.mjs",
+    "setup:ai": "npm run build:ai && node scripts/native/register-dev.mjs",
+    "package:companion": "node scripts/native/build.mjs"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.2",

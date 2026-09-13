@@ -32,3 +32,6 @@ verify-0.3.2-tmp.mjs
 
 # opt-in AI extension build
 dist-ai/
+
+# Native companion installer output
+release-artifacts/

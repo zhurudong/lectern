@@ -52,7 +52,7 @@ function IndexStatus() {
   )
 }
 
-function TopBar() {
+function TopBar({ aiOpen, onOpenAi }: { aiOpen: boolean; onOpenAi: () => void }) {
   const m = mode.value
   return (
     <header class="topbar">
@@ -60,7 +60,7 @@ function TopBar() {
       {m === 'project' && <span class="project-name">{rootName.value}</span>}
       {m === 'project' && <IndexStatus />}
       <span class="spacer" />
-      {__AI_TERMINAL__ && AiTerminalEntry && <Suspense fallback={null}><AiTerminalEntry /></Suspense>}
+      {__AI_TERMINAL__ && <button class="ai-toggle" aria-expanded={aiOpen} aria-controls="ai-terminal-panel" onClick={onOpenAi}>AI 终端</button>}
       {m === 'project' && <SearchBox />}
       {m !== 'welcome' && (
         <>
@@ -84,6 +84,7 @@ function TopBar() {
 }
 
 export function App() {
+  const [aiOpen, setAiOpen] = useState(false)
   const m = mode.value
   const activeProjectView = projectView.value
   const root = rootHandle.value
@@ -154,7 +155,7 @@ export function App() {
   return (
     <div class="layout">
       <FileDrop />
-      <TopBar />
+      <TopBar aiOpen={aiOpen} onOpenAi={() => setAiOpen(true)} />
       <KeyboardHelp />
       <LocalFileSettings />
       <div class="main">
@@ -196,6 +197,9 @@ export function App() {
               />
             </Suspense>
           </div>
+        )}
+        {__AI_TERMINAL__ && AiTerminalEntry && aiOpen && (
+          <Suspense fallback={null}><AiTerminalEntry onClose={() => setAiOpen(false)} /></Suspense>
         )}
       </div>
     </div>
