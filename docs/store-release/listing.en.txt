@@ -1,0 +1,5 @@
+Read local code in Chrome, navigate definitions, search symbols and text, and review file and Git differences. English and Chinese interfaces, light/dark themes and keyboard navigation help you explore a project.
+
+The optional AI terminal opens beside the reader with an adjustable width. It currently requires macOS 13.5 or later, Google Chrome, a separate Lectern Companion installation, and an installed and authenticated Codex or Claude Code CLI. Choose the matching local folder once for each project; later sessions reuse that association. Closing the terminal ends the current CLI session; reopening starts a new session.
+
+The reader processes code locally and is read-only. Your CLI runs with your user permissions, may modify files, and may send context to its model provider according to its own settings. Provider accounts, charges and data policies apply separately. Lectern's maintainer operates no code collection or telemetry service. The reader works without the optional companion.

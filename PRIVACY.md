@@ -18,6 +18,8 @@ The standard build uses `storage` for preferences, `declarativeNetRequestWithHos
 
 Only the AI build requests `nativeMessaging`. Opening its terminal asks Chrome to start the installed Lectern Companion on your computer. The extension passes your selected executable, project identifier/display name, keyboard input and terminal dimensions; the companion returns its selected directory, status and CLI output. This connection uses local native messaging, not a remote Lectern server.
 
+Terminal input and output may include your source code, prompts and replies, account identifiers, local paths containing your user name, and authentication input you explicitly enter into the selected CLI. Lectern relays this data locally to display and operate the terminal; it does not extract credentials from browser cookies or the system keychain.
+
 The companion launches the CLI you choose with your user permissions. **That CLI can read and modify files and send prompts, source code or other context to its configured model providers.** These actions follow your commands, CLI configuration and provider policies. The reader's read-only and offline guarantees do not apply to the CLI. Lectern does not manage provider accounts, authentication, billing or retention. Consult the CLI and provider before using sensitive projects. There is no Lectern telemetry or model API integration.
 
 Closing the panel ends its connection and requests termination of the CLI. It is not a promise to undo file edits or erase conversations retained by the CLI/provider. Reconnection starts a new session.

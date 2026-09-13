@@ -34,7 +34,10 @@
     "setup:ai": "npm run build:ai && node scripts/native/register-dev.mjs",
     "package:companion": "node scripts/native/build.mjs",
     "check:i18n": "node scripts/check-i18n-release.mjs",
-    "check:release": "node scripts/check-release.mjs"
+    "check:release": "node scripts/check-release.mjs",
+    "prepare:store": "node scripts/prepare-store-kit.mjs",
+    "shots:store": "node scripts/shot-release-kit.mjs",
+    "build:public-pages": "node scripts/build-public-pages.mjs"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.2",
