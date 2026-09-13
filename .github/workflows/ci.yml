@@ -18,75 +18,9 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      # The invariants (zero network, read-only, no permissions) are checked by
-      # scripts/check-invariants.mjs, which owns the authoritative symbol list.
-      # Nothing here restates that list — a second copy is a copy that drifts.
-      - name: Invariant gates
-        run: node scripts/check-invariants.mjs
-
-      # The coverage tables are promises to users; four hand-maintained copies
-      # drift. This reconciles all of them against the implementation.
-      - name: Language coverage reconciliation
-        run: node scripts/check-language-coverage.mjs
-
-      - name: SQL outline regression
-        run: npm run check:sql
-
-      # Machine-local paths are both a privacy leak (they carry a username and a
-      # home directory layout) and a portability bug (nobody else can run the
-      # script). Checked as a property of the whole repository rather than as a
-      # list of known offenders, so a newly added script is covered by the same
-      # check without anyone remembering to extend it.
-      - name: No machine-local paths
-        run: |
-          if git grep -nE "/(Users|home)/[A-Za-z][A-Za-z0-9_-]*|C:\\\\Users\\\\" -- . ':!package-lock.json' ':!THIRD-PARTY-NOTICES.md'; then
-            echo "::error::A tracked file contains a machine-local path — derive it instead (see scripts/e2e.mjs)."
-            exit 1
-          fi
-          echo "OK: no machine-local paths in tracked files."
-
-      # The keybinding single-source test mutates src/lib/keys.ts and restores
-      # it in a finally block. A hard kill skips that restore, and the mutated
-      # state looks entirely healthy — it builds, it runs, the assertions pass —
-      # while go-to-definition silently sits on a key nobody verified. Nothing
-      # about "all green" would make anyone suspect it, so the string is checked
-      # for directly. (scripts/ is excluded: the test has to contain the string
-      # in order to inject it.)
-      - name: No leftover key mutation
-        run: |
-          if git grep -n "Mod-Alt-Enter" -- src/; then
-            echo "::error::src/lib/keys.ts still holds the test mutation — restore it with git checkout before committing."
-            exit 1
-          fi
-          echo "OK: no leftover key mutation in src/."
-
-      # The project was built by several AI sessions with different roles.
-      # That is documented on purpose in HOW_THIS_WAS_BUILT, but the private
-      # vocabulary of those sessions does not belong in specs, docs or code
-      # comments that are read as the project speaking to its users.
-      #
-      # The word list, the exclusions and the reasoning all live in the script,
-      # which also self-tests its matcher before reporting. This was a `git grep`
-      # once; it silently matched nothing on macOS and matched random bytes
-      # inside tracked PNGs on Linux. See the header of the script.
-      - name: No internal role vocabulary
-        run: node scripts/check-role-vocabulary.mjs
-
-      # release.yml refuses to publish without docs/releases/<version>.md, but
-      # it only finds out at tag time — after the tag exists and the release
-      # run has already failed. Cutting 0.3.2 hit exactly that: the version was
-      # bumped, everything was green, and the notes did not exist. Checking it
-      # here moves the failure to the commit that bumped the version, which is
-      # the commit that can still fix it cheaply.
-      - name: Release notes exist for the current version
-        run: |
-          version=$(node -p "require('./package.json').version")
-          notes="docs/releases/${version}.md"
-          if [ ! -f "${notes}" ]; then
-            echo "::error::${notes} is missing — release.yml will refuse to publish v${version}."
-            exit 1
-          fi
-          echo "OK: ${notes} exists."
+      # Local development, CI and Release use the same authoritative gates.
+      - name: Repository and invariant checks
+        run: npm run check
 
   native-terminal:
     runs-on: macos-14
