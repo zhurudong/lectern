@@ -1,4 +1,5 @@
 import { signal } from '@preact/signals'
+import type { FileSource } from './lib/fileSource'
 
 // 全局应用状态:保持极简(见 design.md D5),不引入重状态库。
 
@@ -10,11 +11,11 @@ export type ProjectView = 'files' | 'changes'
 
 /** 当前选中待预览的文件 */
 export interface SelectedFile {
-  handle: FileSystemFileHandle
+  handle: FileSource
   /** 相对项目根的路径段(单文件模式为 [文件名]) */
   path: string[]
   name: string
-  /** 单调递增,用于强制重读(点击即重读,不缓存) */
+  /** 单调递增,用于重新预览;句柄重读磁盘，File 使用当前快照 */
   nonce: number
 }
 
@@ -66,9 +67,17 @@ export const selectedFile = signal<SelectedFile | null>(null)
 
 let selectNonce = 0
 
-/** 选中一个文件用于预览;每次调用都会触发重新读取(不缓存) */
+let workspaceOpenRequest = 0
+
+/** 每次打开请求使旧请求失效,避免较慢的拖放或 picker 覆盖后续操作。 */
+export function beginWorkspaceOpen(): () => boolean {
+  const request = ++workspaceOpenRequest
+  return () => request === workspaceOpenRequest
+}
+
+/** 选中一个文件用于预览;句柄每次重读磁盘，File 预览当前快照 */
 export function selectFile(
-  handle: FileSystemFileHandle,
+  handle: FileSource,
   path: string[],
   line?: number,
   caret?: { word?: string; col?: number },
@@ -85,7 +94,7 @@ export function selectFile(
  * 目标就是当前文件时只滚动、不重读(spec 要求"不出现内容闪烁")。
  */
 export function navigateTo(
-  handle: FileSystemFileHandle,
+  handle: FileSource,
   path: string[],
   line?: number,
   caret?: { word?: string; col?: number },
@@ -100,6 +109,7 @@ export function navigateTo(
 
 /** 进入项目浏览模式 */
 export function enterProject(handle: FileSystemDirectoryHandle) {
+  beginWorkspaceOpen()
   rootHandle.value = handle
   rootName.value = handle.name
   selectedFile.value = null
@@ -108,7 +118,8 @@ export function enterProject(handle: FileSystemDirectoryHandle) {
 }
 
 /** 进入单文件模式 */
-export function enterSingleFile(handle: FileSystemFileHandle) {
+export function enterSingleFile(handle: FileSource) {
+  beginWorkspaceOpen()
   rootHandle.value = null
   rootName.value = ''
   projectView.value = 'files'
@@ -118,6 +129,7 @@ export function enterSingleFile(handle: FileSystemFileHandle) {
 
 /** 回到欢迎页 */
 export function goWelcome() {
+  beginWorkspaceOpen()
   rootHandle.value = null
   rootName.value = ''
   selectedFile.value = null

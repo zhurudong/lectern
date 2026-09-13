@@ -23,6 +23,11 @@ type OutlineState =
   | { status: 'unsupported'; path: string; language: string }
   | { status: 'ready'; path: string; symbols: SymbolHit[]; skipped?: 'too-large' | 'error' }
 
+// SQL 同行可能出现多条同名语句;序号消除重复,编码名称使 DOM id 不含空白。
+function outlineKey(s: SymbolHit, index: number): string {
+  return `${s.line}-${s.kind}-${encodeURIComponent(s.name)}-${index}`
+}
+
 export function OutlinePanel() {
   const sel = selectedFile.value
   const [state, setState] = useState<OutlineState>({ status: 'empty', path: '' })
@@ -32,13 +37,11 @@ export function OutlinePanel() {
   // 树是层级 + 路径,大纲是平铺 + 符号,现在抽只会造出一个两边都不合身的中间层。
   // 抽象要由重复驱动,不由预感驱动;等两边的键盘逻辑真的长成一样再说。
   //
-  // 活动项用**稳定标识**(行号 + 种类 + 名字)而不是列表下标:切文件、重解析后
-  // 下标会指向另一个符号,而标识不会 —— 与目录树用 path 而非行索引同理。
+  // 标识包含行号、种类、名称与序号;切文件或重读时清空活动态。
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const curPath = sel ? sel.path.join('/') : ''
   const rows: SymbolHit[] =
     state.status === 'ready' && state.path === curPath ? state.symbols : []
-  const keyOf = (s: SymbolHit) => `${s.line}-${s.kind}-${s.name}`
 
   // 2b.3:切换预览文件后大纲重建,活动态**不能指向不相干的条目** —— 直接清空。
   useEffect(() => {
@@ -47,9 +50,9 @@ export function OutlinePanel() {
 
   const moveActive = (delta: number) => {
     if (rows.length === 0) return
-    const cur = rows.findIndex((s) => keyOf(s) === activeKey)
+    const cur = rows.findIndex((s, i) => outlineKey(s, i) === activeKey)
     const next = cur < 0 ? (delta > 0 ? 0 : rows.length - 1) : Math.min(rows.length - 1, Math.max(0, cur + delta))
-    const key = keyOf(rows[next])
+    const key = outlineKey(rows[next], next)
     setActiveKey(key)
     document.getElementById(`cv-ol-${key}`)?.scrollIntoView({ block: 'nearest' })
   }
@@ -59,10 +62,10 @@ export function OutlinePanel() {
     switch (e.key) {
       case 'ArrowDown': e.preventDefault(); moveActive(1); return
       case 'ArrowUp': e.preventDefault(); moveActive(-1); return
-      case 'Home': e.preventDefault(); setActiveKey(keyOf(rows[0])); return
-      case 'End': e.preventDefault(); setActiveKey(keyOf(rows[rows.length - 1])); return
+      case 'Home': e.preventDefault(); setActiveKey(outlineKey(rows[0], 0)); return
+      case 'End': e.preventDefault(); setActiveKey(outlineKey(rows[rows.length - 1], rows.length - 1)); return
       case 'Enter': {
-        const s = rows.find((r) => keyOf(r) === activeKey)
+        const s = rows.find((r, i) => outlineKey(r, i) === activeKey)
         if (!s) return
         e.preventDefault()
         // 大纲上按 Enter 的语义是"带我去那段代码" —— 把当前持有焦点的容器传进去,
@@ -200,15 +203,16 @@ function OutlineBody({
   return (
     <>
       {state.symbols.map((s, i) => {
+        const key = outlineKey(s, i)
         // 层级:Markdown 按标题级别缩进;代码按"是否属于某个容器"缩进一级
         const indent = s.kind === KIND.heading ? Math.max(0, s.level - 1) : s.container ? 1 : 0
         return (
           <div
-            key={`${s.name}-${s.line}-${i}`}
-            id={`cv-ol-${s.line}-${s.kind}-${s.name}`}
+            key={key}
+            id={`cv-ol-${key}`}
             role="option"
-            aria-selected={activeKey === `${s.line}-${s.kind}-${s.name}`}
-            class={`outline-row${activeKey === `${s.line}-${s.kind}-${s.name}` ? ' active' : ''}`}
+            aria-selected={activeKey === key}
+            class={`outline-row${activeKey === key ? ' active' : ''}`}
             style={{ paddingLeft: `${8 + indent * 14}px` }}
             title={`${kindLabel(s.kind)}${s.container ? ` · ${s.container}` : ''} · ${t('outline.lineN', { line: s.line })}`}
             onClick={() => void navigateWithHistory(s.path, s.line, undefined, { word: s.name })}

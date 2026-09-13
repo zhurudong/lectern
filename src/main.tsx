@@ -13,8 +13,10 @@ import {
   exitCompare,
 } from './preview/compareStore'
 import './styles.css'
+import { initializeLocalFile } from './local-files/LocalFileEntry'
 
 render(<App />, document.getElementById('app')!)
+initializeLocalFile()
 
 // 调试/自动化验证入口:允许用任意目录句柄(如 OPFS)直接进入项目模式,
 // 绕过原生文件选择对话框做端到端走查(scripts/e2e.mjs)。
@@ -66,4 +68,5 @@ if (__CV_TEST_HOOK__) {
       setProjectView('changes')
     })
   }
+
 }

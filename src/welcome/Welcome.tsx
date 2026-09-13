@@ -46,13 +46,14 @@ export function Welcome() {
   return (
     <div class="welcome">
       <h1>Lectern</h1>
-      <div class="subtitle">{t('welcome.subtitle')}</div>
+      <div class="subtitle">{t(__AI_TERMINAL__ ? 'welcome.aiSubtitle' : 'welcome.subtitle')}</div>
       <div class="actions">
         <button onClick={() => void openFolder()}>{t('welcome.openFolder')}</button>
         <button class="secondary" onClick={() => void openSingleFile()}>
           {t('welcome.openFile')}
         </button>
       </div>
+      <div class="drop-hint">也可将一个文件或文件夹拖到页面任意位置打开</div>
       <div class="recent">
         <h2>{t('welcome.recentTitle')}</h2>
         {recent === null ? (

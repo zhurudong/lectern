@@ -1,0 +1,33 @@
+{
+  "name": "lectern-agent",
+  "version": "0.2.1",
+  "description": "Native Messaging PTY companion for Lectern; legacy loopback CLI retained for development",
+  "type": "module",
+  "license": "Apache-2.0",
+  "bin": {
+    "lectern-agent": "cli.mjs"
+  },
+  "files": [
+    "cli.mjs",
+    "server.mjs",
+    "README.md",
+    "install.mjs",
+    "LICENSE",
+    "THIRD-PARTY-NOTICES.md",
+    "preferences.mjs",
+    "dialogs.mjs",
+    "service.mjs",
+    "native"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test.mjs automation.test.mjs native.test.mjs",
+    "postinstall": "node install.mjs"
+  },
+  "dependencies": {
+    "node-pty": "1.1.0",
+    "ws": "^8.18.0"
+  }
+}

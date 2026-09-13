@@ -7,6 +7,7 @@ import { parser as jsParser } from '@lezer/javascript'
 import { parser as rustParser } from '@lezer/rust'
 import { parser as phpParser } from '@lezer/php'
 import { KIND, type KindId, type RawSymbol } from './symbols'
+import { extractSqlOutline } from './extractSql'
 
 // 定义符号抽取(design.md D1):复用项目已打包的 Lezer 语法,不引入 tree-sitter WASM。
 //
@@ -502,6 +503,7 @@ export function extractMarkdownHeadings(text: string): RawSymbol[] {
  */
 export function extractSymbols(text: string, langId: string): RawSymbol[] {
   if (langId === 'markdown') return extractMarkdownHeadings(text)
+  if (langId === 'sql') return extractSqlOutline(text)
   const picked = parserFor(langId)
   if (!picked) return []
   const { parser, lang } = picked

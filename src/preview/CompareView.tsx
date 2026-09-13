@@ -71,7 +71,7 @@ interface Loaded {
   isText: boolean
 }
 
-async function loadSide(handle: FileSystemFileHandle): Promise<Loaded> {
+async function loadSide(handle: import('../lib/fileSource').FileSource): Promise<Loaded> {
   const data = await loadPreview(handle)
   if (data.kind !== 'text') {
     return { text: '', language: undefined, truncated: false, isText: false }

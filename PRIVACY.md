@@ -1,73 +1,45 @@
 *English · [中文](PRIVACY.zh-CN.md)*
 
-# Privacy Policy
+# Lectern Privacy Policy
 
-**Lectern collects nothing, sends nothing, and stores nothing outside your own
-browser.** This document is the privacy policy referenced by the Chrome Web
-Store listing.
+Last updated: 2026-09-13.
 
-Last updated: 2026-08-20.
+Lectern provides a local code reader and, in the AI build, an optional terminal connected to a separately installed companion. These components have different capabilities. Lectern has no developer-operated data collection service, analytics, telemetry, advertising or account system.
 
-## What is collected
+## Local reader
 
-Nothing. There is no analytics, no telemetry, no crash reporting, no usage
-statistics, no update check, no license check, and no account.
+Reading, indexing, search, Markdown preview and file/Git comparisons run on your computer. The reader does not upload project contents, fetch remote resources or modify your project files. Its bundled resources do not require a CDN. Remote Markdown images are not fetched.
 
-Under the Chrome Web Store's data disclosure categories, the answer is "not
-collected" for every one: personally identifiable information, health
-information, financial information, authentication information, personal
-communications, location, web history, and user activity.
+You grant access by selecting a file or folder in Chrome. Alternatively, Chrome's **Allow access to file URLs** setting grants access to local file URLs. Lectern's automatic-opening preferences select which suffixes open in Lectern; they do not narrow Chrome's underlying file URL permission. Turn that Chrome setting off to revoke URL access. Manually selecting a file remains available.
 
-## What leaves your computer
+The standard build uses `storage` for preferences, `declarativeNetRequestWithHostAccess` for matching local file navigations, and only `file:///*` host access. It has no HTTP(S) host permissions or content scripts.
 
-Nothing. The extension makes no network requests at runtime. It declares no
-`host_permissions`, no `permissions` at all, and no content scripts, so it
-cannot reach any website or any other tab. Every asset it needs — the editor,
-the language grammars, the fonts — is bundled in the extension package.
+## Optional AI terminal
 
-## What it can read, and how you grant it
+Only the AI build requests `nativeMessaging`. Opening its terminal asks Chrome to start the installed Lectern Companion on your computer. The extension passes your selected executable, project identifier/display name, keyboard input and terminal dimensions; the companion returns its selected directory, status and CLI output. This connection uses local native messaging, not a remote Lectern server.
 
-You choose a folder or a file through Chrome's own file picker. The extension
-receives a handle to exactly what you picked, and can read it. It cannot see
-anything you did not pick.
+Terminal input and output may include your source code, prompts and replies, account identifiers, local paths containing your user name, and authentication input you explicitly enter into the selected CLI. Lectern relays this data locally to display and operate the terminal; it does not extract credentials from browser cookies or the system keychain.
 
-It **never writes**. Writing a file through the File System Access API requires
-`createWritable()`, which does not appear anywhere in this extension's source
-or in its built package — a build in which it appears fails the project's CI.
+The companion launches the CLI you choose with your user permissions. **That CLI can read and modify files and send prompts, source code or other context to its configured model providers.** These actions follow your commands, CLI configuration and provider policies. The reader's read-only and offline guarantees do not apply to the CLI. Lectern does not manage provider accounts, authentication, billing or retention. Consult the CLI and provider before using sensitive projects. There is no Lectern telemetry or model API integration.
 
-## What is stored, and where
+Closing the panel ends its connection and requests termination of the CLI. It is not a promise to undo file edits or erase conversations retained by the CLI/provider. Reconnection starts a new session.
 
-Inside your own Chrome profile, on your machine:
+## Local storage and deletion
 
-- **IndexedDB** — handles for recent projects, so you can reconnect after a
-  restart, and the display name and path shown for them;
-- **`localStorage`** — interface preferences: theme, sidebar width, panel
-  collapse state.
+- Chrome IndexedDB stores recent file/folder handles and AI project identities, not copies of the project source tree.
+- Local storage retains theme, interface language, panel widths and selected CLI executable. Chrome local storage also retains automatic-opening preferences and local redirect rules.
+- The companion stores project-directory associations in `~/.lectern-agent/` outside the browser. The current native transport does not use a pairing token; older development versions may have left tokens/logs in that directory.
+- Terminal output is displayed in the running panel. The companion does not intentionally persist a terminal transcript; the selected CLI may retain its own sessions, logs or credentials.
+- Local file URLs may appear in Chrome history/session restoration. Chrome manages those separately.
 
-None of it is transmitted anywhere. Removing the extension, or clearing the
-extension's site data in Chrome, removes all of it. Your project files are
-never copied into this storage — only the handles Chrome gives out and your UI
-preferences.
+Removing the extension clears its extension storage and rules, but does not remove the companion, CLI data, provider records or Chrome history. Uninstall the companion separately using its provided uninstall entry. Its default uninstall retains directory associations; remove `~/.lectern-agent/` after uninstalling to erase them. Manage CLI authentication and provider records using their respective tools. Your project files are not deleted by uninstalling Lectern.
 
-## Third parties
+## Downloads and external links
 
-There are none. No SDKs, no CDNs, no fonts loaded from a font service, no
-remote images (images referenced by remote URLs inside a rendered Markdown file
-are deliberately replaced with a placeholder rather than fetched).
+Installation/help links open external websites when you choose them. Those sites and download providers process requests under their own policies. Lectern does not silently download or execute remote extension code. Chrome and the operating system manage extension/package updates separately.
 
-## Verifying all of the above
+## Contact and verification
 
-You do not have to take this document's word for it. The extension is open
-source under Apache 2.0. Build it yourself and run the invariant checks:
+Source, support and privacy questions: [Lectern repository](https://github.com/zhurudong/lectern/issues).
 
-```bash
-npm ci && npm run build
-node scripts/check-invariants.mjs
-```
-
-The same checks run on every commit in CI, and a release that fails them is
-never published.
-
-## Contact
-
-Open an issue on the project repository.
+The standard build is checked with `npm run build && npm run check`; the opt-in native boundary has separate AI checks. These checks do not establish the behavior or privacy practices of third-party CLIs.

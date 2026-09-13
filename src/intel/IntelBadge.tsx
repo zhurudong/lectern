@@ -32,7 +32,12 @@ export function IntelBadge({ fileName }: { fileName: string }) {
     level === 'full'
       ? { text: t('intel.capFull'), cls: 'full', title: t('intel.capFullTitle') }
       : level === 'outline-only'
-        ? { text: t('intel.capOutline'), cls: 'outline', title: t('intel.capOutlineTitle') }
+        ? {
+            text: t('intel.capOutline'), cls: 'outline',
+            title: langId === 'sql'
+              ? t('intel.sqlTitle')
+              : t('intel.capOutlineTitle'),
+          }
         : isApproximateHighlight(langId)
           ? {
               // 第三档:高亮本身就是近似的,必须说清楚,不能让用户以为是专用高亮

@@ -54,4 +54,3 @@ export async function probeRepository(root: FileSystemDirectoryHandle): Promise<
     return { kind: 'unavailable', reason: 'repository-unreadable' }
   }
 }
-

@@ -1,7 +1,8 @@
 import { identifyByName, looksBinary, languageFromShebang, type Channel } from './filetypes'
+import { readSourceFile, type FileSource } from './fileSource'
 
 // 文件读取与降级(design.md D6):
-// - 统一经 handle.getFile() → File,每次调用都从磁盘重新读取(不缓存)。
+// - 原生句柄每次重读磁盘;本地 URL 入口提供 File 快照，刷新页面时重新读取。
 // - >5 MB 文本截断读取前 1 MB;二进制嗅探用前 8 KB。
 // - 文本仅按 UTF-8 解码(非 fatal);截断边界回退掉末尾不完整的多字节序列。
 
@@ -37,8 +38,8 @@ export function trimIncompleteUtf8(bytes: Uint8Array): Uint8Array {
 
 const decoder = new TextDecoder('utf-8') // 非 fatal:无效序列以 U+FFFD 呈现
 
-export async function loadPreview(handle: FileSystemFileHandle): Promise<LoadedPreview> {
-  const file = await handle.getFile()
+export async function loadPreview(handle: FileSource): Promise<LoadedPreview> {
+  const file = await readSourceFile(handle)
   const name = file.name
   const size = file.size
 

@@ -21,3 +21,18 @@ jobs:
       # Local development, CI and Release use the same authoritative gates.
       - name: Repository and invariant checks
         run: npm run check
+
+  native-terminal:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix lectern-agent ci
+      - run: npm run build
+      - run: npm run check
+      - run: npm run check:ai
+      - run: npm run check:release

@@ -36,6 +36,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createHash } from 'node:crypto'
 
 // Deliberately NOT imported from scripts/paths.mjs, even though seven other
 // scripts share that helper. This file must be readable on its own: a skeptic
@@ -48,15 +49,19 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 // DIST is overridable so the check can be pointed at a copy — used by the
 // negative test that proves this script can actually fail (see below).
 const DIST = resolve(ROOT, process.env.DIST ?? 'dist')
+const AI = process.env.AI_TERMINAL === '1'
+const PURE_CSP = "script-src 'self'; object-src 'self'; connect-src 'self' file:"
+const AI_CSP = PURE_CSP
+// Explicitly audited transport; copied unchanged by Vite. Updating the reader
+// requires reviewing the code and the negative controls before changing this pin.
+const LOCAL_READER_SHA256 = '0ce9b285704b2570ff4f155bc78b1756021d6c2a00575b322487dfc71cbdec83'
 
 /** Paths outside the repo print in full; inside, they print relative. */
 const show = (p) => (p.startsWith(ROOT) ? relative(ROOT, p) : p)
 
 /**
- * A Chrome extension cannot reach the network without one of these, and the
- * File System Access API cannot write a file without `createWritable()`.
- * Their absence is not a promise about behavior — it is the absence of the
- * capability, which is what a static check can actually establish.
+ * Transport references outside the exact local reader (and opt-in native
+ * native connection) fail. Filesystem writes are forbidden in every shipped script.
  */
 const FORBIDDEN = {
   'zero network': [
@@ -65,6 +70,8 @@ const FORBIDDEN = {
     /\bWebSocket\b/, // broader than `new WebSocket`: any reference deserves a look
     /\bEventSource\b/,
     /\bsendBeacon\b/,
+    /\bconnectNative\b/,
+    /\bsendNativeMessage\b/,
   ],
   'read-only': [/\bcreateWritable\b/, /\bshowSaveFilePicker\b/, /\bremoveEntry\b/],
 }
@@ -103,15 +110,27 @@ function checkSymbols() {
   const files = jsFiles(DIST)
   if (files.length === 0) fail(`no .js files under ${show(DIST)} — did the build produce anything?`)
 
+  let transports = 0
+  let localReaders = 0
   for (const file of files) {
-    const text = readFileSync(file, 'utf8')
-    // devFixture-*.js 是 E2E 的 git 仓夹具:dev-only —— `__CV_TEST_HOOK__` 令 prod `dist/` 把它
-    // tree-shake 掉(下面 checkDevFixtureNotShipped() 断言它绝不出现在发货产物里,故这条豁免
-    // 不可能盖住真泄漏);且它只往 OPFS(源私有沙盒)写、绝不碰用户真实文件。它的 createWritable
-    // 因此不违反"只读"这条**对发货产物**的承诺。仅对它豁免 read-only 一档 —— 零网络 / 权限仍照查。
-    const exemptReadOnly = /(^|\/)devFixture-[^/]*\.js$/.test(file.replace(/\\/g, '/'))
+    let text = readFileSync(file, 'utf8')
+    const localReader = relative(DIST, file) === 'local-file-reader.js'
+    if (localReader) {
+      localReaders++
+      if (createHash('sha256').update(text).digest('hex') !== LOCAL_READER_SHA256)
+        fail('local-file-reader.js differs from the audited local-only transport')
+    }
+    if (AI) {
+      // Only this exact host is permitted in the opt-in build.
+      text = text.replace(/chrome\.runtime\.connectNative\(["']com\.lectern\.agent["']\)/g, () => {
+        transports++
+        return 'LECTERN_NATIVE_TRANSPORT'
+      })
+    }
+    const exemptReadOnly = resolve(DIST) === resolve(ROOT, 'dist-dev') && /(^|\/)devFixture-[^/]*\.js$/.test(file.replace(/\\/g, '/'))
     for (const [invariant, patterns] of Object.entries(FORBIDDEN)) {
       if (invariant === 'read-only' && exemptReadOnly) continue
+      if (localReader && invariant === 'zero network') continue
       for (const pattern of patterns) {
         const match = new RegExp(pattern.source, 'g').exec(text)
         if (!match) continue
@@ -123,6 +142,8 @@ function checkSymbols() {
       }
     }
   }
+  if (AI && transports !== 1) fail(`AI transport: expected exactly one native connection, got ${transports}`)
+  if (localReaders !== 1) fail('expected exactly one audited local-file-reader.js')
 }
 
 function checkManifest() {
@@ -131,11 +152,17 @@ function checkManifest() {
 
   const manifest = JSON.parse(readFileSync(path, 'utf8'))
   const permissions = manifest.permissions ?? []
-  if (permissions.length) fail(`zero permissions: manifest declares ${JSON.stringify(permissions)}`)
-  if (manifest.host_permissions) fail(`zero permissions: manifest declares host_permissions`)
-  if (manifest.content_scripts) fail(`zero permissions: manifest declares content_scripts`)
-  if (manifest.content_security_policy)
-    fail(`zero permissions: manifest overrides the default content_security_policy`)
+  if (JSON.stringify([...permissions].sort()) !== JSON.stringify(['declarativeNetRequestWithHostAccess', 'storage', ...(AI ? ['nativeMessaging'] : [])].sort()))
+    fail(`unexpected permissions: ${JSON.stringify(permissions)}`)
+  if (JSON.stringify(manifest.host_permissions) !== JSON.stringify(['file:///*']))
+    fail('host_permissions must contain only file:///*')
+  for (const key of ['content_scripts', 'optional_permissions', 'optional_host_permissions', 'externally_connectable', 'sandbox', 'declarative_net_request']) {
+    if (manifest[key] !== undefined) fail(`unexpected manifest capability: ${key}`)
+  }
+  if (JSON.stringify(manifest.web_accessible_resources) !== JSON.stringify([{ resources: ['viewer.html'], matches: ['file:///*'] }]))
+    fail('only viewer.html may be exposed to file URLs')
+  if (JSON.stringify(manifest.content_security_policy) !== JSON.stringify({ extension_pages: AI ? AI_CSP : PURE_CSP }))
+    fail(`CSP must exactly restrict connections to self/file${AI ? '' : ''}`)
 }
 
 /**
@@ -146,7 +173,7 @@ function checkManifest() {
  * failed and the exemption would be masking a real write path in what ships.
  */
 function checkDevFixtureNotShipped() {
-  if (resolve(DIST) !== resolve(ROOT, 'dist')) return // 只对发货产物 `dist/` 收紧
+  if (resolve(DIST) === resolve(ROOT, 'dist-dev')) return // 只对发货产物 `dist/` 收紧
   const leaked = jsFiles(DIST).filter((f) => /(^|\/)devFixture-[^/]*\.js$/.test(f.replace(/\\/g, '/')))
   for (const f of leaked)
     fail(`dev fixture leaked into shipped build: ${show(f)} — it must be tree-shaken from prod \`dist/\``)
@@ -192,12 +219,13 @@ function warnIfStale() {
 
 // Printing the list first is part of the promise the documentation makes:
 // "it prints the exact symbols it looks for". Do not remove it as debug noise.
-console.log(`Checking ${show(DIST)} for:`)
+console.log(`Checking ${show(DIST)} (${AI ? 'opt-in AI: one native transport' : 'pure'}) for:`)
 for (const [invariant, patterns] of Object.entries(FORBIDDEN)) {
   console.log(`  ${invariant.padEnd(13)} ${patterns.map((p) => p.source).join('  ')}`)
 }
-console.log(`  permissions   manifest.permissions must be empty; no host_permissions,`)
-console.log(`                no content_scripts, no content_security_policy override`)
+console.log('  local reader  exactly one unchanged, SHA-256 pinned local-only reader')
+console.log(`  permissions   storage + declarativeNetRequestWithHostAccess${AI ? ' + nativeMessaging' : ''}; only file:///*`)
+console.log(`                no content scripts; exact ${AI ? 'self/file' : 'self/file'} CSP`)
 console.log()
 
 if (!existsSync(DIST)) {
@@ -215,9 +243,9 @@ if (failed) {
   process.exit(1)
 }
 
-console.log(
-  stale
-    ? 'OK*  no network symbols, no filesystem write symbols, no permissions — ' +
-        '*in a build that predates the current sources; rebuild and re-run before quoting this.'
-    : 'OK  no network symbols, no filesystem write symbols, no permissions.',
-)
+const conclusion = AI
+  ? 'audited local reader + exactly one native transport, exact permissions/CSP, no filesystem write symbols'
+  : 'audited local reader only, exact local permissions/CSP, no filesystem write symbols'
+console.log(stale
+  ? `OK*  ${conclusion} — *in a build that predates the current sources; rebuild and re-run before quoting this.`
+  : `OK  ${conclusion}.`)

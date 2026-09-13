@@ -19,6 +19,7 @@ const KIND_KEY: Record<KindId, string> = {
   [KIND.macro]: 'kind.macro',
   [KIND.ctor]: 'kind.ctor',
   [KIND.heading]: 'kind.heading',
+  [KIND.sql]: 'kind.sqlStatement',
   [KIND.declaration]: 'kind.declaration',
 }
 

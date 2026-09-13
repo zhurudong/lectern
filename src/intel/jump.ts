@@ -2,7 +2,7 @@ import { signal } from '@preact/signals'
 import { t } from '../i18n'
 import { mode, selectedFile } from '../state'
 import { activeFileParsing, activeFileSymbols, indexState, lookupDefinitions, type SymbolHit } from './indexStore'
-import { KIND } from './symbols'
+import { KIND, isOutlineOnlyKind } from './symbols'
 import { navigateWithHistory } from './navStack'
 import { focusEditorWhenReady } from '../lib/focusEditor'
 
@@ -84,7 +84,7 @@ export async function jumpToDefinition(name: string, fromLine?: number): Promise
   // 用户 MUST NOT 因为换了打开方式而得到不同结果"。所以下面不再分叉。
   //
   // 单文件模式复用大纲已抽取的结果(同一套抽取代码);按小写比较以对齐项目模式的
-  // `byLowerName` 语义,并排除 Markdown 标题(它不参与跳转与引用)。
+  // `byLowerName` 语义,并排除仅大纲条目(它不参与跳转与引用)。
   const hits = definitionsFor(trimmed)
 
   if (hits.length === 0) {
@@ -141,7 +141,7 @@ export function definitionsFor(name: string): SymbolHit[] {
 function localDefinitions(name: string): SymbolHit[] {
   const lower = name.toLowerCase()
   return activeFileSymbols.value.filter(
-    (s) => s.kind !== KIND.heading && s.name.toLowerCase() === lower,
+    (s) => !isOutlineOnlyKind(s.kind) && s.name.toLowerCase() === lower,
   )
 }
 

@@ -1,0 +1,21 @@
+Lectern 0.4.0 — reviewer test instructions
+
+No Lectern account or payment is required to use the reader. The optional terminal requires macOS 13.5+, Google Chrome, Lectern Companion and a separately installed/authenticated Codex or Claude Code CLI. Model service accounts and charges are separate from Lectern.
+
+Validation recorded on 2026-09-13: the public ARM64 installer was installed as an upgrade on macOS 26.5.1. Chrome 152 loaded an isolated local candidate with the formal store ID and used the actual system native host; PTY input/output and resizing passed. The user confirmed directory association and a real AI CLI request/response. A clean macOS user environment, Intel runtime and installation from Chrome Web Store have not yet been validated.
+
+1. Open the extension from the toolbar. Choose Open Folder and select a disposable local source repository.
+2. Open a source file. Test the file tree, symbol search, text search, definition navigation and file comparison. Toggle English/Chinese and light/dark themes. No project content is uploaded by the reader.
+3. Optional file URL opening: open Automatic opening, select the file types, save, then enable Chrome's Allow access to file URLs for this extension. Navigate to a matching local file URL. This feature uses local file rules only.
+4. Optional terminal: use Installation and update guide from the AI terminal panel to open the companion download page. The GitHub packages are explicitly unsigned and not notarized. macOS may require the reviewer to decide whether to allow the specific program according to Apple guidance; enterprise policy may prevent installation. Verify the source and checksum. Install the package matching your Mac chip and this extension ID. Install/sign in to Codex or Claude Code following their official instructions; do not send credentials to the Lectern maintainer.
+5. Return to Lectern, open AI terminal and click Reconnect. Select the same disposable project directory in the system picker. Try a read-only request such as describing the README. Drag the separator to resize the terminal.
+6. Close and reopen: a new CLI session starts and the project association is reused. Open another project and associate its directory once. Closing the panel requests termination of that CLI session.
+7. The CLI runs with user permissions, can modify files, and may contact the user's configured provider. Native Messaging is local; no local HTTP server, token, telemetry or hook is required.
+8. To remove the companion, close terminals and run /Applications/Lectern Companion.app/Contents/Resources/Uninstall.command. Uninstalling retains CLI installations and project association preferences. Remove the extension separately.
+
+Companion download: https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1
+Privacy policy: https://github.com/zhurudong/lectern/blob/companion-v0.2.1/PRIVACY.md
+Extension ID: ahmcjpgaejjfgiihipkjlhmepcnkbddm
+Source: https://github.com/zhurudong/lectern
+Support: https://github.com/zhurudong/lectern/issues
+The submitted build's in-app guide contains the actual public companion download URL. Before submitting, confirm the guide, installer and public privacy-policy link are accessible without a maintainer login. A missing installer or unavailable CLI account is not a successful terminal test.
