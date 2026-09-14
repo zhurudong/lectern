@@ -11,7 +11,7 @@ npm run shots:store
 npm run prepare:store
 ```
 
-生成 `release-artifacts/web-store-<version>/`。截图只使用隔离 Chrome 配置，native 注册指向不存在的测试主机，确保不启动开发者机器上的真实伴随程序。03 截图真实展示首次使用安装状态。新的宣传图不修改产品截图。
+生成 `release-artifacts/web-store-<version>/`。截图只使用隔离 Chrome 配置，native 注册指向不存在的测试主机，确保不启动开发者机器上的真实伴随程序。03、04 截图分别真实展示右侧和底部的首次使用安装状态。新的宣传图不修改产品截图。
 
 默认读取 `release-config.json`，其中已记录用户确认的正式扩展 ID；后续逐项补齐。`confirmedUpload` 记录用户已确认可上传的具体扩展 ID 和版本，不虚构未知的历史最高版本；已有明确版本冲突时仍会阻止生成正式包。另备 `release-config.example.json` 供复制到本机不入库的位置填写；只包含发布元数据，不放证书私钥或账号密码。正式准备时 `companionPackages` 应为两个对象：`{ "arch": "arm64", "path": "对应分发模式的包绝对路径" }` 与 `x64` 对应项。只有完成实际核验，才把 `storeIdConfirmed` 和 `cleanInstallVerified` 设为 true。
 

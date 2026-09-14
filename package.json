@@ -1,6 +1,6 @@
 {
   "name": "lectern-extension",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "description": "Lectern \u2014 a read-only local code reader with configurable file URL opening (Chrome MV3 extension)",

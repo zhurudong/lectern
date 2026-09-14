@@ -20,7 +20,12 @@ try {
   if (!process.argv.includes('--promos-only')) for (const locale of ['en', 'zh']) {
     const page = await browser.newPage(), errors = []
     page.on('pageerror', e => errors.push(String(e)))
-    await page.evaluateOnNewDocument((lang) => localStorage.setItem('cv-lang', lang), locale)
+    await page.evaluateOnNewDocument((lang) => {
+      localStorage.setItem('cv-lang', lang)
+      // Each locale starts with the same screenshot sequence, independently of
+      // the docking preference retained by the preceding locale's page.
+      localStorage.setItem('lectern-ai-terminal-dock', 'right')
+    }, locale)
     await page.goto(`chrome-extension://${id}/viewer.html`)
     await page.waitForSelector('.welcome')
     await page.evaluate(async (files) => {
@@ -45,11 +50,16 @@ try {
     await page.screenshot({ path: join(dir, '02-dark-reader.png') })
     await setTheme(page, 'light'); await page.click('.ai-toggle')
     await page.waitForSelector('.ai-onboarding')
+    await page.waitForSelector('.ai-panel[data-dock="right"]')
     assert.ok(await page.$('.ai-onboarding a'))
     await settle()
     await page.screenshot({ path: join(dir, '03-terminal-first-use.png') })
+    await page.click('.ai-dock-toggle')
+    await page.waitForSelector('.ai-panel[data-dock="bottom"]')
+    await settle()
+    await page.screenshot({ path: join(dir, '04-terminal-bottom.png') })
     assert.deepEqual(errors, [])
-    console.log(`PASS ${locale}: 3 actual candidate screenshots; terminal shows first-use installation, no simulated AI output`)
+    console.log(`PASS ${locale}: 4 actual candidate screenshots; both terminal layouts show first-use installation, no simulated AI output`)
     await page.close()
   }
   const promos = join(output, 'promos'); mkdirSync(promos, { recursive: true })

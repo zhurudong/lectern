@@ -1,4 +1,4 @@
-Lectern lets you read local projects in Chrome, explore their structure, review changes and open an AI terminal beside the code when needed. Get familiar with a project or review work on your computer without first uploading files or launching an IDE.
+Lectern lets you read local projects in Chrome, explore their structure, review changes and open an AI terminal within the reader when needed. Get familiar with a project or review work on your computer without first uploading files or launching an IDE.
 
 Main features
 
@@ -6,7 +6,7 @@ Main features
 
 • Navigation and search: Use file outlines to find your place, or search a project by filename, symbol or text. Navigate definitions and references in supported languages, then return through navigation history. Matching uses syntax and names rather than promising language-server precision.
 
-• An adjacent AI terminal: Use your installed Codex or Claude Code in the current page with your existing sign-in and model settings. Drag the divider to adjust its width. Associate each project with its local folder once and reuse that association later. This feature is currently a macOS preview.
+• A dockable AI terminal: Use your installed Codex or Claude Code beside or below the reader with your existing sign-in and model settings. Drag the divider to resize; placement, width and height are remembered. Moving the panel or changing themes preserves the session. Reconnect is in the toolbar; installation help and folder association are in settings. Associate each project with its local folder once and reuse that association later. This feature is currently a macOS preview.
 
 • Automatic rendering by file extension: Choose from 72 supported file extensions and enable Chrome's Allow access to file URLs. Opening a matching local file:// address then displays its reading view in the current tab. Adjust or disable this at any time.
 

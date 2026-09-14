@@ -68,7 +68,7 @@ for (const name of readdirSync(source)) {
 }
 buildPages(join(out, 'site'), cfg.downloadUrl || undefined, distribution)
 cpSync(join(PROJECT, 'public/icons/icon-128.png'), join(out,'images/icon-128.png'))
-for (const locale of ['en','zh_CN']) for (const name of ['01-code-reader.png','02-dark-reader.png','03-terminal-first-use.png']) {
+for (const locale of ['en','zh_CN']) for (const name of ['01-code-reader.png','02-dark-reader.png','03-terminal-first-use.png','04-terminal-bottom.png']) {
   const img=readFileSync(join(out,'images',locale,name)); assert.equal(img.toString('hex',0,8),'89504e470d0a1a0a'); assert.equal(img.readUInt32BE(16),1280); assert.equal(img.readUInt32BE(20),800)
 }
 for (const [name,w,h] of [['small-promo-440x280.png',440,280],['marquee-promo-1400x560.png',1400,560]]) {
@@ -102,8 +102,8 @@ ${final ? '技术准备检查通过。' : draft ? '上传技术检查通过；�
 
 - [公开页面待部署版本](site/index.html)
 - [英文隐私政策](site/privacy.html) · [中文隐私政策](site/privacy.zh-CN.html)
-- [英文阅读器](images/en/01-code-reader.png) · [暗色](images/en/02-dark-reader.png) · [终端首次使用](images/en/03-terminal-first-use.png)
-- [中文阅读器](images/zh_CN/01-code-reader.png) · [暗色](images/zh_CN/02-dark-reader.png) · [终端首次使用](images/zh_CN/03-terminal-first-use.png)
+- [英文阅读器](images/en/01-code-reader.png) · [暗色](images/en/02-dark-reader.png) · [右侧终端](images/en/03-terminal-first-use.png) · [底部终端](images/en/04-terminal-bottom.png)
+- [中文阅读器](images/zh_CN/01-code-reader.png) · [暗色](images/zh_CN/02-dark-reader.png) · [右侧终端](images/zh_CN/03-terminal-first-use.png) · [底部终端](images/zh_CN/04-terminal-bottom.png)
 - [128 图标](images/icon-128.png) · [小宣传图](images/promos/small-promo-440x280.png) · [大宣传图](images/promos/marquee-promo-1400x560.png)
 
 ## 发布文件

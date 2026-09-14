@@ -1,16 +1,12 @@
 {
-  "candidateVersion": "0.4.0",
+  "candidateVersion": "0.4.1",
   "companionVersion": "0.2.1",
   "observedStoreId": "ahmcjpgaejjfgiihipkjlhmepcnkbddm",
   "storeIdConfirmed": true,
   "storeReview": {
     "version": "0.4.0",
-    "status": "rejected",
-    "notificationId": "Yellow Argon",
-    "violationDate": "2026-09-13",
-    "affectedLocales": ["zh_CN", "en"],
-    "reason": "Excessive keywords in detailed descriptions: language-name lists",
-    "source": "user-provided Chrome Web Store dashboard screenshot"
+    "status": "in_review",
+    "source": "User confirmed both listing descriptions were updated and the submission was under review; later publication has not been independently verified."
   },
   "highestUploadedVersion": null,
   "downloadUrl": "https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1",
@@ -36,14 +32,32 @@
     "installation": "upgrade",
     "packageSha256": "fd7ebea7e260f0d35231cee8a2bd484689360d6a53f3b1408b6d1c7f581ebe6b",
     "source": "user confirmed completion of the requested manual workflow",
-    "passed": ["open test project", "associate directory with system picker", "real AI CLI input and response"],
+    "passed": [
+      "open test project",
+      "associate directory with system picker",
+      "real AI CLI input and response"
+    ],
     "record": "verification-2026-09-13.md"
   },
   "confirmedUpload": {
-    "version": "0.4.0",
+    "version": "0.4.1",
     "extensionId": "ahmcjpgaejjfgiihipkjlhmepcnkbddm",
-    "source": "user confirmation"
+    "source": "User authorized publishing the terminal docking update. Next patch chosen above the known 0.4.0 upload; the current dashboard highest version is not independently verified."
   },
   "companionDistribution": "unsigned",
-  "plannedDownloadUrl": "https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1"
+  "plannedDownloadUrl": "https://github.com/zhurudong/lectern/releases/tag/companion-v0.2.1",
+  "storeReviewHistory": [
+    {
+      "version": "0.4.0",
+      "status": "rejected",
+      "notificationId": "Yellow Argon",
+      "violationDate": "2026-09-13",
+      "affectedLocales": [
+        "zh_CN",
+        "en"
+      ],
+      "reason": "Excessive keywords in detailed descriptions: language-name lists",
+      "source": "user-provided Chrome Web Store dashboard screenshot"
+    }
+  ]
 }
