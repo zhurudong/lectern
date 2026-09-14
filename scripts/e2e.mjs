@@ -4903,6 +4903,10 @@ try {
     // 整棵树只有"加载中…"占位,正是原先会永久丢失活动行的那个时刻。
     await racePage.evaluate(() => {
       window.__cvRacePremise = null
+      window.__cvRaceFocusEvents = []
+      document.addEventListener('focusin', (event) => window.__cvRaceFocusEvents.push({
+        target: event.target.className, text: event.target.textContent?.slice(0, 30), time: performance.now(),
+      }))
       const obs = new MutationObserver(() => {
         const el = document.querySelector('.tree')
         if (!el) return
@@ -4933,6 +4937,7 @@ try {
       return {
         premise: window.__cvRacePremise,
         snapshot: window.__cvTreeState?.(),
+        focusEvents: window.__cvRaceFocusEvents,
         activeLabel: id ? (document.getElementById(id)?.querySelector('.label')?.textContent ?? null) : null,
         firstRowLabel: document.querySelector('.tree-row .label')?.textContent ?? null,
       }
@@ -4945,8 +4950,8 @@ try {
     )
     check(
       '树未就绪时获得焦点,就绪后活动行仍落在首行',
-      race.activeLabel != null && race.activeLabel === race.firstRowLabel,
-      `活动行=${race.activeLabel} 首行=${race.firstRowLabel} 同瞬=${JSON.stringify(race.snapshot)}`,
+      race.snapshot?.strictFocus === true && race.activeLabel != null && race.activeLabel === race.firstRowLabel,
+      `活动行=${race.activeLabel} 首行=${race.firstRowLabel} 同瞬=${JSON.stringify(race.snapshot)} 焦点事件=${JSON.stringify(race.focusEvents)}`,
     )
     await racePage.close()
   }

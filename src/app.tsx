@@ -130,6 +130,10 @@ export function App() {
     let cancelled = false
     let timer = 0
     const focusSelectedView = () => {
+      // Rendering the replacement tab can finish after the user has already
+      // focused the tree, reader or terminal. Only repair genuinely lost focus.
+      const active = document.activeElement
+      if (active && active !== document.body && active !== document.documentElement) return
       const target = document.querySelector<HTMLButtonElement>(
         `[data-project-view="${activeProjectView}"][aria-current="page"]`,
       )
@@ -184,29 +188,31 @@ export function App() {
             <div class="resizer" onMouseDown={(e) => onResizeStart(e as unknown as MouseEvent)} />
           </>
         )}
-        {m === 'project' ? (
-          <section class="preview" hidden={activeProjectView === 'changes'}><Preview /></section>
-        ) : (
-          <section class="preview">{m === 'welcome' ? localFileEntry.value ? <LocalFileEntry /> : <Welcome /> : <Preview />}</section>
-        )}
-        {keepGitSession && root && (
-          <div
-            class="git-project-view"
-            hidden={activeProjectView !== 'changes'}
-            key={root}
-          >
-            <Suspense fallback={<section class="git-comparison"><div class="git-page-state" role="status">{t('app.loadingGit')}</div></section>}>
-              <GitComparison
-                root={root}
-                sidebarWidth={sidebarWidth}
-                onSidebarResizeStart={onResizeStart}
-              />
-            </Suspense>
-          </div>
-        )}
-        {__AI_TERMINAL__ && AiTerminalEntry && aiOpen && (
-          <Suspense fallback={null}><AiTerminalEntry onClose={() => setAiOpen(false)} /></Suspense>
-        )}
+        <div class="reader-workspace">
+          {m === 'project' ? (
+            <section class="preview" hidden={activeProjectView === 'changes'}><Preview /></section>
+          ) : (
+            <section class="preview">{m === 'welcome' ? localFileEntry.value ? <LocalFileEntry /> : <Welcome /> : <Preview />}</section>
+          )}
+          {keepGitSession && root && (
+            <div
+              class="git-project-view"
+              hidden={activeProjectView !== 'changes'}
+              key={root}
+            >
+              <Suspense fallback={<section class="git-comparison"><div class="git-page-state" role="status">{t('app.loadingGit')}</div></section>}>
+                <GitComparison
+                  root={root}
+                  sidebarWidth={sidebarWidth}
+                  onSidebarResizeStart={onResizeStart}
+                />
+              </Suspense>
+            </div>
+          )}
+          {__AI_TERMINAL__ && AiTerminalEntry && aiOpen && (
+            <Suspense fallback={null}><AiTerminalEntry onClose={() => setAiOpen(false)} /></Suspense>
+          )}
+        </div>
       </div>
     </div>
   )

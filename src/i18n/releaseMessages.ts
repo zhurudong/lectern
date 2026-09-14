@@ -1,5 +1,12 @@
 // Additional release UI messages; keys remain stable when copy changes.
 export const releaseZh: Record<string, string> = {
+  "ai.dockBottom": "停靠到阅读区底部",
+  "ai.dockRight": "停靠到阅读区右侧",
+  "ai.resizeHeight": "调整终端高度",
+  "ai.settings": "终端设置与说明",
+  "ai.reconnectHint": "重新连接（启动新会话）",
+  "ai.localNotice": "本地 CLI 可修改文件，并按自身设置向模型服务发送数据。",
+  "ai.dismissNotice": "收起说明（可在终端设置中查看）",
 "drop.denied": "无法访问拖入的文件或文件夹,请检查读取权限或使用打开按钮。",
 "drop.unreadable": "无法读取拖入的文件或文件夹,请重新拖入或使用打开按钮。",
 "drop.unsupported": "当前浏览器无法通过拖放打开,请使用“打开文件夹”或“打开文件”。",
@@ -75,6 +82,13 @@ export const releaseZh: Record<string, string> = {
   "release.automatic_opening": "自动打开"
 }
 export const releaseEn: Record<string, string> = {
+  "ai.dockBottom": "Dock below the reader",
+  "ai.dockRight": "Dock to the right of the reader",
+  "ai.resizeHeight": "Resize terminal height",
+  "ai.settings": "Terminal settings and information",
+  "ai.reconnectHint": "Reconnect (start a new session)",
+  "ai.localNotice": "The local CLI can modify files and send data to its configured model service.",
+  "ai.dismissNotice": "Dismiss notice (available in terminal settings)",
 "drop.denied": "Cannot access the dropped file or folder. Check read permissions or use the open buttons.",
 "drop.unreadable": "Cannot read the dropped file or folder. Drop it again or use the open buttons.",
 "drop.unsupported": "Drag and drop is unavailable in this browser. Use Open Folder or Open File.",
