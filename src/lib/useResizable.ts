@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 
 // 面板分隔条的拖拽 + 持久化(file-tree spec「侧栏宽度调整」)。
 //
@@ -16,32 +16,46 @@ export interface ResizableOptions {
    * 拖拽方向与宽度的关系:
    * - `right`:分隔条在面板右侧,向右拖变宽(左侧目录树)
    * - `left` :分隔条在面板左侧,向左拖变宽(右侧大纲面板)
+   * - `up` / `down`:沿垂直方向调整高度; width/defaultWidth 沿用现有接口命名。
    */
-  grow: 'right' | 'left'
+  grow: 'right' | 'left' | 'up' | 'down'
 }
 
 export interface Resizable {
   width: number
   onResizeStart: (e: MouseEvent) => void
+  onResizeKeyDown: (e: KeyboardEvent) => void
 }
 
 export function useResizable({ storageKey, min, max, defaultWidth, grow }: ResizableOptions): Resizable {
   const clamp = (w: number) => Math.min(max, Math.max(min, w))
+  const vertical = grow === 'up' || grow === 'down'
+  const dir = grow === 'right' || grow === 'down' ? 1 : -1
+  const stopDrag = useRef(() => {})
+  useEffect(() => () => stopDrag.current(), [])
 
-  const [width, setWidth] = useState(() =>
-    clamp(parseInt(localStorage.getItem(storageKey) ?? String(defaultWidth), 10) || defaultWidth),
-  )
+  const [width, setWidth] = useState(() => {
+    try { return clamp(parseInt(localStorage.getItem(storageKey) ?? '', 10) || defaultWidth) }
+    catch { return clamp(defaultWidth) }
+  })
+  const commit = (value: number) => {
+    setWidth(value)
+    try { localStorage.setItem(storageKey, String(value)) } catch { /* resizing still works without persistence */ }
+  }
 
   const onResizeStart = (e: MouseEvent) => {
     e.preventDefault()
-    const startX = e.clientX
+    stopDrag.current()
+    const startX = vertical ? e.clientY : e.clientX
     const startW = clamp(width)
-    const dir = grow === 'right' ? 1 : -1
-    const widthAt = (ev: MouseEvent) => clamp(startW + dir * (ev.clientX - startX))
+    const widthAt = (ev: MouseEvent) => clamp(startW + dir * ((vertical ? ev.clientY : ev.clientX) - startX))
     const onMove = (ev: MouseEvent) => setWidth(widthAt(ev))
     const onUp = (ev: MouseEvent) => {
       // 松开才落盘:拖拽过程中不写 localStorage
-      localStorage.setItem(storageKey, String(widthAt(ev)))
+      commit(widthAt(ev))
+      stopDrag.current()
+    }
+    stopDrag.current = () => {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
@@ -49,5 +63,15 @@ export function useResizable({ storageKey, min, max, defaultWidth, grow }: Resiz
     window.addEventListener('mouseup', onUp)
   }
 
-  return { width: clamp(width), onResizeStart }
+  const onResizeKeyDown = (e: KeyboardEvent) => {
+    const increase = vertical ? 'ArrowDown' : 'ArrowRight'
+    const decrease = vertical ? 'ArrowUp' : 'ArrowLeft'
+    if (![increase, decrease, 'Home', 'End'].includes(e.key)) return
+    e.preventDefault()
+    e.stopPropagation()
+    commit(e.key === 'Home' ? min : e.key === 'End' ? max
+      : clamp(clamp(width) + (e.key === increase ? 1 : -1) * dir * (e.shiftKey ? 50 : 10)))
+  }
+
+  return { width: clamp(width), onResizeStart, onResizeKeyDown }
 }
