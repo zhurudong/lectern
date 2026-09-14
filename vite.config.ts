@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
         const messagesPath = resolve(options.dir!, '_locales', locale, 'messages.json')
         const messages = JSON.parse(readFileSync(messagesPath, 'utf8'))
         messages.extensionName.message = locale === 'en' ? 'Lectern — Code Reader & AI Terminal' : 'Lectern — 代码阅读与 AI 终端'
-        messages.extensionDescription.message = locale === 'en' ? 'Read local code and review changes. Optionally run your own AI CLI in a side terminal with a macOS companion.' : '本地阅读代码与查看差异；可选安装 macOS 伴随程序，在右侧终端运行自己的 AI CLI。'
+        messages.extensionDescription.message = locale === 'en' ? 'Read local code and review changes. Run your AI CLI beside or below the reader with an optional macOS companion.' : '本地阅读代码与查看差异；可选安装 macOS 伴随程序，在阅读区右侧或底部运行自己的 AI CLI。'
         writeFileSync(messagesPath, JSON.stringify(messages, null, 2))
       }
       manifest.permissions.push('nativeMessaging')
