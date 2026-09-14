@@ -1,7 +1,7 @@
 <!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Lectern 终端安装</title>
 <style>body{font:16px/1.8 system-ui;max-width:760px;margin:48px auto;padding:0 24px;color:#202630}h1{font-size:26px}h2{font-size:20px;margin-top:32px}a{color:#145fca}code{background:#eef1f5;padding:3px 6px}li{margin:12px 0}</style>
 <h1>在 Lectern 中使用本机 AI 终端</h1>
-<p>目前支持 macOS 13.5 及以上、Google Chrome。伴随程序包含运行环境，无需安装 Node.js。终端在代码阅读区右侧打开。</p>
+<p>目前支持 macOS 13.5 及以上、Google Chrome。伴随程序包含运行环境，无需安装 Node.js。终端可停靠在代码阅读区右侧或底部。</p>
 <p><strong>__SIGNING__</strong> <a href="https://support.apple.com/102445" target="_blank" rel="noopener noreferrer">Apple 安装与安全说明</a></p>
 <h2>第一次使用</h2>
 <ol><li>__DOWNLOAD__ 下载与当前扩展配套、匹配 Mac 芯片类型的安装包，双击并按系统提示安装。系统可能要求管理员密码。</li>
@@ -9,7 +9,7 @@
 <li>返回 Lectern，打开项目，点击 AI 终端，再点击“重新连接”。在系统目录选择器中选择与阅读项目相同的文件夹。</li></ol>
 <p>Chrome 会按需启动伴随程序，无需运行服务、配置端口或复制 token。CLI 以你的用户权限运行，可修改文件，并按它自身的设置连接模型服务。</p>
 <h2>以后打开项目</h2><p>已关联的项目：打开项目 → AI 终端。新项目：第一次额外选择一次本机目录，之后自动复用。同名目录分别关联；目录移动、删除、浏览器数据清理后可能需要重新关联。</p>
-<p>关闭面板会结束当前 CLI 会话。重新打开、异常重连均启动新会话，不保证恢复对话。项目的首次目录选择是系统文件选择器；终端本身不弹出独立窗口。</p>
+<p>使用终端工具栏的停靠按钮切换右侧或底部，拖动分隔线调整大小。切换停靠位置保留当前会话。设置按钮内可更换 CLI 或关联目录。关闭面板会结束当前 CLI 会话；重新打开、异常重连均启动新会话，不保证恢复对话。项目的首次目录选择是系统文件选择器；终端本身不弹出独立窗口。</p>
 <h2>更新与故障排查</h2><p>关闭终端面板，使用同一下载入口安装新版本，再重新连接。版本不兼容、未授权或无法启动时，安装与此扩展配套的新版伴随程序。目录错误用“更换关联目录”；找不到 CLI 时，在 Agent 设置中填写其绝对路径。</p>
 <h2>卸载</h2><p>先关闭所有终端。在 Finder 中前往 <code>/Applications/Lectern Companion.app/Contents/Resources</code>，双击 <code>Uninstall.command</code> 并确认。它只删除伴随程序及 Chrome 主机注册，保留 AI CLI、登录状态和项目关联。浏览器扩展需单独卸载。</p>
 </html>
