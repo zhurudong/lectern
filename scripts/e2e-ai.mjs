@@ -115,7 +115,82 @@ try {
   console.log('PASS right dock: no modal/backdrop/overlap, full reading height and persisted drag width')
   assert.equal(await page.$('input[name=token]'), null)
   assert.equal(await page.$('input[name=cwd]'), null)
+  await page.click('.ai-intro button')
+  assert.equal(await page.$('.ai-intro'), null)
+  assert.equal(await page.$('#ai-settings'), null)
+  assert.ok(await page.$eval('.ai-heading', el => el.getBoundingClientRect().height <= 40))
+  assert.ok(await page.evaluate(() => document.querySelector('.ai-terminal-host').getBoundingClientRect().top
+    - document.querySelector('.ai-panel').getBoundingClientRect().top <= 40), 'steady state has only one toolbar above the terminal')
+  await page.click('.ai-settings-toggle')
   assert.ok((await page.$eval('.ai-disclosure', (el) => el.textContent)).includes('用户权限'))
+  await page.keyboard.press('Escape')
+  assert.equal(await page.$('#ai-settings'), null)
+  assert.ok(await page.$('.ai-panel'), 'Escape closes settings before closing the session')
+  console.log('PASS compact toolbar, dismissible first-use notice and accessible settings disclosure')
+
+  const startsBeforeDock = frames().filter(m => m.type === 'start').length
+  const connectionsBeforeDock = frames().filter(m => m.type === 'connected').length
+  const rightWidth = await page.$eval('.ai-panel', el => el.getBoundingClientRect().width)
+  await page.click('.xterm-helper-textarea')
+  await page.keyboard.sendCharacter('DOCK_MARKER')
+  await page.waitForFunction(() => document.querySelector('.xterm-rows')?.textContent.includes('ECHO:DOCK_MARKER'))
+  await page.evaluate(() => { window.terminalBeforeDock = document.querySelector('.xterm') })
+  await page.click('.ai-dock-toggle')
+  await page.waitForSelector('.ai-panel[data-dock="bottom"]')
+  const bottom = await page.evaluate(() => {
+    const p = document.querySelector('.ai-panel').getBoundingClientRect(), r = document.querySelector('.preview').getBoundingClientRect()
+    return { top:p.top, readerBottom:r.bottom, left:p.left, readerLeft:r.left, width:p.width, readerWidth:r.width, height:p.height }
+  })
+  assert.ok(bottom.top >= bottom.readerBottom && Math.abs(bottom.left - bottom.readerLeft) < 1)
+  assert.ok(Math.abs(bottom.width - bottom.readerWidth) < 1 && Math.abs(bottom.height - 300) < 1)
+  assert.equal(await page.$eval('.ai-resizer', el => el.getAttribute('aria-orientation')), 'horizontal')
+  const bottomDivider = await (await page.$('.ai-resizer')).boundingBox()
+  await page.mouse.move(bottomDivider.x + 100, bottomDivider.y + 2)
+  await page.mouse.down()
+  await page.mouse.move(bottomDivider.x + 100, bottomDivider.y - 58, { steps:5 })
+  await page.mouse.up()
+  assert.equal(await page.evaluate(() => localStorage.getItem('lectern-ai-terminal-height')), '360')
+  await page.focus('.ai-resizer')
+  await page.keyboard.press('ArrowUp')
+  assert.equal(await page.evaluate(() => localStorage.getItem('lectern-ai-terminal-height')), '370')
+  await page.setViewport({ width:900, height:420 })
+  // A tall terminal can already fit while squeezing the reader. Wait for the
+  // ResizeObserver's reader reserve, not only for the terminal's outer edge.
+  await page.waitForFunction(() => document.querySelector('.ai-panel').getBoundingClientRect().bottom <= innerHeight + 1
+    && document.querySelector('.preview').getBoundingClientRect().height >= 119)
+  assert.ok(await page.$eval('.preview', el => el.getBoundingClientRect().height >= 119))
+  const shortHeight = await page.$eval('.ai-panel', el => el.getBoundingClientRect().height)
+  const shortDivider = await (await page.$('.ai-resizer')).boundingBox()
+  await page.mouse.move(shortDivider.x + 100, shortDivider.y + 2)
+  await page.mouse.down()
+  await page.mouse.move(shortDivider.x + 100, shortDivider.y + 42, { steps:5 })
+  await page.mouse.up()
+  assert.ok(shortHeight - await page.$eval('.ai-panel', el => el.getBoundingClientRect().height) > 30)
+  const savedHeight = Number(await page.evaluate(() => localStorage.getItem('lectern-ai-terminal-height')))
+  await page.setViewport({ width:1400, height:900 })
+  await page.click('.ai-dock-toggle')
+  assert.ok(Math.abs(await page.$eval('.ai-panel', el => el.getBoundingClientRect().width) - rightWidth) < 1)
+  await page.click('.ai-dock-toggle')
+  assert.ok(Math.abs(await page.$eval('.ai-panel', el => el.getBoundingClientRect().height) - savedHeight) < 1)
+  // xterm 6 paints its current theme on the scrollable element; the legacy
+  // viewport node still exists but does not own the visible terminal surface.
+  const themeMatches = () => page.waitForFunction(() => getComputedStyle(document.querySelector('.xterm-scrollable-element')).backgroundColor
+    === getComputedStyle(document.querySelector('.preview')).backgroundColor)
+  await themeMatches()
+  await page.click('.theme-toggle')
+  await themeMatches()
+  await page.click('.theme-toggle')
+  await themeMatches()
+  await page.click('.lang-toggle')
+  await page.waitForFunction(() => document.querySelector('.ai-status')?.textContent === 'Connected')
+  await page.click('.lang-toggle')
+  assert.equal(await page.evaluate(() => window.terminalBeforeDock === document.querySelector('.xterm')), true)
+  assert.ok(await page.$eval('.xterm-rows', el => el.textContent.includes('ECHO:DOCK_MARKER')))
+  assert.equal(frames().filter(m => m.type === 'start').length, startsBeforeDock)
+  assert.equal(frames().filter(m => m.type === 'connected').length, connectionsBeforeDock)
+  console.log('PASS bottom dock, independent sizes, mouse/keyboard resize and responsive height clamp')
+  console.log('PASS docking, live themes and language switches retain the terminal, output and native session')
+  await page.click('.ai-dock-toggle')
   const start = frames().find((m) => m.type === 'start')
   assert.equal(start.projectId, 'standalone'); assert.equal(start.cmd, 'codex')
   await page.click('.xterm-helper-textarea')
@@ -142,6 +217,7 @@ try {
   await page.click('.ai-actions button')
   await page.waitForFunction(() => document.querySelector('.ai-status')?.textContent === '已连接')
   console.log('PASS abnormal exit restarts without stealing reader focus; natural exit stays stopped')
+  await page.click('.ai-dock-toggle')
   const closedBefore = frames().filter((m) => m.type === 'closed').length
   await page.click('button[aria-label="关闭 AI 终端"]')
   await pauseUntil(() => frames().filter((m) => m.type === 'closed').length > closedBefore)
@@ -150,6 +226,8 @@ try {
   for (const [mode, expected] of [['version', '版本不兼容'], ['missing-cli', '尚未安装']]) {
     writeFileSync(scenario, mode)
     await page.click('.ai-toggle')
+    assert.ok(await page.$('.ai-panel[data-dock="bottom"]'), 'dock position survives close and reopen')
+    assert.equal(await page.$('.ai-intro'), null, 'acknowledged notice stays dismissed')
     await page.waitForFunction((text) => document.querySelector('.ai-status')?.textContent.includes(text), {}, expected)
     const count = frames().filter((m) => m.type === 'connected').length
     await new Promise((resolve) => setTimeout(resolve, 1200))
@@ -182,5 +260,85 @@ try {
   assert.equal(remembered.id, ids[0].id)
   console.log('PASS real directory handles: same-name projects are isolated and associations survive reload')
 
+  // Drop a real directory into the production AI build. The file tree must
+  // retain full height while the terminal occupies only the reader's width.
+  writeFileSync(scenario, 'ok')
+  const sampleProject = join(temp, 'terminal-layout-project')
+  mkdirSync(sampleProject)
+  writeFileSync(join(sampleProject, 'sample.ts'), 'export function greet(name: string): string {\n  return `Hello, ${name}`\n}\n\nexport const message = greet("Lectern")\n')
+  const cdp = await page.createCDPSession()
+  const target = await (await page.$('.welcome')).boundingBox()
+  const drop = { x:target.x + 80, y:target.y + 80, data:{ items:[], files:[sampleProject], dragOperationsMask:1 } }
+  await cdp.send('Input.dispatchDragEvent', { type:'dragEnter', ...drop })
+  await cdp.send('Input.dispatchDragEvent', { type:'dragOver', ...drop })
+  await cdp.send('Input.dispatchDragEvent', { type:'drop', ...drop })
+  await page.waitForSelector('.sidebar .tree-row')
+  await page.$$eval('.tree-row', rows => rows.find(row => row.querySelector('.label')?.textContent === 'sample.ts').click())
+  await page.waitForSelector('.cm-content')
+  await page.click('.ai-toggle')
+  await page.waitForFunction(() => document.querySelector('.ai-status')?.textContent === '已连接')
+  assert.ok(await page.$('.ai-panel[data-dock="bottom"]'), 'dock position survives page reload')
+  await page.setViewport({ width:1400, height:900 })
+  await page.waitForFunction(() => document.querySelector('.ai-panel').getBoundingClientRect().right <= innerWidth + 1)
+  const projectLayout = await page.evaluate(() => {
+    const rect = selector => { const r = document.querySelector(selector).getBoundingClientRect(); return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height} }
+    return { tree:rect('.sidebar'), reader:rect('.preview'), terminal:rect('.ai-panel'), main:rect('.main') }
+  })
+  assert.ok(Math.abs(projectLayout.tree.height - projectLayout.main.height) < 1)
+  assert.ok(Math.abs(projectLayout.terminal.left - projectLayout.reader.left) < 1)
+  assert.ok(projectLayout.terminal.left >= projectLayout.tree.right)
+  assert.ok(projectLayout.terminal.top >= projectLayout.reader.bottom)
+  const projectStarts = frames().filter(m => m.type === 'start').length
+  // Screenshots are optional local QA output and never included in the build.
+  if (process.env.LECTERN_AI_SHOTS) {
+    mkdirSync(process.env.LECTERN_AI_SHOTS, { recursive:true })
+    await page.focus('.ai-resizer')
+    await page.keyboard.press('Home')
+    for (let i = 0; i < 3; i++) { await page.keyboard.down('Shift'); await page.keyboard.press('ArrowUp'); await page.keyboard.up('Shift') }
+    if (await page.$eval('html', el => el.dataset.theme) !== 'light') await page.click('.theme-toggle')
+    await themeMatches()
+    await page.click('.xterm-helper-textarea')
+    await page.screenshot({ path:join(process.env.LECTERN_AI_SHOTS, 'bottom-light.png') })
+    await page.click('.theme-toggle')
+    await themeMatches()
+    await page.screenshot({ path:join(process.env.LECTERN_AI_SHOTS, 'bottom-dark.png') })
+  }
+  await page.click('.ai-dock-toggle')
+  assert.ok(await page.$('.ai-panel[data-dock="right"]'))
+  await page.focus('.ai-resizer')
+  await page.keyboard.press('Home')
+  for (let i = 0; i < 4; i++) { await page.keyboard.down('Shift'); await page.keyboard.press('ArrowLeft'); await page.keyboard.up('Shift') }
+  if (process.env.LECTERN_AI_SHOTS) {
+    await page.click('.xterm-helper-textarea')
+    await page.screenshot({ path:join(process.env.LECTERN_AI_SHOTS, 'right-dark.png') })
+  }
+  await page.click('[data-project-view="changes"]')
+  await page.waitForSelector('.git-project-view:not([hidden]) .git-comparison')
+  await page.click('.ai-dock-toggle')
+  await page.waitForFunction(() => document.querySelector('.ai-panel').getBoundingClientRect().top
+    >= document.querySelector('.git-project-view:not([hidden])').getBoundingClientRect().bottom)
+  await page.click('[data-project-view="files"]')
+  await page.waitForSelector('.sidebar .tree-row')
+  assert.equal(frames().filter(m => m.type === 'start').length, projectStarts, 'file/Git and dock switches must preserve the session')
+  console.log('PASS project tree stays full height; file/Git views and persisted docking share one session')
+
   assert.deepEqual(errors, [])
+} catch (error) {
+  const failedPage = (await browser.pages()).at(-1)
+  if (failedPage) {
+    console.error('Browser failure context:', JSON.stringify(await failedPage.evaluate(() => ({
+      theme:document.documentElement.dataset.theme,
+      elements:['.reader-workspace','.preview','.ai-panel','.ai-terminal-host','.xterm-viewport','.xterm-scrollable-element'].map(selector => {
+        const el=document.querySelector(selector)
+        if (!el) return {selector,missing:true}
+        const r=el.getBoundingClientRect(), css=getComputedStyle(el)
+        return {selector,rect:{x:r.x,y:r.y,width:r.width,height:r.height},background:css.backgroundColor,inline:el.getAttribute('style')}
+      }),
+    }))))
+    if (process.env.LECTERN_AI_SHOTS) {
+      mkdirSync(process.env.LECTERN_AI_SHOTS, {recursive:true})
+      await failedPage.screenshot({path:join(process.env.LECTERN_AI_SHOTS,'failure.png')})
+    }
+  }
+  throw error
 } finally { await browser.close(); rmSync(temp, { recursive: true, force: true }) }
